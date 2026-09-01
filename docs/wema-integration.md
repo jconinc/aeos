@@ -106,8 +106,9 @@ Use this, Change it, Not now, and Snooze. Internal scores and engine terms remai
 
 Wema, not AEOS, owns the migration. The smallest durable model is append-only:
 
-1. `aeos_decisions` — decision ID/revision, packet and candidate-set digests, selected
-   candidate, status, adapter/vocabulary versions, explanation projection, timestamps.
+1. `aeos_decision_events` — append-only decision ID/revision lifecycle events, packet and
+   candidate-set digests, selected candidate, adapter/vocabulary versions, explanation
+   projection, dependency snapshot and timestamps.
 2. `aeos_attestations` — actor, server-resolved capacity, decision/revision, recommendation,
    subject and projection digests, closed response, bounded note, snooze, idempotency hash.
 3. `aeos_effect_receipts` — authorization, operation, request digest, state, result reference,
@@ -115,9 +116,11 @@ Wema, not AEOS, owns the migration. The smallest durable model is append-only:
 4. `aeos_outcomes` — receipt, registered metric/window, policy digest, aggregate result and
    evidence digest.
 
-Uniqueness must distinguish transport replay from semantic decisions. Concurrent different
-answers to one current decision revision become a conflict event and reopen the card; last
-write does not win.
+Uniqueness must distinguish transport replay from semantic decisions. The host locks the subject
+before accepting an answer: the first valid answer becomes the durable attestation, an identical
+semantic answer is a no-op even under a fresh transport key, and a concurrent different answer is
+refused as a conflict. It cannot overwrite the accepted attestation or effect. Material subject
+drift, rather than transport arrival order, is what opens a replacement recommendation.
 
 ## Refresh, drift and recovery
 
@@ -140,4 +143,3 @@ is reconciled against the current article/version and idempotency identity befor
 - Real API/worker integration from packet through unapproved revision receipt.
 - Browser proof that Today opens the real article and all four answers are usable on mobile.
 - Serialized Wema `verify:arch`, `verify`, and `verify:ui` at the exact integration commit.
-
