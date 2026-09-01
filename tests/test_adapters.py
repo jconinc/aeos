@@ -1,0 +1,171 @@
+from __future__ import annotations
+
+from aeos_kernel import (
+    AuthorityLevel,
+    AuthorityPolicy,
+    DecisionEngine,
+    DecisionIntensity,
+    DecisionStatus,
+)
+from aeos_kernel.adapters.multiagent import (
+    WlgCandidate,
+    WlgEvidence,
+    build_wlg_packet,
+    map_wlg_candidate,
+    to_wlg_decision_record,
+)
+from aeos_kernel.adapters.wema import (
+    ARTICLE_DECISION_KIND,
+    ARTICLE_REVISION_OPERATION,
+    ARTICLE_SOURCE_REF_TYPE,
+    WemaArticleProjection,
+    build_wema_article_packet,
+    prepared_revision_candidate,
+    to_owned_action_values,
+)
+from tests.factories import NOW, AcceptingVerifier, FixedClock, policy
+
+
+def article() -> WemaArticleProjection:
+    return WemaArticleProjection(
+        article_id="article-1",
+        version_id="version-1",
+        version=1,
+        digest="a" * 64,
+        status="draft",
+        artifact_status="draft",
+        title="A steady first hour",
+        question="What should I do first when care suddenly changes?",
+        answer_first="Start by writing down what changed and who needs to know.",
+        meta_description="A calm first-hour checklist for a sudden change in family care.",
+        article_class="care",
+        quality_ready=False,
+        needs_attention=("source_refs",),
+        word_count=740,
+        reading_grade=7.1,
+        required_reviews=("founder",),
+        approved_reviews=(),
+    )
+
+
+def test_wema_adapter_builds_privacy_minimized_digest_bound_article_packet() -> None:
+    result = build_wema_article_packet(
+        tenant_id="wema",
+        article=article(),
+        analysis={"answer_clarity": "good", "missing": ["source_refs"]},
+        aggregate_outcomes={"status": "insufficient_evidence"},
+        canon_guidance={"voice": "warm_specific_plain"},
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_git": "76e7c0f4fb1df28a9b77a02e1743eec83cd5a249"},
+        allowed_actions=("add_sources",),
+        policy=policy(),
+        observed_at=NOW,
+    )
+    assert result.has_canonical_digest()
+    assert result.subject.subject_kind == "article_revision"
+    assert {item.evidence_id for item in result.evidence} == {
+        "article_projection",
+        "article_analysis",
+        "article_outcomes",
+        "wema_canon_guidance",
+    }
+    serialized = str(result.as_dict()).lower()
+    for prohibited in ("email", "patient", "caregiver_name", "credential", "visitor_history"):
+        assert prohibited not in serialized
+
+
+def test_wema_recommendation_projects_to_real_owned_action_columns() -> None:
+    decision_packet = build_wema_article_packet(
+        tenant_id="wema",
+        article=article(),
+        analysis={"missing": ["source_refs"]},
+        aggregate_outcomes={"status": "insufficient_evidence"},
+        canon_guidance={"source_rule": "cite claims that need support"},
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_git": "76e7c0f4fb1df28a9b77a02e1743eec83cd5a249"},
+        allowed_actions=("add_sources",),
+        policy=policy(),
+        observed_at=NOW,
+    )
+    candidate = prepared_revision_candidate(
+        candidate_id="add-sources",
+        action="add_sources",
+        title="Check the sources for one article",
+        explanation="The article is useful, but its care claims still need their source links.",
+        expected_benefit="Readers can see where the practical guidance comes from.",
+        evidence_ids=("article_projection",),
+        source_tier="host_state",
+        article_id="article-1",
+        expected_digest="a" * 64,
+        prepared_draft={"title": "A steady first hour", "source_refs": ["source-1"]},
+        claimed_entailed=True,
+    )
+    recommendation = DecisionEngine(verifier=AcceptingVerifier(), clock=FixedClock()).decide(
+        decision_packet, (candidate,)
+    )
+    values = to_owned_action_values(recommendation, packet=decision_packet, candidate=candidate)
+    assert recommendation.status is DecisionStatus.PROPOSED
+    assert candidate.effect is not None and candidate.effect.operation == ARTICLE_REVISION_OPERATION
+    assert values["source_ref_type"] == ARTICLE_SOURCE_REF_TYPE
+    assert values["source_ref_id"] == "article-1"
+    assert values["decision_kind"] == ARTICLE_DECISION_KIND
+    assert values["requires_founder_judgment"] is True
+    assert set(values["evidence"]) == {
+        "aeos_decision_id",
+        "aeos_decision_revision",
+        "recommendation_digest",
+        "packet_digest",
+        "article_digest",
+    }
+
+
+def test_multiagent_adapter_preserves_project_revision_evidence_and_repair_plan() -> None:
+    wlg_policy = AuthorityPolicy(
+        policy_id="wlg-repair",
+        policy_version="1",
+        level=AuthorityLevel.DETERMINISTIC,
+        intensity=DecisionIntensity.INTERNAL_EFFECT,
+        allowed_boundary_tags=("wlg_graph_mutation",),
+    )
+    decision_packet = build_wlg_packet(
+        project_id="project-one",
+        unit_id="unit-one",
+        graph_revision=42,
+        finding="one registered edge is absent",
+        unit_digest="a" * 64,
+        evidence=(
+            WlgEvidence(
+                evidence_id="graph-edge-evidence",
+                source_tier="graph",
+                payload={"from": "one", "to": "two"},
+                source_ref="shape-one",
+            ),
+        ),
+        canon_bundle_digest="c" * 64,
+        source_head_pins={"coordination_head": "f8b76c9930e590983d1e0c5e232bd8817191db7f"},
+        allowed_actions=("link",),
+        policy=wlg_policy,
+        created_at=NOW,
+    )
+    candidate = map_wlg_candidate(
+        WlgCandidate(
+            candidate_id="link-one-two",
+            action="link",
+            title="Link the two registered shapes",
+            rationale="The current graph evidence uniquely identifies both endpoints.",
+            source_tier="graph",
+            cited_evidence_ids=("graph-edge-evidence",),
+            claimed_entailed=True,
+            repair_plan={"ops": [{"op_type": "link", "subject_id": "one", "target_id": "two"}]},
+        )
+    )
+    recommendation = DecisionEngine(
+        verifier=AcceptingVerifier(revision="42"), clock=FixedClock()
+    ).decide(decision_packet, (candidate,))
+    record = to_wlg_decision_record(recommendation, packet=decision_packet, candidate=candidate)
+    assert recommendation.selection_mode == "auto_entailed"
+    assert record["project_id"] == "project-one"
+    assert record["unit_id"] == "unit-one"
+    assert record["decision"] == "link"
+    assert record["needs_operator"] == "no"
+    assert record["typed_op_plan"]["repair_plan"]["ops"][0]["target_id"] == "two"
