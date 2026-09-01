@@ -7,7 +7,7 @@ From the repository root:
 ```bash
 make verify
 make wheel
-python3.12 -m zipfile -l dist/aeos_kernel-0.1.0-py3-none-any.whl
+python3.12 -m zipfile -l dist/aeos_kernel-0.1.1-py3-none-any.whl
 ```
 
 `make verify` runs Ruff, strict mypy, the complete coverage-gated suite, and the pinned
@@ -59,4 +59,3 @@ verified release and recovery evidence proves the history remains available.
 - An indeterminate effect is reconciled, never blindly replayed.
 - Repeated failures wake the host's named operator through its existing action/incident path;
   AEOS does not create a second operational queue.
-

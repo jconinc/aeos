@@ -33,7 +33,7 @@ file, project data, graph data, customer data, or generated operational artifact
 | `decision_engine/authority_store.py` | Strict record decoding plus graph-driver queries/upserts | Adapter | Decoding invariants may extract; driver queries remain MultiAgent-specific behind an authority repository port. |
 | `decision_engine/boundaries.py` | Field-to-human-boundary registry | Extract concept | Generalize from graph fields to effect parameters/operations. Default product examples remain in WLG adapter data. |
 | `decision_engine/candidate_resolvers.py` | Evidence-ranked unique selection; ambiguity, placeholder and name-only refusal | Extract | Generic candidate-resolution utility. Route/screen/entity/endpoint helpers remain WLG adapter functions. |
-| `decision_engine/canon_decision.py` | Canon/evidence hashing, pin verification, eligibility, entailed auto-selection, bounded model selection, citation validation, reverse-order consensus, fail-closed escalations and decision record | Invert | This is the primary proven decision compiler. Replace `decision_planner` prompt/model shapes and `repair_mutation_plan` ops/static gate with AEOS model/effect ports. Envelope and pipeline runner remain WLG adapter concerns. |
+| `decision_engine/canon_decision.py` | Canon/evidence hashing, pin verification, eligibility, entailed auto-selection, bounded model selection, citation validation, reverse-order consensus, fail-closed escalations and decision record | Invert | This is the primary proven decision compiler. Replace `decision_planner` prompt/model shapes with AEOS's live model port and replace repair operations with strict host effect contracts. Envelope and pipeline runner remain WLG adapter concerns. |
 | `decision_engine/coverage.py` | Required standard-category coverage and empty-set gaps | Extract concept | Generic registered-policy coverage; WLG category vocabulary remains adapter data. |
 | `decision_engine/decision_types.py` | Closed registered decision types and duplicate refusal | Extract | Instance-owned registry; avoid mutable process-global test leakage. |
 | `decision_engine/mutation.py` | Allowed write surfaces and human-boundary checks | Contract only + adapter | AEOS uses effect plans and host authorizers. WLG graph mutation ops remain adapter-owned. |
@@ -44,9 +44,9 @@ file, project data, graph data, customer data, or generated operational artifact
 | `decision_engine/standards.py` | Strict standard pack parsing, contexts, defaults and predicates | Extract | Rename graph obligations to generic obligations in the kernel; compatibility parser supports original packs. |
 | `claude_coord/wlg/requirement_decision_proposal.py` | Proposal/review/correction/admission workflow with durable receipts | Contract only + adapter | Preserve bounded propose/review/correct/admit behavior and receipts; WLG requirement bodies, AC, transaction manager and judgment lane remain WLG-owned. |
 | `pipeline/decision_planner*` | Prompt construction, output normalization, model choice types | Invert | Host-neutral `ModelGateway` request/result contract. MultiAgent and Wema use their existing provider layers. |
-| `fix/repair_mutation_plan.py` | Typed graph ops, static patch gate and lowering | Adapter | WLG `EffectExecutor` and static-gate adapter. Never make graph ops AEOS's business vocabulary. |
+| `fix/repair_mutation_plan.py` | Typed graph ops, static patch gate and lowering | Adapter | WLG execution and static-gate adapter. Never make graph ops AEOS's business vocabulary. |
 | `execution_receipt.py` and graph transaction machinery | Durable commit receipts but graph/temporal-driver coupled | Contract only | Extract receipt invariants and expected-postimage semantics. Exclude implementation and graph temporal types. |
-| WLG task envelopes, claims, pipeline runners and graph stores | Scheduling, unit ownership, graph persistence, transaction chokepoint | Adapter/exclude | Remain MultiAgent application machinery. AEOS defines ports; compatibility adapter calls existing implementations. |
+| WLG task envelopes, claims, pipeline runners and graph stores | Scheduling, unit ownership, graph persistence, transaction chokepoint | Adapter/exclude | Remain MultiAgent application machinery. AEOS defines strict interchange contracts; the compatibility adapter maps to existing implementations without a speculative repository/executor abstraction. |
 | FastAPI coordination/context service | Local personal service using `X-Agent-Id`, without production tenancy/auth boundary | Exclude | Must never be a Wema production dependency. No AEOS network service in the first release. |
 
 ### Source test evidence to preserve
@@ -103,7 +103,7 @@ test artifacts.
 - The Wema founder decision-engine proposal and canon are proposal/ratification-dependent in Wema;
   AEOS may implement neutral capability without claiming those Wema authorities are approved.
 
-## Extraction evidence at AEOS 0.1.0
+## Extraction evidence at AEOS 0.1.1
 
 | Claim | Evidence |
 | --- | --- |
@@ -115,6 +115,6 @@ test artifacts.
 | Wema consumer shape | Article packet, immutable-revision effect and exact `OwnedAction` column tests in `test_adapters.py` |
 | Published package contract | JSON Schema strictness tests, strict mypy, wheel content inspection and `py.typed` marker |
 
-Current verified command result: 67 tests pass with 93.10% combined line/branch coverage;
+Current verified command result: 68 tests pass with 93.03% combined line/branch coverage;
 Ruff and strict mypy pass. This proves the independent kernel and adapter contracts, not yet
 the Wema database/API/Desk production integration or the MultiAgent graph transaction adoption.

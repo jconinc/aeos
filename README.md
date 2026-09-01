@@ -7,7 +7,8 @@ decisions, authorized effects, and durable outcome receipts.
 AEOS is being extracted from the proven decision machinery in
 `/home/john/code/MultiAgentCommunication`. Wema is its first production vertical.
 The engine does not replace Wema's Desk, model gateway, analytics, workers, or
-domain operations; it connects them through typed ports.
+domain operations; it connects them through strict contracts, adapters, and the three
+runtime ports the decision engine actually consumes.
 
 The governing documents are:
 

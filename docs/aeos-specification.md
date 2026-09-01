@@ -1,6 +1,6 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.1.0-draft  
+**Version:** 0.1.1
 **Date:** 1 September 2026  
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
@@ -66,7 +66,7 @@ AEOS provides:
 - deterministic candidate eligibility and unique entailment;
 - a bounded model-selection port with identity, citation, consensus, and spending checks;
 - a decision lifecycle with idempotency, concurrency, supersession, drift, and reopening;
-- host-neutral repositories and ports;
+- host-neutral strict contracts, adapters, and only the runtime ports with live consumers;
 - published JSON Schemas for interchange;
 - compatibility and vertical adapters.
 
@@ -89,7 +89,7 @@ AEOS does not provide:
 ```text
 Vertical facts, metrics, canon and policies
                  |
-          EvidenceSource port
+       vertical evidence adapter
                  v
         immutable DecisionPacket
                  |
@@ -99,19 +99,19 @@ Vertical facts, metrics, canon and policies
                  v
        explainable Recommendation
                  |
-        RecommendationStore port
+       vertical recommendation store
                  |
         vertical human surface
                  |
-        HumanAttestation port
+         HumanAttestation
                  v
-          EffectAuthorizer
+          effect authorizer
                  |
-          EffectExecutor port
+        vertical effect executor
                  v
         EffectReceipt + outcomes
                  |
-          OutcomeSource port
+        vertical outcome adapter
                  v
           retain / revise / close / reopen
 ```
@@ -278,25 +278,25 @@ Rules:
 9. Advice-only decisions may close without an effect only when their registered postcondition
    explicitly permits that terminal.
 
-## 8. Required ports
+## 8. Live ports and host contracts
 
-The kernel defines these minimal protocols:
+The kernel defines only three runtime protocols, each consumed by the current decision engine:
 
-- `EvidenceSource.build_packet(subject_ref) -> DecisionPacket`
-- `CandidateSource.enumerate(packet) -> Sequence[Candidate]`
-- `CanonSource.load(fingerprint) -> bytes | None`
-- `CurrencyVerifier.verify(packet) -> VerificationResult`
-- `ModelGateway.choose(request) -> ModelDecision`
-- `RecommendationRepository.put/get(...)`
-- `AttestationRepository.record(...)`
-- `DecisionRepository.append/compare_and_swap(...)`
-- `EffectAuthorizer.authorize(...) -> AuthorizationResult`
-- `EffectExecutor.execute(AuthorizedEffect) -> EffectReceipt`
-- `OutcomeSource.observe(receipt) -> Sequence[OutcomeEvidence]`
-- `Clock.now()` and `IdGenerator.new()` for deterministic testing.
+- `TrustVerifier` verifies authority/source pins, current subject revision, and research receipts;
+- `ModelGateway.choose(request) -> ModelDecision` is used only for bounded multi-candidate
+  judgment; and
+- `Clock.now()` makes currency and decision time deterministic in tests and host processes.
 
-Ports return typed results. Expected refusals are data, not generic exceptions. Infrastructure
-faults remain distinguishable from semantic refusals.
+Everything else crosses the product boundary as a strict immutable data contract or an adapter
+function: `DecisionPacket`, `Candidate`, `Recommendation`, `HumanAttestation`,
+`AuthorizedEffect`, `EffectReceipt`, `OutcomeEvidence`, and `DecisionRecord`. Wema already has
+transactional repositories, a worker, domain services, and outcome projections; wrapping those
+in parallel AEOS repository/executor protocols would add abstractions with no live consumer.
+MultiAgentCommunication likewise keeps its graph store, transaction gate, and receipt path.
+
+A new source, repository, executor, or outcome protocol may be introduced only when a second real
+consumer needs a shared callable interface. Expected refusals remain typed data, while host
+infrastructure faults remain distinguishable from semantic refusals.
 
 ## 9. Model use
 
@@ -354,7 +354,7 @@ The adapter must preserve existing WLG behavior while moving reusable contracts 
 - WLG evidence/canon pins -> AEOS evidence and authority bundle;
 - existing `DecisionCandidate` and `RepairOp` -> candidate and host effect template;
 - AEOS recommendation -> existing `CanonDecision` record;
-- WLG transaction gate -> `EffectExecutor`;
+- WLG transaction gate -> vertical execution of an `AuthorizedEffect` contract;
 - WLG durable receipt -> AEOS effect receipt.
 
 Graph stores, graph queries, validator row keys, `row_absent`, repair ops, task envelopes, pipeline
@@ -489,7 +489,8 @@ their host-defined compensation path; package rollback does not pretend to rever
 1. Pin and inventory source behavior and source tests.
 2. Extract strict JSON fingerprinting, core enums/contracts, authority resolution, evidence
    validation, candidate eligibility and fail-closed result types.
-3. Add generic subject/effect/receipt ports; keep WLG concepts in the compatibility adapter.
+3. Add generic subject/effect/receipt contracts and only consumed runtime ports; keep WLG
+   concepts in the compatibility adapter.
 4. Publish v1 schemas and known-answer fixtures.
 5. Prove the MultiAgent compatibility adapter against committed source fixtures.
 6. Implement Wema article packet and result adapters without changing Desk semantics.
@@ -515,4 +516,3 @@ AEOS is complete for this goal only when:
 - deterministic, adversarial, drift, compatibility, integration and end-to-end suites pass;
 - packaging, deployment, migration, kill-switch, rollback and recovery evidence is current;
 - every remaining external human or provider dependency is stated with an exact next action.
-
