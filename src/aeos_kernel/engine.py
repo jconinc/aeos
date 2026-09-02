@@ -9,7 +9,12 @@ from aeos_kernel.decision import Candidate, ModelDecision, Recommendation, candi
 from aeos_kernel.errors import Refusal, RefusalCode
 from aeos_kernel.evidence import DecisionPacket
 from aeos_kernel.ports import Clock, ModelChoiceRequest, ModelGateway, TrustVerifier
-from aeos_kernel.verification import eligible_candidates, validated_entailed, verify_packet
+from aeos_kernel.verification import (
+    eligible_candidates,
+    highest_authority_candidates,
+    validated_entailed,
+    verify_packet,
+)
 from aeos_kernel.vocabulary import DecisionStatus
 
 
@@ -54,22 +59,23 @@ class DecisionEngine:
         entailed = tuple(
             candidate for candidate in eligible if validated_entailed(candidate, packet)
         )
-        if len(entailed) == 1:
+        top_entailed = highest_authority_candidates(entailed)
+        if len(top_entailed) == 1:
             return self._selected(
                 decision_id,
                 packet,
                 set_digest,
-                entailed[0],
+                top_entailed[0],
                 ordered,
                 selection_mode="auto_entailed",
             )
-        if len(entailed) > 1:
+        if len(top_entailed) > 1:
             return self._refused(
                 decision_id,
                 packet,
                 set_digest,
                 RefusalCode.AMBIGUOUS_ENTAILMENT,
-                "multiple candidates are independently claimed and validated as entailed",
+                "multiple candidates are independently entailed at the highest authority tier",
             )
         if not packet.policy.permits_model_choice:
             code = (
@@ -90,7 +96,8 @@ class DecisionEngine:
                 "eligible choices exist but no authority may select among them",
                 status=status,
             )
-        return self._model_selected(decision_id, packet, set_digest, eligible, ordered)
+        model_pool = highest_authority_candidates(eligible)
+        return self._model_selected(decision_id, packet, set_digest, model_pool, ordered)
 
     def _model_selected(
         self,

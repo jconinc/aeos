@@ -179,20 +179,14 @@ def test_v2_contract_red_plants_reject_unbounded_or_unknown_controls() -> None:
         lambda: subject(revision=""),
         lambda: EntailmentProof("host_state", (), "reason"),
         lambda: EffectTemplate("op", "1", {}, (), "post", True, cost_ceiling_minor_units=-1),
-        lambda: ModelCallIdentity(
-            "provider", "model", "bad", "f" * 64, "internal-safe", 1
-        ),
-        lambda: ModelCallIdentity(
-            "provider", "model", "e" * 64, "f" * 64, "internal-safe", 0
-        ),
+        lambda: ModelCallIdentity("provider", "model", "bad", "f" * 64, "internal-safe", 1),
+        lambda: ModelCallIdentity("provider", "model", "e" * 64, "f" * 64, "internal-safe", 0),
         lambda: ModelDecision(
             "choice",
             "reason",
             ("e1",),
             1.1,
-            ModelCallIdentity(
-                "provider", "model", "e" * 64, "f" * 64, "internal-safe", 1
-            ),
+            ModelCallIdentity("provider", "model", "e" * 64, "f" * 64, "internal-safe", 1),
             {},
         ),
         lambda: HumanAttestation(

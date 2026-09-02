@@ -7,7 +7,7 @@ From the repository root:
 ```bash
 make verify
 make wheel
-python3.12 -m zipfile -l dist/aeos_kernel-0.1.1-py3-none-any.whl
+python3.12 -m zipfile -l dist/aeos_kernel-0.2.1-py3-none-any.whl
 ```
 
 `make verify` runs Ruff, strict mypy, the complete coverage-gated suite, and the pinned
@@ -28,7 +28,7 @@ bundle and every named v1 entry schema.
 10. Enable the bounded production cohort and monitor typed failures/restarts.
 
 No AEOS network listener, DNS record, security group, credential, database or graph service is
-part of release 0.1.
+part of the 0.2 release line.
 
 ## Rollback
 

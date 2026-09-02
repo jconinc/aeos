@@ -155,9 +155,7 @@ def build_wema_article_packet(
             payload=payload,
             source_ref=ref,
             observed_at=observed_at,
-            allowed_uses=("decision", "model")
-            if policy.permits_model_choice
-            else ("decision",),
+            allowed_uses=("decision", "model") if policy.permits_model_choice else ("decision",),
         )
         for evidence_id, source_tier, payload, ref in evidence_payloads
     )

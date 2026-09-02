@@ -244,20 +244,23 @@ def authorize_effect(
         if refusal is not None:
             return refusal
     policy_digest = stable_fingerprint(packet.policy.as_dict())
-    authorization_id = "authorization_" + stable_fingerprint(
-        {
-            "decision_id": recommendation.decision_id,
-            "decision_revision": recommendation.decision_revision,
-            "packet_digest": packet.packet_digest,
-            "recommendation_digest": recommendation.digest,
-            "candidate_set_digest": exact_candidate_digest,
-            "projection_digest": context.current_projection_digest,
-            "operation_digest": operation.digest,
-            "parameters": thaw_json(effect.parameters),
-            "idempotency_key": idempotency_key,
-            "policy_digest": policy_digest,
-        }
-    )[:24]
+    authorization_id = (
+        "authorization_"
+        + stable_fingerprint(
+            {
+                "decision_id": recommendation.decision_id,
+                "decision_revision": recommendation.decision_revision,
+                "packet_digest": packet.packet_digest,
+                "recommendation_digest": recommendation.digest,
+                "candidate_set_digest": exact_candidate_digest,
+                "projection_digest": context.current_projection_digest,
+                "operation_digest": operation.digest,
+                "parameters": thaw_json(effect.parameters),
+                "idempotency_key": idempotency_key,
+                "policy_digest": policy_digest,
+            }
+        )[:24]
+    )
     return AuthorizedEffect(
         authorization_id=authorization_id,
         decision_id=recommendation.decision_id,

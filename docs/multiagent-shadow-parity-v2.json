@@ -1,13 +1,67 @@
 {
-  "schema_version": "1",
-  "aeos_adapter": "multiagent.wlg@2",
+  "schema_version": "2",
+  "aeos_adapter": "multiagent.wlg@3",
   "source_commit": "f8b76c9930e590983d1e0c5e232bd8817191db7f",
-  "source_fixture": "claude_coord/tests/test_canon_decision.py",
-  "cases": {
-    "entailed_selection": "same_selected_candidate_and_selection_mode",
-    "fabricated_citation": "both_refuse_without_effect",
-    "ambiguous_entailment": "both_refuse_without_effect",
-    "reverse_order_consensus": "same_selected_candidate_and_selection_mode"
+  "replayed_source_fixture": "claude_coord/tests/test_canon_decision.py",
+  "replayed_cases": {
+    "entailed_selection": "same selected candidate, citations, typed effect, and receipt expectation",
+    "authority_tier_precedence": "same highest-authority selected candidate",
+    "authority_tier_conflict": "same A escalation and zero effect",
+    "fabricated_citation": "same B escalation and zero effect",
+    "invented_candidate": "same B escalation and zero effect",
+    "low_confidence": "same B escalation and zero effect",
+    "reverse_order_consensus": "same selected candidate after two calls",
+    "reverse_order_disagreement": "same B escalation and zero effect",
+    "cross_project_evidence": "same B escalation and zero effect",
+    "stale_revision_evidence": "same B escalation and zero effect",
+    "static_gate_pass": "source gate digest is bound into the typed effect",
+    "static_gate_rejection": "ungated candidate cannot enter the AEOS candidate set",
+    "source_head_drift": "same authority failure and zero receipt expectation"
   },
+  "host_owned_contract_fixtures": [
+    {
+      "source_fixture": "claude_coord/tests/test_canon_decision_pipeline.py",
+      "source_test": "test_durable_receipt_bound_on_commit",
+      "aeos_evidence": "tests/test_effects_and_lifecycle.py::test_exact_human_attestation_authorizes_registered_internal_effect",
+      "disposition": "receipt invariant extracted; graph transaction stays host-owned"
+    },
+    {
+      "source_fixture": "claude_coord/tests/test_canon_decision_pipeline.py",
+      "source_test": "test_consumed_worker_B_task_records_durable_decision_receipt",
+      "aeos_evidence": "tests/test_multiagent_shadow_parity.py::assert_projection_parity",
+      "disposition": "decision-only receipt expectation projected; task pipeline stays host-owned"
+    },
+    {
+      "source_fixture": "claude_coord/tests/test_canon_decision_pipeline.py",
+      "source_test": "test_replay_zero_unchanged_input_creates_no_new_task",
+      "aeos_evidence": "tests/test_effects_and_lifecycle.py::test_lifecycle_is_compare_and_swap_and_append_only",
+      "disposition": "idempotent replay invariant extracted; task claiming stays host-owned"
+    },
+    {
+      "source_fixture": "claude_coord/tests/test_canon_decision_pipeline.py",
+      "source_test": "test_consumed_stale_live_revision_does_not_commit",
+      "aeos_evidence": "tests/test_drift.py",
+      "disposition": "material drift and stale refusal extracted; graph revision lookup stays host-owned"
+    },
+    {
+      "source_fixture": "claude_coord/tests/test_intent_authority_lift_canon_decision.py",
+      "source_test": "test_receipt_bound_retraction_restores_exact_edge_and_metadata_preimage",
+      "aeos_evidence": "tests/test_effects_and_lifecycle.py::test_effect_lifecycle_requires_and_preserves_receipt_evidence",
+      "disposition": "receipt and compensation binding extracted; WLG mutation vocabulary stays host-owned"
+    },
+    {
+      "source_fixture": "claude_coord/tests/test_intent_authority_lift_canon_decision.py",
+      "source_test": "test_reanchor_graph_identity_red_plants_fail_closed",
+      "aeos_evidence": "tests/test_contract_red_plants.py::test_effect_authorization_refusal_surface_is_closed",
+      "disposition": "candidate and preimage binding extracted; graph identity remains adapter-owned"
+    }
+  ],
+  "comparison_fields": [
+    "selected_decision_or_refusal",
+    "citations",
+    "escalation_class",
+    "typed_effect",
+    "expected_receipt"
+  ],
   "effect_policy": "read_only_shadow_no_effect_execution"
 }

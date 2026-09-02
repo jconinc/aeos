@@ -69,7 +69,9 @@ def operation() -> RegisteredOperation:
 
 
 def context(
-    decision_packet, recommendation, current_operation: RegisteredOperation  # type: ignore[no-untyped-def]
+    decision_packet,
+    recommendation,
+    current_operation: RegisteredOperation,  # type: ignore[no-untyped-def]
 ) -> AuthorizationContext:
     return AuthorizationContext(
         current_subject_revision="1",
@@ -127,11 +129,14 @@ def test_exact_human_attestation_authorizes_registered_internal_effect() -> None
         result_refs=("article-version-2",),
         actual_postimage_digest="f" * 64,
     )
-    assert verify_effect_receipt(
-        authorized=result,
-        receipt=receipt,
-        operation=current_operation,
-    ) is None
+    assert (
+        verify_effect_receipt(
+            authorized=result,
+            receipt=receipt,
+            operation=current_operation,
+        )
+        is None
+    )
     wrong = replace(receipt, request_digest="0" * 64)
     refusal = verify_effect_receipt(
         authorized=result,

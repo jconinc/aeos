@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from aeos_kernel import (
     AuthorityLevel,
     AuthorityPolicy,
@@ -137,6 +139,8 @@ def test_multiagent_adapter_preserves_project_revision_evidence_and_repair_plan(
             WlgEvidence(
                 evidence_id="graph-edge-evidence",
                 source_tier="graph",
+                project_id="project-one",
+                graph_revision=42,
                 payload={"from": "one", "to": "two"},
                 source_ref="shape-one",
             ),
@@ -157,6 +161,8 @@ def test_multiagent_adapter_preserves_project_revision_evidence_and_repair_plan(
             cited_evidence_ids=("graph-edge-evidence",),
             claimed_entailed=True,
             repair_plan={"ops": [{"op_type": "link", "subject_id": "one", "target_id": "two"}]},
+            static_gate_passed=True,
+            repair_contract_digest="d" * 64,
         )
     )
     recommendation = DecisionEngine(
@@ -169,3 +175,46 @@ def test_multiagent_adapter_preserves_project_revision_evidence_and_repair_plan(
     assert record["decision"] == "link"
     assert record["needs_operator"] == "no"
     assert record["typed_op_plan"]["repair_plan"]["ops"][0]["target_id"] == "two"
+    assert record["typed_op_plan"]["static_gate_receipt"] == {
+        "passed": True,
+        "repair_contract_digest": "d" * 64,
+    }
+    assert record["audit"]["expected_receipt"]["kind"] == "effect_commit"
+    with pytest.raises(ValueError, match="exact selected candidate"):
+        to_wlg_decision_record(recommendation, packet=decision_packet, candidate=None)
+
+
+def test_multiagent_adapter_contracts_are_strict_immutable_and_gate_bound() -> None:
+    current_evidence = WlgEvidence(
+        evidence_id="e1",
+        source_tier="graph",
+        project_id="project-one",
+        graph_revision=1,
+        payload={"nested": {"value": 1}},
+        source_ref="shape-one",
+    )
+    with pytest.raises(TypeError, match="immutable"):
+        current_evidence.payload["nested"]["value"] = 2
+    with pytest.raises(ValueError, match="positive"):
+        WlgEvidence(
+            evidence_id="e1",
+            source_tier="graph",
+            project_id="project-one",
+            graph_revision=0,
+            payload={},
+            source_ref="shape-one",
+        )
+    ungated = WlgCandidate(
+        candidate_id="candidate",
+        action="link",
+        title="Link a registered shape",
+        rationale="The evidence grounds the exact edge.",
+        source_tier="graph",
+        cited_evidence_ids=("e1",),
+        claimed_entailed=True,
+        repair_plan={"ops": []},
+        static_gate_passed=False,
+        repair_contract_digest="d" * 64,
+    )
+    with pytest.raises(ValueError, match="static gate"):
+        map_wlg_candidate(ungated)

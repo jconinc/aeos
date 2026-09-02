@@ -98,20 +98,25 @@ graph, provider output, or mutable test artifact.
 - The Wema founder decision-engine proposal and canon are proposal/ratification-dependent in Wema;
   AEOS may implement neutral capability without claiming those Wema authorities are approved.
 
-## Extraction evidence at AEOS 0.2.0
+## Extraction evidence at AEOS 0.2.1
 
 | Claim | Evidence |
 | --- | --- |
 | Source fingerprint and enum compatibility | `tests/test_multiagent_source_compatibility.py::test_source_enum_and_fingerprint_values_are_preserved` against the pinned checkout |
 | Unique candidate resolution compatibility | Source-comparison test plus AEOS ambiguity, cross-domain, placeholder and name-only red plants |
 | WLG selector compatibility | Source-comparison test for path, field, lifecycle and wildcard rule selectors |
-| Pinned canon-decision shadow parity | Four actual committed `test_canon_decision.py` fixture classes in `tests/test_multiagent_shadow_parity.py`, with a read-only corpus manifest |
-| Project-neutral decision compiler | Deterministic, cardinality-not-entailment, citation, cross-scope, stale, model-consensus, budget and boundary tests in `test_engine.py` and `test_contract_red_plants.py` |
+| Pinned canon-decision shadow parity | Thirteen actual committed `test_canon_decision.py` fixture classes run through `tests/test_multiagent_shadow_parity.py`, comparing decision/refusal, citations, escalation, typed effect and receipt expectation |
+| Authority parity | Actual source `AuthorityRecord` precedence/conflict known answers plus source-tier precedence and same-tier conflict fixtures |
+| Static-gate parity | Actual source static gate accepts a digest-bound candidate; a source-rejected candidate cannot enter the AEOS candidate set; the host must re-gate before execution |
+| Lifecycle, drift and receipt provenance | Exact committed pipeline/retraction fixture functions are pinned by name; generic CAS, replay, stale/drift, receipt and compensation invariants run in AEOS while graph/database/task machinery remains excluded |
+| Project-neutral decision compiler | Deterministic, cardinality-not-entailment, authority precedence, citation, cross-scope, stale, model-consensus, budget and boundary tests in `test_engine.py` and `test_contract_red_plants.py` |
 | Host-owned effect boundary | Registered-operation, exact attestation, capacity, digest, kill-switch, provider, parameter, boundary and cost red plants |
 | Wema consumer shape | Article packet, immutable-revision effect and exact `OwnedAction` column tests in `test_adapters.py` |
 | Published package contract | V1 historical and v2 current JSON Schema resources, schema strictness tests, strict mypy, wheel content inspection and `py.typed` marker |
 
-Current verified command result: 77 tests pass with 90.77% combined line/branch coverage;
-Ruff and strict mypy pass. This proves the independent kernel, v2 contract, and read-only source
-parity. It does not claim MultiAgent graph transaction adoption, and Wema persistence/deployment
-evidence remains owned and verified in Wema.
+Release evidence is recorded only after the complete quiet `make verify`, reproducible wheel
+inspection and exact consumer repin. This inventory does not claim MultiAgent graph transaction
+adoption; Wema persistence and deployment evidence remains owned and verified in Wema.
+
+The 0.2.1 pre-release verification ran 88 complete kernel tests at 91.13% combined line/branch
+coverage, plus 16 pinned-source compatibility tests; Ruff and strict mypy were clean.

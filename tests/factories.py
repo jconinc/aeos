@@ -102,9 +102,7 @@ def policy(
         model_provider="test-provider" if model else "",
         model_id="test-model" if model else "",
         model_context_classification="internal-safe" if model else "",
-        model_generation_parameters_digest=stable_fingerprint({"temperature": 0})
-        if model
-        else "",
+        model_generation_parameters_digest=stable_fingerprint({"temperature": 0}) if model else "",
     )
 
 

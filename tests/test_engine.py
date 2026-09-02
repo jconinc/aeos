@@ -127,3 +127,55 @@ def test_multiple_validated_entailments_fail_closed_without_model() -> None:
     result = engine().decide(packet(), candidates)
     assert result.refusal is not None
     assert result.refusal.code is RefusalCode.AMBIGUOUS_ENTAILMENT
+
+
+def test_higher_authority_entailment_dominates_lower_tier_without_ambiguity() -> None:
+    current_packet = packet(
+        items=(
+            evidence(evidence_id="legal", source_tier="legal"),
+            evidence(evidence_id="graph", source_tier="graph"),
+        )
+    )
+    candidates = (
+        candidate("legal-choice", evidence_ids=("legal",), source_tier="legal"),
+        candidate(
+            "graph-choice",
+            action="improve_description",
+            evidence_ids=("graph",),
+            source_tier="graph",
+        ),
+    )
+    result = engine().decide(current_packet, candidates)
+    assert result.selected_candidate_id == "legal-choice"
+    assert result.selection_mode == "auto_entailed"
+    assert result.rejected_alternatives == ("graph-choice",)
+
+
+def test_model_pool_excludes_lower_authority_candidates() -> None:
+    current_policy = policy(model=True)
+    current_packet = packet(
+        authority_policy=current_policy,
+        items=(
+            evidence(evidence_id="legal", source_tier="legal", model_allowed=True),
+            evidence(evidence_id="canon", source_tier="canon", model_allowed=True),
+        ),
+    )
+    candidates = (
+        candidate(
+            "legal-choice",
+            evidence_ids=("legal",),
+            source_tier="legal",
+            entailed=False,
+        ),
+        candidate(
+            "canon-choice",
+            action="improve_description",
+            evidence_ids=("canon",),
+            source_tier="canon",
+            entailed=False,
+        ),
+    )
+    scripted = ScriptedModel(["legal-choice"], citations=("legal",))
+    result = engine(model=scripted).decide(current_packet, candidates)
+    assert result.selected_candidate_id == "legal-choice"
+    assert [request.candidate_order for request in scripted.requests] == [("legal-choice",)]

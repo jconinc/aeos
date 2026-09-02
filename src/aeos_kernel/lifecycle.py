@@ -145,11 +145,15 @@ def transition_record(
         raise ContractError("applied status requires an effect receipt")
     if to_status is DecisionStatus.VERIFIED_CLOSED and not (next_receipt or next_outcomes):
         raise ContractError("verified_closed requires effect or outcome verification evidence")
-    if to_status in {
-        DecisionStatus.APPLY_FAILED,
-        DecisionStatus.VERIFIER_FAILED,
-        DecisionStatus.STALE,
-    } and not reason:
+    if (
+        to_status
+        in {
+            DecisionStatus.APPLY_FAILED,
+            DecisionStatus.VERIFIER_FAILED,
+            DecisionStatus.STALE,
+        }
+        and not reason
+    ):
         raise ContractError(f"{to_status.value} requires a typed reason")
     record_identity = stable_fingerprint({"previous": current.digest, "status": to_status.value})
     return DecisionRecord(

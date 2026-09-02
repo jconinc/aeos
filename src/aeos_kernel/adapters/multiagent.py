@@ -12,8 +12,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from aeos_kernel._validation import digest, immutable_json_object, required
 from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.decision import Candidate, EffectTemplate, EntailmentProof, Recommendation
+from aeos_kernel.errors import ContractError, RefusalCode
 from aeos_kernel.evidence import (
     AuthorityPolicy,
     DecisionPacket,
@@ -24,16 +26,36 @@ from aeos_kernel.evidence import (
 )
 
 ADAPTER_ID = "multiagent.wlg"
-ADAPTER_VERSION = "2"
+ADAPTER_VERSION = "3"
 
 
 @dataclass(frozen=True, slots=True)
 class WlgEvidence:
     evidence_id: str
     source_tier: str
+    project_id: str
+    graph_revision: int
     payload: Mapping[str, Any]
     source_ref: str
     research_receipt_digest: str = ""
+
+    def __post_init__(self) -> None:
+        for value, name in (
+            (self.evidence_id, "evidence_id"),
+            (self.source_tier, "source_tier"),
+            (self.project_id, "project_id"),
+            (self.source_ref, "source_ref"),
+        ):
+            required(value, name)
+        if type(self.graph_revision) is not int or self.graph_revision <= 0:
+            raise ContractError("graph_revision must be positive")
+        if self.research_receipt_digest:
+            digest(self.research_receipt_digest, "research_receipt_digest")
+        object.__setattr__(
+            self,
+            "payload",
+            immutable_json_object(self.payload, "WLG evidence payload"),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +68,32 @@ class WlgCandidate:
     cited_evidence_ids: tuple[str, ...]
     claimed_entailed: bool
     repair_plan: Mapping[str, Any]
+    static_gate_passed: bool
+    repair_contract_digest: str
+
+    def __post_init__(self) -> None:
+        for value, name in (
+            (self.candidate_id, "candidate_id"),
+            (self.action, "action"),
+            (self.title, "title"),
+            (self.rationale, "rationale"),
+            (self.source_tier, "source_tier"),
+        ):
+            required(value, name)
+        if (
+            type(self.cited_evidence_ids) is not tuple
+            or not self.cited_evidence_ids
+            or len(set(self.cited_evidence_ids)) != len(self.cited_evidence_ids)
+        ):
+            raise ContractError("WLG candidate citations must be nonempty and unique")
+        if type(self.claimed_entailed) is not bool or type(self.static_gate_passed) is not bool:
+            raise ContractError("WLG candidate controls must be booleans")
+        digest(self.repair_contract_digest, "repair_contract_digest")
+        object.__setattr__(
+            self,
+            "repair_plan",
+            immutable_json_object(self.repair_plan, "WLG repair plan"),
+        )
 
 
 def build_wlg_packet(
@@ -86,21 +134,19 @@ def build_wlg_packet(
             evidence_id=item.evidence_id,
             source_tier=item.source_tier,
             vertical_id=subject.vertical_id,
-            tenant_id=subject.tenant_id,
+            tenant_id=item.project_id,
             subject_id=subject.subject_id,
-            subject_revision=subject.revision,
+            subject_revision=str(item.graph_revision),
             payload=dict(item.payload),
             source_ref=SourceRef(
                 source_type="wlg_evidence",
                 source_id=item.source_ref,
-                revision=revision,
+                revision=str(item.graph_revision),
                 digest=stable_fingerprint(dict(item.payload)),
             ),
             observed_at=created_at,
             research_receipt_digest=item.research_receipt_digest,
-            allowed_uses=("decision", "model")
-            if policy.permits_model_choice
-            else ("decision",),
+            allowed_uses=("decision", "model") if policy.permits_model_choice else ("decision",),
         )
         for item in evidence
     )
@@ -122,6 +168,11 @@ def build_wlg_packet(
 
 
 def map_wlg_candidate(candidate: WlgCandidate) -> Candidate:
+    """Map only a candidate already admitted by WLG's real candidate-bound static gate."""
+
+    if candidate.static_gate_passed is not True:
+        raise ContractError("WLG candidate has not passed the host static gate")
+    digest(candidate.repair_contract_digest, "repair_contract_digest")
     return Candidate(
         candidate_id=candidate.candidate_id,
         action=candidate.action,
@@ -137,7 +188,13 @@ def map_wlg_candidate(candidate: WlgCandidate) -> Candidate:
         effect=EffectTemplate(
             operation="multiagent.wlg.apply_repair_plan",
             operation_version="1",
-            parameters={"repair_plan": dict(candidate.repair_plan)},
+            parameters={
+                "repair_plan": dict(candidate.repair_plan),
+                "static_gate_receipt": {
+                    "passed": True,
+                    "repair_contract_digest": candidate.repair_contract_digest,
+                },
+            },
             boundary_tags=("wlg_graph_mutation",),
             expected_postcondition="registered_validator_postcondition",
             reversible=True,
@@ -152,27 +209,72 @@ def to_wlg_decision_record(
     """Return the source decision-record vocabulary without claiming a graph commit."""
 
     refusal = recommendation.refusal
+    if refusal is None:
+        if candidate is None or candidate.candidate_id != recommendation.selected_candidate_id:
+            raise ContractError("WLG projection requires the exact selected candidate")
+        selected = candidate
+    else:
+        if candidate is not None:
+            raise ContractError("a refused WLG projection cannot carry a selected candidate")
+        selected = None
     typed_op_plan = None
-    if candidate is not None and candidate.effect is not None:
-        typed_op_plan = candidate.effect.parameters
+    if selected is not None and selected.effect is not None:
+        typed_op_plan = selected.effect.parameters
+    escalation = "no"
+    if refusal is not None:
+        if refusal.code in {RefusalCode.AUTHORITY_CONFLICT, RefusalCode.AMBIGUOUS_ENTAILMENT}:
+            escalation = "A"
+        elif refusal.code in {RefusalCode.INVALID_PACKET, RefusalCode.AUTHORITY_MISSING} or (
+            refusal.code is RefusalCode.STALE_INPUT
+            and refusal.reason
+            in {
+                "source-head pins are stale or unknown",
+                "subject revision is not current",
+            }
+        ):
+            escalation = "authority_failure"
+        else:
+            escalation = "B"
+    expects_decision_receipt = escalation != "authority_failure"
+    receipt_expectation = {
+        "required": expects_decision_receipt,
+        "kind": (
+            "effect_commit"
+            if selected is not None
+            else ("decision_only" if expects_decision_receipt else "none")
+        ),
+        "status": (
+            "pending_host_execution"
+            if selected is not None
+            else ("pending_host_persistence" if expects_decision_receipt else "no_effect")
+        ),
+    }
     return {
         "project_id": packet.subject.tenant_id,
         "unit_id": packet.subject.subject_id,
         "finding": str(packet.subject.attributes.get("finding", "")),
-        "decision": candidate.action if candidate is not None else "escalation",
+        "decision": selected.action if selected is not None else "escalation",
         "canon_basis": recommendation.explanation,
         "graph_requirements_evidence": [
-            {"evidence_id": evidence_id} for evidence_id in recommendation.evidence_ids
+            {"evidence_id": evidence_id}
+            for evidence_id in (
+                recommendation.evidence_ids
+                if selected is not None
+                else tuple(item.evidence_id for item in packet.evidence)
+            )
         ],
         "analysis_performed": [recommendation.selection_mode],
         "alternatives_rejected": [
             {"candidate_id": candidate_id} for candidate_id in recommendation.rejected_alternatives
         ],
         "typed_op_plan": typed_op_plan,
-        "lint_disposition": "pending_host_static_gate" if candidate is not None else "no_effect",
+        "lint_disposition": "pending_host_regate" if selected is not None else "no_effect",
         "residual_risk": "host commit and postcondition remain unverified",
-        "needs_operator": "B" if refusal is not None else "no",
+        "needs_operator": escalation,
         "escalation_premise": "" if refusal is None else refusal.missing_premise or refusal.reason,
         "selection_mode": recommendation.selection_mode or "escalation",
-        "audit": {"aeos_recommendation_digest": recommendation.digest},
+        "audit": {
+            "aeos_recommendation_digest": recommendation.digest,
+            "expected_receipt": receipt_expectation,
+        },
     }

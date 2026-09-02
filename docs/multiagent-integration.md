@@ -1,6 +1,6 @@
 # MultiAgentCommunication compatibility contract
 
-**Adapter:** `multiagent.wlg@2`
+**Adapter:** `multiagent.wlg@3`
 **Pinned source:** `f8b76c9930e590983d1e0c5e232bd8817191db7f`
 
 The adapter is additive. It does not move graph storage, task claims, pipeline scheduling,
@@ -32,12 +32,22 @@ The source-compatibility suite imports the actual pinned committed modules and c
   name-only and placeholder refusals;
 - path, field, lifecycle and wildcard rule selector behavior.
 
-The v2 read-only shadow suite also imports the actual pinned
-`claude_coord/tests/test_canon_decision.py` fixture helpers and proves four high-value classes:
-entailed selection, fabricated-citation refusal, ambiguous-entailment refusal, and reverse-order
-model consensus. Its expected corpus and no-effects rule are recorded in
-`docs/multiagent-shadow-parity-v2.json`. Static-gate and PostgreSQL pipeline/receipt tests remain
-in MultiAgentCommunication because its database, graph and transaction path own those claims.
+The read-only shadow suite imports and executes the actual pinned
+`claude_coord/tests/test_canon_decision.py` fixture helpers. It compares deterministic selection,
+authority-tier precedence and conflict, citation and candidate red plants, low confidence,
+reverse-order acceptance and disagreement, cross-project and stale evidence, static-gate
+admission/refusal, and source-head drift across the selected decision/refusal, citations,
+escalation class, typed effect and expected receipt.
+
+Adapter v3 preserves each evidence item's native project/revision rather than laundering it into
+the packet scope. It also refuses a WLG candidate unless the host's real candidate-bound static
+gate passed and binds that gate's full repair-contract digest into the typed effect. The WLG host
+must re-run its commit gate immediately before execution.
+
+The committed PostgreSQL pipeline, lifecycle/replay, graph receipt and receipt-bound retraction
+fixture identities are pinned in `docs/multiagent-shadow-parity-v2.json`. Their generic invariants
+run in AEOS; their graph, database, task claim and transaction machinery deliberately remains in
+MultiAgentCommunication and is not imported or simulated here.
 
 ## Adoption sequence
 

@@ -65,7 +65,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "EVIDENCE_RANK",

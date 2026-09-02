@@ -147,6 +147,21 @@ def eligible_candidates(
     return tuple(eligible), rejected
 
 
+def highest_authority_candidates(candidates: Iterable[Candidate]) -> tuple[Candidate, ...]:
+    """Keep only candidates at the highest surviving evidence-authority tier.
+
+    Callers must pass candidates whose proof tiers have already been validated by
+    :func:`candidate_eligibility`. Lower-authority candidates remain part of the canonical
+    candidate set and audit trail, but they cannot create an ambiguity or enter a model pool.
+    """
+
+    materialized = tuple(candidates)
+    if not materialized:
+        return ()
+    best_rank = min(_TIER_RANK[item.proof.source_tier] for item in materialized)
+    return tuple(item for item in materialized if _TIER_RANK[item.proof.source_tier] == best_rank)
+
+
 def validated_entailed(candidate: Candidate, packet: DecisionPacket) -> bool:
     ok, _ = candidate_eligibility(candidate, packet)
     return (

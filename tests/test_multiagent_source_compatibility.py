@@ -9,9 +9,11 @@ import pytest
 
 from aeos_kernel import (
     AuthorityLevel,
+    AuthorityRecord,
     DecisionStatus,
     ResolvedCandidate,
     ScopeSelector,
+    resolve_authority,
     resolve_unique,
     stable_fingerprint,
 )
@@ -26,6 +28,8 @@ PINNED_FILES = (
     "claude_coord/wlg/pipeline/decision_planner.py",
     "claude_coord/wlg/fix/repair_mutation_plan.py",
     "claude_coord/tests/test_canon_decision.py",
+    "claude_coord/tests/test_canon_decision_pipeline.py",
+    "claude_coord/tests/test_intent_authority_lift_canon_decision.py",
 )
 
 pytestmark = pytest.mark.compatibility
@@ -132,6 +136,103 @@ def test_source_wlg_authority_selector_known_answer_is_preserved() -> None:
         from aeos_kernel import selector_matches
 
         assert selector_matches(ScopeSelector(selector_type, selector_args), scope)
+
+
+def test_source_wlg_authority_precedence_and_conflict_known_answers_are_preserved() -> None:
+    require_pinned_source()
+    from claude_coord.wlg.decision_engine.authority import (
+        AuthorityRecord as SourceAuthorityRecord,
+    )
+    from claude_coord.wlg.decision_engine.authority import ScopeSelector as SourceScopeSelector
+    from claude_coord.wlg.decision_engine.authority import resolve_authority as source_resolve
+
+    source_records = (
+        SourceAuthorityRecord(
+            "requirement",
+            "P1",
+            "WLGRequirement",
+            "confirmed_authority",
+            SourceScopeSelector("shape_id", {"shape_id": "u1"}),
+            {"owner": "requirement"},
+            "spec:req",
+        ),
+        SourceAuthorityRecord(
+            "decision",
+            "P1",
+            "DesignDecision",
+            "confirmed_authority",
+            SourceScopeSelector("shape_id", {"shape_id": "u1"}),
+            {"owner": "decision"},
+            "decision:1",
+        ),
+    )
+    aeos_records = tuple(
+        AuthorityRecord(
+            authority_id=item.authority_id,
+            vertical_id="multiagent",
+            tenant_id=item.project_id,
+            layer=item.layer,
+            status=item.status,
+            selector=ScopeSelector(item.selector.selector_type, item.selector.selector_args),
+            value=item.value,
+            source_anchor=item.source_anchor,
+            version=item.version,
+            priority=item.priority,
+        )
+        for item in source_records
+    )
+    scope = {"shape_id": "u1"}
+    source = source_resolve(source_records, scope=scope)
+    aeos = resolve_authority(
+        aeos_records,
+        vertical_id="multiagent",
+        tenant_id="P1",
+        scope=scope,
+        at=datetime(2026, 9, 2, tzinfo=UTC),
+    )
+    assert source.status == aeos.status.value == "authorized"
+    assert (
+        [item.authority_id for item in source.selected]
+        == [item.authority_id for item in aeos.selected]
+        == ["decision"]
+    )
+
+    source_conflict = (
+        *source_records,
+        SourceAuthorityRecord(
+            "decision-conflict",
+            "P1",
+            "DesignDecision",
+            "confirmed_authority",
+            SourceScopeSelector("shape_id", {"shape_id": "u1"}),
+            {"owner": "someone-else"},
+            "decision:2",
+        ),
+    )
+    aeos_conflict = (
+        *aeos_records,
+        AuthorityRecord(
+            authority_id="decision-conflict",
+            vertical_id="multiagent",
+            tenant_id="P1",
+            layer="DesignDecision",
+            status="confirmed_authority",
+            selector=ScopeSelector("shape_id", {"shape_id": "u1"}),
+            value={"owner": "someone-else"},
+            source_anchor="decision:2",
+        ),
+    )
+    assert source_resolve(source_conflict, scope=scope).status == "decision_conflict"
+    assert (
+        resolve_authority(
+            aeos_conflict,
+            vertical_id="multiagent",
+            tenant_id="P1",
+            scope=scope,
+            at=datetime(2026, 9, 2, tzinfo=UTC),
+        ).status.value
+        == "authority_conflict"
+    )
 
 
 def test_source_pin_is_a_current_commit_not_a_date_label() -> None:
