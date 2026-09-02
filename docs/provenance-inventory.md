@@ -1,7 +1,7 @@
 # AEOS provenance and extraction inventory
 
-**Inventory version:** 1  
-**Recorded:** 1 September 2026
+**Inventory version:** 2
+**Recorded:** 2 September 2026
 
 ## Source snapshots
 
@@ -58,9 +58,9 @@ file, project data, graph data, customer data, or generated operational artifact
 | `claude_coord/tests/test_canon_decision_pipeline.py` | real worker commit/readback, provider trace, no-mutation escalation, rollback, durable receipt, replay-zero, source-head and stale-revision refusal |
 | `claude_coord/tests/test_intent_authority_lift_canon_decision.py` | exact plan compilation, cross-project refusal, receipt-bound retraction, bounded candidate enumeration and red plants |
 
-The compatibility suite will vendor only minimal, non-product, immutable fixtures needed to prove
-the behavior. It will not copy operational databases, project graphs, provider output, or mutable
-test artifacts.
+The compatibility suite imports the committed source modules and selected committed fixture
+helpers from the pinned checkout. It vendors no product fixture, operational database, project
+graph, provider output, or mutable test artifact.
 
 ## Wema consumer inventory
 
@@ -83,38 +83,35 @@ test artifacts.
 | New contract | Why it is necessary | First live consumer |
 | --- | --- | --- |
 | Generic `DecisionSubject` | Existing public request shape assumes a validator row and `row_absent` success | Wema article revision; WLG unit mapper |
-| Generic effect plan/authorizer/executor | Existing compiler emits graph repair ops | Wema registered article operation; WLG repair-op adapter |
+| Generic effect plan/authorizer/receipt contracts | Existing compiler emits graph repair ops | Wema registered article operation; WLG repair-op adapter |
 | Human attestation port | Existing WLG engine escalates but does not provide Wema's in-product founder response contract | Wema authenticated Desk/API review |
 | Outcome observation port | Existing graph verifier proves structural postconditions, not business outcomes over time | Wema policy-permitted article analytics |
 | Privacy/use metadata on evidence | WLG project scoping alone is insufficient for customer-bearing production systems | Wema article evidence adapter |
 | Host-neutral tenant boundary | WLG's current service is personal/local | Wema API/worker |
 
-## Explicitly unresolved at inventory version 1
+## Explicitly unresolved at inventory version 2
 
 - The exact committed MultiAgent revision from which extraction will be copied may advance; every
   change must update the pin and diff the affected source modules/tests.
-- Wema's exact article candidate/effect vocabulary must be derived from current registered
-  operations before implementation. The specification's examples are not authority to invent an
-  endpoint.
-- Wema's content-specific authority table must be inspected against the generic attestation
-  contract before deciding whether it can be reused unchanged or needs a migration.
 - A real analytics policy/profile must be active before outcome-driven optimization can claim
   production evidence. `insufficient_evidence` remains a valid first outcome.
 - The Wema founder decision-engine proposal and canon are proposal/ratification-dependent in Wema;
   AEOS may implement neutral capability without claiming those Wema authorities are approved.
 
-## Extraction evidence at AEOS 0.1.1
+## Extraction evidence at AEOS 0.2.0
 
 | Claim | Evidence |
 | --- | --- |
 | Source fingerprint and enum compatibility | `tests/test_multiagent_source_compatibility.py::test_source_enum_and_fingerprint_values_are_preserved` against the pinned checkout |
 | Unique candidate resolution compatibility | Source-comparison test plus AEOS ambiguity, cross-domain, placeholder and name-only red plants |
 | WLG selector compatibility | Source-comparison test for path, field, lifecycle and wildcard rule selectors |
+| Pinned canon-decision shadow parity | Four actual committed `test_canon_decision.py` fixture classes in `tests/test_multiagent_shadow_parity.py`, with a read-only corpus manifest |
 | Project-neutral decision compiler | Deterministic, cardinality-not-entailment, citation, cross-scope, stale, model-consensus, budget and boundary tests in `test_engine.py` and `test_contract_red_plants.py` |
 | Host-owned effect boundary | Registered-operation, exact attestation, capacity, digest, kill-switch, provider, parameter, boundary and cost red plants |
 | Wema consumer shape | Article packet, immutable-revision effect and exact `OwnedAction` column tests in `test_adapters.py` |
-| Published package contract | JSON Schema strictness tests, strict mypy, wheel content inspection and `py.typed` marker |
+| Published package contract | V1 historical and v2 current JSON Schema resources, schema strictness tests, strict mypy, wheel content inspection and `py.typed` marker |
 
-Current verified command result: 68 tests pass with 93.03% combined line/branch coverage;
-Ruff and strict mypy pass. This proves the independent kernel and adapter contracts, not yet
-the Wema database/API/Desk production integration or the MultiAgent graph transaction adoption.
+Current verified command result: 77 tests pass with 90.77% combined line/branch coverage;
+Ruff and strict mypy pass. This proves the independent kernel, v2 contract, and read-only source
+parity. It does not claim MultiAgent graph transaction adoption, and Wema persistence/deployment
+evidence remains owned and verified in Wema.

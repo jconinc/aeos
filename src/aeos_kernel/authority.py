@@ -8,13 +8,15 @@ Persistence is deliberately absent; repositories belong behind ports or adapters
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from fnmatch import fnmatch
 from typing import Any
 
+from aeos_kernel._validation import immutable_json_object, required, thaw_json, utc
 from aeos_kernel.canonical import stable_fingerprint
+from aeos_kernel.errors import ContractError
 
 
 class AuthorityStatus(StrEnum):
@@ -47,6 +49,13 @@ class SelectorType(StrEnum):
     WLG_LIFECYCLE_NAMESPACE = "lifecycle_namespace"
 
 
+class AuthorityResolutionStatus(StrEnum):
+    AUTHORIZED = "authorized"
+    AUTHORITY_GAP = "authority_gap"
+    AUTHORITY_CONFLICT = "authority_conflict"
+    SCOPE_VIOLATION = "authority_scope_violation"
+
+
 LAYER_RANK: dict[str, int] = {
     AuthorityLayer.DESIGN_PRINCIPLE.value: 10,
     AuthorityLayer.REQUIREMENT.value: 20,
@@ -73,8 +82,20 @@ class ScopeSelector:
     selector_type: str
     selector_args: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        if self.selector_type not in {item.value for item in SelectorType}:
+            raise ContractError(f"unknown authority selector type {self.selector_type!r}")
+        object.__setattr__(
+            self,
+            "selector_args",
+            immutable_json_object(self.selector_args, "selector_args"),
+        )
+
     def as_dict(self) -> dict[str, Any]:
-        return {"selector_type": self.selector_type, "selector_args": dict(self.selector_args)}
+        return {
+            "selector_type": self.selector_type,
+            "selector_args": thaw_json(self.selector_args),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +114,34 @@ class AuthorityRecord:
     active_from: datetime | None = None
     active_until: datetime | None = None
 
+    def __post_init__(self) -> None:
+        for name in ("authority_id", "vertical_id", "tenant_id", "source_anchor", "version"):
+            value = str(getattr(self, name))
+            if name == "source_anchor" and not value:
+                continue
+            required(value, name)
+        if self.layer not in LAYER_RANK:
+            raise ContractError(f"unknown authority layer {self.layer!r}")
+        if self.status not in {item.value for item in AuthorityStatus}:
+            raise ContractError(f"unknown authority status {self.status!r}")
+        if self.priority < 0:
+            raise ContractError("authority priority must be nonnegative")
+        for name in ("active_from", "active_until"):
+            temporal_value = getattr(self, name)
+            if temporal_value is not None:
+                utc(temporal_value, name)
+        if (
+            self.active_from is not None
+            and self.active_until is not None
+            and self.active_until <= self.active_from
+        ):
+            raise ContractError("authority activation interval must be ordered")
+        object.__setattr__(
+            self,
+            "value",
+            immutable_json_object(self.value, "authority value"),
+        )
+
     def active_at(self, instant: datetime) -> bool:
         if self.status != AuthorityStatus.CONFIRMED_AUTHORITY.value or self.superseded_by:
             return False
@@ -101,20 +150,37 @@ class AuthorityRecord:
         return self.active_until is None or instant < self.active_until
 
     def as_dict(self) -> dict[str, Any]:
-        value = asdict(self)
-        value["selector"] = self.selector.as_dict()
-        value["value"] = dict(self.value)
-        value["active_from"] = self.active_from.isoformat() if self.active_from else None
-        value["active_until"] = self.active_until.isoformat() if self.active_until else None
-        return value
+        return {
+            "authority_id": self.authority_id,
+            "vertical_id": self.vertical_id,
+            "tenant_id": self.tenant_id,
+            "layer": self.layer,
+            "status": self.status,
+            "selector": self.selector.as_dict(),
+            "value": thaw_json(self.value),
+            "source_anchor": self.source_anchor,
+            "version": self.version,
+            "priority": self.priority,
+            "superseded_by": self.superseded_by,
+            "active_from": self.active_from.isoformat() if self.active_from else None,
+            "active_until": self.active_until.isoformat() if self.active_until else None,
+        }
 
 
 @dataclass(frozen=True, slots=True)
 class AuthorityResolution:
-    status: str
+    status: AuthorityResolutionStatus
     selected: tuple[AuthorityRecord, ...] = ()
     conflicts: tuple[AuthorityRecord, ...] = ()
     reason: str = ""
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status.value,
+            "selected": [record.as_dict() for record in self.selected],
+            "conflicts": [record.as_dict() for record in self.conflicts],
+            "reason": self.reason,
+        }
 
 
 def selector_specificity(selector: ScopeSelector) -> tuple[int, ...]:
@@ -197,16 +263,38 @@ def selector_matches(selector: ScopeSelector, scope: Mapping[str, Any]) -> bool:
 
 
 def resolve_authority(
-    records: Iterable[AuthorityRecord], *, scope: Mapping[str, Any], at: datetime
+    records: Iterable[AuthorityRecord],
+    *,
+    vertical_id: str,
+    tenant_id: str,
+    scope: Mapping[str, Any],
+    at: datetime,
 ) -> AuthorityResolution:
+    required(vertical_id, "vertical_id")
+    required(tenant_id, "tenant_id")
+    utc(at, "at")
+    immutable_json_object(scope, "authority scope")
+    supplied = tuple(records)
+    cross_scope = tuple(
+        record
+        for record in supplied
+        if record.vertical_id != vertical_id or record.tenant_id != tenant_id
+    )
+    if cross_scope:
+        return AuthorityResolution(
+            status=AuthorityResolutionStatus.SCOPE_VIOLATION,
+            conflicts=cross_scope,
+            reason="authority records crossed the requested vertical or tenant boundary",
+        )
     candidates = [
         record
-        for record in records
+        for record in supplied
         if record.active_at(at) and selector_matches(record.selector, scope)
     ]
     if not candidates:
         return AuthorityResolution(
-            status="authority_gap", reason="no confirmed authority matched scope"
+            status=AuthorityResolutionStatus.AUTHORITY_GAP,
+            reason="no confirmed authority matched scope",
         )
 
     def key(record: AuthorityRecord) -> tuple[int, tuple[int, ...], int]:
@@ -221,11 +309,11 @@ def resolve_authority(
     best = tuple(record for record in candidates if key(record) == best_key)
     if len({stable_fingerprint(dict(record.value)) for record in best}) > 1:
         return AuthorityResolution(
-            status="authority_conflict",
+            status=AuthorityResolutionStatus.AUTHORITY_CONFLICT,
             conflicts=best,
             reason="same-layer same-specificity authority values conflict",
         )
-    return AuthorityResolution(status="authorized", selected=best)
+    return AuthorityResolution(status=AuthorityResolutionStatus.AUTHORIZED, selected=best)
 
 
 def _eq_if_present(args: Mapping[str, Any], scope: Mapping[str, Any], key: str) -> bool:

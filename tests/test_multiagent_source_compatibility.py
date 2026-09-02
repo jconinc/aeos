@@ -22,6 +22,10 @@ PINNED_FILES = (
     "claude_coord/wlg/decision_engine/contracts.py",
     "claude_coord/wlg/decision_engine/authority.py",
     "claude_coord/wlg/decision_engine/candidate_resolvers.py",
+    "claude_coord/wlg/decision_engine/canon_decision.py",
+    "claude_coord/wlg/pipeline/decision_planner.py",
+    "claude_coord/wlg/fix/repair_mutation_plan.py",
+    "claude_coord/tests/test_canon_decision.py",
 )
 
 pytestmark = pytest.mark.compatibility

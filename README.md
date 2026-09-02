@@ -22,7 +22,7 @@ The governing documents are:
   compatibility and adoption contract.
 - [`docs/operations.md`](docs/operations.md) — package, deployment, migration and rollback.
 
-The first vertical slice is an article decision:
+The first vertical slice is an article decision. Runtime activation remains host-controlled:
 
 ```text
 Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
@@ -31,6 +31,10 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
+
+The current package line is `0.2.x` with v2 interchange schemas. Historical v1 schema resources
+remain readable, but hosts must explicitly map v1 records before using the stricter v2 authorizer;
+there are no authority-broadening compatibility defaults.
 
 ## Development
 

@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aeos.local/schemas/v2/bundle.schema.json",
+  "title": "AEOS v2 contract bundle",
+  "$defs": {
+    "Digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "NonEmpty": {"type": "string", "minLength": 1},
+    "OptionalDigest": {"oneOf": [{"const": ""}, {"$ref": "#/$defs/Digest"}]},
+    "SourceRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_type", "source_id", "revision", "digest"],
+      "properties": {
+        "source_type": {"$ref": "#/$defs/NonEmpty"},
+        "source_id": {"$ref": "#/$defs/NonEmpty"},
+        "revision": {"$ref": "#/$defs/NonEmpty"},
+        "digest": {"$ref": "#/$defs/Digest"}
+      }
+    },
+    "DecisionSubject": {
+      "type": "object", "additionalProperties": false,
+      "required": ["vertical_id", "tenant_id", "subject_id", "subject_kind", "revision", "content_digest", "attributes", "source_refs", "privacy_classification", "allowed_uses"],
+      "properties": {
+        "vertical_id": {"$ref": "#/$defs/NonEmpty"},
+        "tenant_id": {"$ref": "#/$defs/NonEmpty"},
+        "subject_id": {"$ref": "#/$defs/NonEmpty"},
+        "subject_kind": {"$ref": "#/$defs/NonEmpty"},
+        "revision": {"$ref": "#/$defs/NonEmpty"},
+        "content_digest": {"$ref": "#/$defs/Digest"},
+        "attributes": {"type": "object"},
+        "source_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/SourceRef"}},
+        "privacy_classification": {"enum": ["public", "internal", "restricted", "prohibited"]},
+        "allowed_uses": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}}
+      }
+    },
+    "EvidenceItem": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidence_id", "evidence_digest", "source_tier", "vertical_id", "tenant_id", "subject_id", "subject_revision", "payload", "source_ref", "observed_at", "expires_at", "privacy_classification", "allowed_uses", "research_receipt_digest"],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/NonEmpty"},
+        "evidence_digest": {"$ref": "#/$defs/Digest"},
+        "source_tier": {"$ref": "#/$defs/NonEmpty"},
+        "vertical_id": {"$ref": "#/$defs/NonEmpty"},
+        "tenant_id": {"$ref": "#/$defs/NonEmpty"},
+        "subject_id": {"$ref": "#/$defs/NonEmpty"},
+        "subject_revision": {"$ref": "#/$defs/NonEmpty"},
+        "payload": {"type": "object"},
+        "source_ref": {"$ref": "#/$defs/SourceRef"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": ["string", "null"], "format": "date-time"},
+        "privacy_classification": {"enum": ["public", "internal", "restricted", "prohibited"]},
+        "allowed_uses": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "research_receipt_digest": {"$ref": "#/$defs/OptionalDigest"}
+      }
+    },
+    "AuthorityPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["policy_id", "policy_version", "level", "intensity", "allowed_boundary_tags", "required_capacity", "requires_human_attestation", "permits_model_choice", "max_model_calls", "max_model_cost_minor_units"],
+      "properties": {
+        "policy_id": {"$ref": "#/$defs/NonEmpty"},
+        "policy_version": {"$ref": "#/$defs/NonEmpty"},
+        "level": {"enum": ["deterministic", "standard_default", "agent_judgment", "human_required"]},
+        "intensity": {"type": "integer", "minimum": 0, "maximum": 2},
+        "allowed_boundary_tags": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "required_capacity": {"type": "string"},
+        "requires_human_attestation": {"type": "boolean"},
+        "permits_model_choice": {"type": "boolean"},
+        "max_model_calls": {"type": "integer", "minimum": 0},
+        "max_model_cost_minor_units": {"type": "integer", "minimum": 0},
+        "model_provider": {"$ref": "#/$defs/NonEmpty"},
+        "model_id": {"$ref": "#/$defs/NonEmpty"},
+        "model_context_classification": {"$ref": "#/$defs/NonEmpty"},
+        "model_generation_parameters_digest": {"$ref": "#/$defs/Digest"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"permits_model_choice": {"const": true}}},
+          "then": {"required": ["model_provider", "model_id", "model_context_classification", "model_generation_parameters_digest"]},
+          "else": {"not": {"anyOf": [{"required": ["model_provider"]}, {"required": ["model_id"]}, {"required": ["model_context_classification"]}, {"required": ["model_generation_parameters_digest"]}]}}
+        }
+      ]
+    },
+    "DecisionPacket": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "packet_id", "packet_digest", "subject", "evidence", "authority_bundle_digest", "policy", "allowed_actions", "source_head_pins", "adapter_id", "adapter_version", "created_at"],
+      "properties": {
+        "schema_version": {"const": "2"},
+        "packet_id": {"$ref": "#/$defs/NonEmpty"},
+        "packet_digest": {"$ref": "#/$defs/Digest"},
+        "subject": {"$ref": "#/$defs/DecisionSubject"},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/EvidenceItem"}},
+        "authority_bundle_digest": {"$ref": "#/$defs/Digest"},
+        "policy": {"$ref": "#/$defs/AuthorityPolicy"},
+        "allowed_actions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "source_head_pins": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/NonEmpty"}},
+        "adapter_id": {"$ref": "#/$defs/NonEmpty"},
+        "adapter_version": {"$ref": "#/$defs/NonEmpty"},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "EntailmentProof": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_tier", "cited_evidence_ids", "reason", "claimed_entailed"],
+      "properties": {
+        "source_tier": {"$ref": "#/$defs/NonEmpty"},
+        "cited_evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "reason": {"$ref": "#/$defs/NonEmpty"},
+        "claimed_entailed": {"type": "boolean"}
+      }
+    },
+    "EffectTemplate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operation", "operation_version", "parameters", "boundary_tags", "expected_postcondition", "reversible", "compensation_ref", "cost_ceiling_minor_units", "fanout_ceiling"],
+      "properties": {
+        "operation": {"$ref": "#/$defs/NonEmpty"},
+        "operation_version": {"$ref": "#/$defs/NonEmpty"},
+        "parameters": {"type": "object"},
+        "boundary_tags": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "expected_postcondition": {"$ref": "#/$defs/NonEmpty"},
+        "reversible": {"type": "boolean"},
+        "compensation_ref": {"type": "string"},
+        "cost_ceiling_minor_units": {"type": "integer", "minimum": 0},
+        "fanout_ceiling": {"type": "integer", "minimum": 1}
+      }
+    },
+    "Candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_id", "action", "title", "explanation", "expected_benefit", "uncertainty", "proof", "effect"],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/NonEmpty"},
+        "action": {"$ref": "#/$defs/NonEmpty"},
+        "title": {"$ref": "#/$defs/NonEmpty"},
+        "explanation": {"$ref": "#/$defs/NonEmpty"},
+        "expected_benefit": {"$ref": "#/$defs/NonEmpty"},
+        "uncertainty": {"type": "string"},
+        "proof": {"$ref": "#/$defs/EntailmentProof"},
+        "effect": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/EffectTemplate"}]}
+      }
+    },
+    "ModelCallIdentity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "model_id", "prompt_digest", "generation_parameters_digest", "context_classification", "attempt", "cost_minor_units", "input_tokens", "output_tokens"],
+      "properties": {
+        "provider": {"$ref": "#/$defs/NonEmpty"},
+        "model_id": {"$ref": "#/$defs/NonEmpty"},
+        "prompt_digest": {"$ref": "#/$defs/Digest"},
+        "generation_parameters_digest": {"$ref": "#/$defs/Digest"},
+        "context_classification": {"$ref": "#/$defs/NonEmpty"},
+        "attempt": {"type": "integer", "minimum": 1},
+        "cost_minor_units": {"type": "integer", "minimum": 0},
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0}
+      }
+    },
+    "Refusal": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "reason", "missing_premise"],
+      "properties": {
+        "code": {"enum": ["invalid_packet", "invalid_evidence", "stale_input", "cross_scope_evidence", "authority_missing", "authority_conflict", "no_eligible_candidate", "ambiguous_entailment", "model_required", "model_invalid", "model_disagreement", "model_budget_exceeded", "human_required", "human_attestation_invalid", "boundary_not_authorized", "effect_not_registered", "effect_precondition_failed", "effect_receipt_invalid", "external_confirmation_missing", "conflict"]},
+        "reason": {"$ref": "#/$defs/NonEmpty"},
+        "missing_premise": {"type": "string"}
+      }
+    },
+    "Recommendation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decision_id", "decision_revision", "status", "packet_digest", "candidate_set_digest", "selected_candidate_id", "selection_mode", "explanation", "evidence_ids", "rejected_alternatives", "model_calls", "model_outputs", "refusal"],
+      "properties": {
+        "decision_id": {"$ref": "#/$defs/NonEmpty"},
+        "decision_revision": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["proposed", "accepted", "applying", "applied", "verified_closed", "apply_failed", "verifier_failed", "stale", "superseded", "refused", "human_required"]},
+        "packet_digest": {"$ref": "#/$defs/Digest"},
+        "candidate_set_digest": {"$ref": "#/$defs/Digest"},
+        "selected_candidate_id": {"type": "string"},
+        "selection_mode": {"type": "string"},
+        "explanation": {"type": "string"},
+        "evidence_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "rejected_alternatives": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "model_calls": {"type": "array", "items": {"$ref": "#/$defs/ModelCallIdentity"}},
+        "model_outputs": {"type": "array", "items": {"type": "object"}},
+        "refusal": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/Refusal"}]}
+      }
+    },
+    "HumanAttestation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["attestation_id", "actor_id", "capacity", "decision_id", "decision_revision", "recommendation_digest", "subject_digest", "projection_digest", "response", "idempotency_key", "decided_at", "note", "snooze_until"],
+      "properties": {
+        "attestation_id": {"$ref": "#/$defs/NonEmpty"},
+        "actor_id": {"$ref": "#/$defs/NonEmpty"},
+        "capacity": {"$ref": "#/$defs/NonEmpty"},
+        "decision_id": {"$ref": "#/$defs/NonEmpty"},
+        "decision_revision": {"type": "integer", "minimum": 1},
+        "recommendation_digest": {"$ref": "#/$defs/Digest"},
+        "subject_digest": {"$ref": "#/$defs/Digest"},
+        "projection_digest": {"$ref": "#/$defs/Digest"},
+        "response": {"enum": ["use_this", "change_it", "not_now", "snooze"]},
+        "idempotency_key": {"$ref": "#/$defs/NonEmpty"},
+        "decided_at": {"type": "string", "format": "date-time"},
+        "note": {"type": "string", "maxLength": 2000},
+        "snooze_until": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "RegisteredOperation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operation", "operation_version", "parameter_names", "boundary_tags", "expected_postcondition", "intensity", "requires_external_confirmation", "fanout_ceiling"],
+      "properties": {
+        "operation": {"$ref": "#/$defs/NonEmpty"},
+        "operation_version": {"$ref": "#/$defs/NonEmpty"},
+        "parameter_names": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "boundary_tags": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "expected_postcondition": {"$ref": "#/$defs/NonEmpty"},
+        "intensity": {"type": "integer", "minimum": 1, "maximum": 2},
+        "requires_external_confirmation": {"type": "boolean"},
+        "fanout_ceiling": {"type": "integer", "minimum": 1}
+      }
+    },
+    "AuthorizationContext": {
+      "type": "object", "additionalProperties": false,
+      "required": ["current_subject_revision", "current_subject_digest", "current_packet_digest", "current_recommendation_digest", "current_candidate_set_digest", "current_projection_digest", "current_authority_bundle_digest", "current_policy_digest", "current_operation_digest", "current_source_head_pins", "current_adapter_id", "current_adapter_version", "verified_actor_id", "verified_capacity", "effects_enabled", "provider_ready", "available_cost_minor_units"],
+      "properties": {
+        "current_subject_revision": {"$ref": "#/$defs/NonEmpty"},
+        "current_subject_digest": {"$ref": "#/$defs/Digest"},
+        "current_packet_digest": {"$ref": "#/$defs/Digest"},
+        "current_recommendation_digest": {"$ref": "#/$defs/Digest"},
+        "current_candidate_set_digest": {"$ref": "#/$defs/Digest"},
+        "current_projection_digest": {"$ref": "#/$defs/Digest"},
+        "current_authority_bundle_digest": {"$ref": "#/$defs/Digest"},
+        "current_policy_digest": {"$ref": "#/$defs/Digest"},
+        "current_operation_digest": {"$ref": "#/$defs/Digest"},
+        "current_source_head_pins": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/NonEmpty"}},
+        "current_adapter_id": {"$ref": "#/$defs/NonEmpty"},
+        "current_adapter_version": {"$ref": "#/$defs/NonEmpty"},
+        "verified_actor_id": {"$ref": "#/$defs/NonEmpty"},
+        "verified_capacity": {"$ref": "#/$defs/NonEmpty"},
+        "effects_enabled": {"type": "boolean"},
+        "provider_ready": {"type": "boolean"},
+        "available_cost_minor_units": {"type": "integer", "minimum": 0}
+      }
+    },
+    "AuthorizedEffect": {
+      "type": "object", "additionalProperties": false,
+      "required": ["authorization_id", "decision_id", "decision_revision", "operation", "operation_version", "operation_contract_digest", "parameters", "boundary_tags", "precondition_digest", "expected_postcondition", "idempotency_key", "authorized_at", "authority_policy_digest", "recommendation_digest", "candidate_set_digest", "projection_digest", "source_head_pins_digest", "attestation_id", "attestation_digest", "compensation_ref", "cost_ceiling_minor_units"],
+      "properties": {
+        "authorization_id": {"$ref": "#/$defs/NonEmpty"},
+        "decision_id": {"$ref": "#/$defs/NonEmpty"},
+        "decision_revision": {"type": "integer", "minimum": 1},
+        "operation": {"$ref": "#/$defs/NonEmpty"},
+        "operation_version": {"$ref": "#/$defs/NonEmpty"},
+        "operation_contract_digest": {"$ref": "#/$defs/Digest"},
+        "parameters": {"type": "object"},
+        "boundary_tags": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "precondition_digest": {"$ref": "#/$defs/Digest"},
+        "expected_postcondition": {"$ref": "#/$defs/NonEmpty"},
+        "idempotency_key": {"$ref": "#/$defs/NonEmpty"},
+        "authorized_at": {"type": "string", "format": "date-time"},
+        "authority_policy_digest": {"$ref": "#/$defs/Digest"},
+        "recommendation_digest": {"$ref": "#/$defs/Digest"},
+        "candidate_set_digest": {"$ref": "#/$defs/Digest"},
+        "projection_digest": {"$ref": "#/$defs/Digest"},
+        "source_head_pins_digest": {"$ref": "#/$defs/Digest"},
+        "attestation_id": {"type": "string"},
+        "attestation_digest": {"$ref": "#/$defs/OptionalDigest"},
+        "compensation_ref": {"type": "string"},
+        "cost_ceiling_minor_units": {"type": "integer", "minimum": 0}
+      }
+    },
+    "EffectReceipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["receipt_id", "authorization_id", "decision_id", "decision_revision", "operation", "operation_version", "request_digest", "status", "applied_at", "result_refs", "actual_postimage_digest", "external_confirmation_ref", "safe_diagnostic"],
+      "properties": {
+        "receipt_id": {"$ref": "#/$defs/NonEmpty"},
+        "authorization_id": {"$ref": "#/$defs/NonEmpty"},
+        "decision_id": {"$ref": "#/$defs/NonEmpty"},
+        "decision_revision": {"type": "integer", "minimum": 1},
+        "operation": {"$ref": "#/$defs/NonEmpty"},
+        "operation_version": {"$ref": "#/$defs/NonEmpty"},
+        "request_digest": {"$ref": "#/$defs/Digest"},
+        "status": {"enum": ["applied", "failed", "indeterminate"]},
+        "applied_at": {"type": "string", "format": "date-time"},
+        "result_refs": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "actual_postimage_digest": {"$ref": "#/$defs/OptionalDigest"},
+        "external_confirmation_ref": {"type": "string"},
+        "safe_diagnostic": {"type": "string"}
+      }
+    },
+    "OutcomeEvidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["outcome_id", "receipt_id", "metric_id", "status", "window_started_at", "window_ended_at", "observed_at", "aggregate", "policy_digest", "evidence_digest"],
+      "properties": {
+        "outcome_id": {"$ref": "#/$defs/NonEmpty"},
+        "receipt_id": {"$ref": "#/$defs/NonEmpty"},
+        "metric_id": {"$ref": "#/$defs/NonEmpty"},
+        "status": {"enum": ["positive", "negative", "neutral", "insufficient_evidence"]},
+        "window_started_at": {"type": "string", "format": "date-time"},
+        "window_ended_at": {"type": "string", "format": "date-time"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "aggregate": {"type": "object"},
+        "policy_digest": {"$ref": "#/$defs/Digest"},
+        "evidence_digest": {"$ref": "#/$defs/Digest"}
+      }
+    },
+    "DependencySnapshot": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "subject_digest", "evidence_digest", "canon_digest", "authority_digest", "candidate_contract_digest", "host_policy_digest", "expected_postimage_digest", "outcome_window_digest"],
+      "properties": {
+        "schema_version": {"const": "1"},
+        "subject_digest": {"$ref": "#/$defs/Digest"},
+        "evidence_digest": {"$ref": "#/$defs/Digest"},
+        "canon_digest": {"$ref": "#/$defs/Digest"},
+        "authority_digest": {"$ref": "#/$defs/Digest"},
+        "candidate_contract_digest": {"$ref": "#/$defs/Digest"},
+        "host_policy_digest": {"$ref": "#/$defs/Digest"},
+        "expected_postimage_digest": {"$ref": "#/$defs/OptionalDigest"},
+        "outcome_window_digest": {"$ref": "#/$defs/OptionalDigest"}
+      }
+    },
+    "AuthoritySelector": {
+      "type": "object", "additionalProperties": false,
+      "required": ["selector_type", "selector_args"],
+      "properties": {
+        "selector_type": {"enum": ["exact_attributes", "path_pattern_method", "subject_id", "subject_kind", "rule_scope", "shape_id", "kind_in_domain", "field_name_canonical", "lifecycle_namespace"]},
+        "selector_args": {"type": "object"}
+      }
+    },
+    "AuthorityRecord": {
+      "type": "object", "additionalProperties": false,
+      "required": ["authority_id", "vertical_id", "tenant_id", "layer", "status", "selector", "value", "source_anchor", "version", "priority", "superseded_by", "active_from", "active_until"],
+      "properties": {
+        "authority_id": {"$ref": "#/$defs/NonEmpty"},
+        "vertical_id": {"$ref": "#/$defs/NonEmpty"},
+        "tenant_id": {"$ref": "#/$defs/NonEmpty"},
+        "layer": {"enum": ["design_principle", "requirement", "convention", "template", "design_decision", "law_or_policy", "DesignPrinciple", "WLGRequirement", "Convention", "Template", "NamingConvention", "LifecycleTemplate", "RouteConvention", "FieldSemantic", "PolicyTemplate", "DesignDecision"]},
+        "status": {"enum": ["extracted_tentative", "consistent_candidate", "confirmed_authority", "superseded", "retired", "rejected"]},
+        "selector": {"$ref": "#/$defs/AuthoritySelector"},
+        "value": {"type": "object"},
+        "source_anchor": {"type": "string"},
+        "version": {"$ref": "#/$defs/NonEmpty"},
+        "priority": {"type": "integer", "minimum": 0},
+        "superseded_by": {"type": "string"},
+        "active_from": {"type": ["string", "null"], "format": "date-time"},
+        "active_until": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "AuthorityResolution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "selected", "conflicts", "reason"],
+      "properties": {
+        "status": {"enum": ["authorized", "authority_gap", "authority_conflict", "authority_scope_violation"]},
+        "selected": {"type": "array", "items": {"$ref": "#/$defs/AuthorityRecord"}},
+        "conflicts": {"type": "array", "items": {"$ref": "#/$defs/AuthorityRecord"}},
+        "reason": {"type": "string"}
+      }
+    },
+    "DecisionRecord": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "record_id", "decision_id", "decision_revision", "event_sequence", "status", "packet_digest", "recommendation_digest", "occurred_at", "previous_record_digest", "attestation_id", "effect_receipt_id", "outcome_evidence_ids", "reason"],
+      "properties": {
+        "schema_version": {"const": "2"},
+        "record_id": {"$ref": "#/$defs/NonEmpty"},
+        "decision_id": {"$ref": "#/$defs/NonEmpty"},
+        "decision_revision": {"type": "integer", "minimum": 1},
+        "event_sequence": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["proposed", "accepted", "applying", "applied", "verified_closed", "apply_failed", "verifier_failed", "stale", "superseded", "refused", "human_required"]},
+        "packet_digest": {"$ref": "#/$defs/Digest"},
+        "recommendation_digest": {"$ref": "#/$defs/Digest"},
+        "occurred_at": {"type": "string", "format": "date-time"},
+        "previous_record_digest": {"$ref": "#/$defs/OptionalDigest"},
+        "attestation_id": {"type": "string"},
+        "effect_receipt_id": {"type": "string"},
+        "outcome_evidence_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/NonEmpty"}},
+        "reason": {"type": "string"}
+      }
+    }
+  }
+}

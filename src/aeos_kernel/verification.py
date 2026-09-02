@@ -29,8 +29,20 @@ _TIER_RANK = {tier: rank for rank, tier in enumerate(SOURCE_TIERS)}
 def verify_packet(
     packet: DecisionPacket, *, verifier: TrustVerifier, now: datetime
 ) -> Refusal | None:
+    if packet.schema_version not in {"1", "2"}:
+        return Refusal(RefusalCode.INVALID_PACKET, "packet schema version is not supported")
     if not packet.has_canonical_digest():
         return Refusal(RefusalCode.INVALID_PACKET, "packet digest is not canonical")
+    if (
+        packet.subject.privacy_classification is PrivacyClass.PROHIBITED
+        or "decision" not in packet.subject.allowed_uses
+    ):
+        return Refusal(
+            RefusalCode.INVALID_PACKET,
+            "subject is not permitted for decision use",
+        )
+    if packet.policy.permits_model_choice and "model" not in packet.subject.allowed_uses:
+        return Refusal(RefusalCode.INVALID_PACKET, "subject is not permitted for model use")
     if not verifier.verify_authority_bundle(packet.authority_bundle_digest):
         return Refusal(RefusalCode.AUTHORITY_MISSING, "authority bundle could not be verified")
     if not verifier.verify_source_heads(packet.source_head_pins):
@@ -64,6 +76,11 @@ def _verify_evidence(
         return Refusal(
             RefusalCode.CROSS_SCOPE_EVIDENCE,
             f"evidence {item.evidence_id!r} is outside the decision scope",
+        )
+    if packet.policy.permits_model_choice and "model" not in item.allowed_uses:
+        return Refusal(
+            RefusalCode.INVALID_EVIDENCE,
+            f"evidence {item.evidence_id!r} is not permitted for model use",
         )
     if item.subject_revision != subject.revision:
         return Refusal(RefusalCode.STALE_INPUT, f"evidence {item.evidence_id!r} is stale")

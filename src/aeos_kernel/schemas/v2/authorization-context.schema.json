@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aeos.local/schemas/v2/authorization-context.schema.json",
+  "$ref": "bundle.schema.json#/$defs/AuthorizationContext"
+}

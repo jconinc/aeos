@@ -1,6 +1,6 @@
 # MultiAgentCommunication compatibility contract
 
-**Adapter:** `multiagent.wlg@1`  
+**Adapter:** `multiagent.wlg@2`
 **Pinned source:** `f8b76c9930e590983d1e0c5e232bd8817191db7f`
 
 The adapter is additive. It does not move graph storage, task claims, pipeline scheduling,
@@ -32,10 +32,12 @@ The source-compatibility suite imports the actual pinned committed modules and c
   name-only and placeholder refusals;
 - path, field, lifecycle and wildcard rule selector behavior.
 
-The fuller migration must additionally replay selected `test_canon_decision.py` fixtures
-through the adapter for evidence/citation/pin failures, entailed selection, model consensus,
-static-gate refusal and decision projection. PostgreSQL pipeline/receipt tests remain in
-MultiAgentCommunication because its database and transaction path own those claims.
+The v2 read-only shadow suite also imports the actual pinned
+`claude_coord/tests/test_canon_decision.py` fixture helpers and proves four high-value classes:
+entailed selection, fabricated-citation refusal, ambiguous-entailment refusal, and reverse-order
+model consensus. Its expected corpus and no-effects rule are recorded in
+`docs/multiagent-shadow-parity-v2.json`. Static-gate and PostgreSQL pipeline/receipt tests remain
+in MultiAgentCommunication because its database, graph and transaction path own those claims.
 
 ## Adoption sequence
 
@@ -49,4 +51,3 @@ MultiAgentCommunication because its database and transaction path own those clai
 5. Switch the decision compiler behind one configuration entry.
 6. Retain the legacy path for one release as rollback, then remove it after parity and
    survival evidence are current.
-

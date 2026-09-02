@@ -24,6 +24,8 @@ class RefusalCode(StrEnum):
     BOUNDARY_NOT_AUTHORIZED = "boundary_not_authorized"
     EFFECT_NOT_REGISTERED = "effect_not_registered"
     EFFECT_PRECONDITION_FAILED = "effect_precondition_failed"
+    EFFECT_RECEIPT_INVALID = "effect_receipt_invalid"
+    EXTERNAL_CONFIRMATION_MISSING = "external_confirmation_missing"
     CONFLICT = "conflict"
 
 

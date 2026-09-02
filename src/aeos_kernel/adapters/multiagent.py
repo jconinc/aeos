@@ -24,7 +24,7 @@ from aeos_kernel.evidence import (
 )
 
 ADAPTER_ID = "multiagent.wlg"
-ADAPTER_VERSION = "1"
+ADAPTER_VERSION = "2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +79,7 @@ def build_wlg_packet(
                 digest=unit_digest,
             ),
         ),
+        allowed_uses=("decision", "model") if policy.permits_model_choice else ("decision",),
     )
     items = tuple(
         build_evidence_item(
@@ -97,6 +98,9 @@ def build_wlg_packet(
             ),
             observed_at=created_at,
             research_receipt_digest=item.research_receipt_digest,
+            allowed_uses=("decision", "model")
+            if policy.permits_model_choice
+            else ("decision",),
         )
         for item in evidence
     )
@@ -123,6 +127,7 @@ def map_wlg_candidate(candidate: WlgCandidate) -> Candidate:
         action=candidate.action,
         title=candidate.title,
         explanation=candidate.rationale,
+        expected_benefit="The registered graph requirement is satisfied without widening scope.",
         proof=EntailmentProof(
             source_tier=candidate.source_tier,
             cited_evidence_ids=candidate.cited_evidence_ids,
@@ -131,6 +136,7 @@ def map_wlg_candidate(candidate: WlgCandidate) -> Candidate:
         ),
         effect=EffectTemplate(
             operation="multiagent.wlg.apply_repair_plan",
+            operation_version="1",
             parameters={"repair_plan": dict(candidate.repair_plan)},
             boundary_tags=("wlg_graph_mutation",),
             expected_postcondition="registered_validator_postcondition",

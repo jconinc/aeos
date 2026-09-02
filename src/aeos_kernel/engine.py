@@ -118,28 +118,38 @@ class DecisionEngine:
                 "model choice requires "
                 f"{required_calls} call(s), policy permits {packet.policy.max_model_calls}",
             )
-        first = self.model_gateway.choose(
-            ModelChoiceRequest(
-                packet=packet,
-                candidates=eligible,
-                candidate_order=tuple(item.candidate_id for item in eligible),
-                attempt=1,
-            )
+        first_request = self._model_request(
+            packet,
+            eligible,
+            set_digest=set_digest,
+            candidate_order=tuple(item.candidate_id for item in eligible),
+            attempt=1,
+            cost_ceiling_minor_units=packet.policy.max_model_cost_minor_units,
         )
-        rejection = self._validate_model_decision(first, eligible, packet, expected_attempt=1)
+        first = self.model_gateway.choose(first_request)
+        rejection = self._validate_model_decision(first, eligible, packet, request=first_request)
         if rejection is not None:
             return self._refusal(decision_id, packet, set_digest, rejection)
         calls = [first]
         if len(eligible) > 1:
-            second = self.model_gateway.choose(
-                ModelChoiceRequest(
-                    packet=packet,
-                    candidates=eligible,
-                    candidate_order=tuple(item.candidate_id for item in reversed(eligible)),
-                    attempt=2,
-                )
+            remaining_cost = (
+                packet.policy.max_model_cost_minor_units - first.identity.cost_minor_units
             )
-            rejection = self._validate_model_decision(second, eligible, packet, expected_attempt=2)
+            second_request = self._model_request(
+                packet,
+                eligible,
+                set_digest=set_digest,
+                candidate_order=tuple(item.candidate_id for item in reversed(eligible)),
+                attempt=2,
+                cost_ceiling_minor_units=remaining_cost,
+            )
+            second = self.model_gateway.choose(second_request)
+            rejection = self._validate_model_decision(
+                second,
+                eligible,
+                packet,
+                request=second_request,
+            )
             if rejection is not None:
                 return self._refusal(decision_id, packet, set_digest, rejection)
             calls.append(second)
@@ -172,17 +182,60 @@ class DecisionEngine:
             model_rationale=first.rationale,
         )
 
+    @staticmethod
+    def _model_request(
+        packet: DecisionPacket,
+        eligible: tuple[Candidate, ...],
+        *,
+        set_digest: str,
+        candidate_order: tuple[str, ...],
+        attempt: int,
+        cost_ceiling_minor_units: int,
+    ) -> ModelChoiceRequest:
+        prompt_digest = stable_fingerprint(
+            {
+                "contract": "aeos.model-choice@2",
+                "packet_digest": packet.packet_digest,
+                "candidate_set_digest": set_digest,
+                "candidate_order": list(candidate_order),
+                "attempt": attempt,
+                "context_classification": packet.policy.model_context_classification,
+            }
+        )
+        return ModelChoiceRequest(
+            packet=packet,
+            candidates=eligible,
+            candidate_order=candidate_order,
+            attempt=attempt,
+            provider=packet.policy.model_provider,
+            model_id=packet.policy.model_id,
+            prompt_digest=prompt_digest,
+            generation_parameters_digest=packet.policy.model_generation_parameters_digest,
+            context_classification=packet.policy.model_context_classification,
+            cost_ceiling_minor_units=cost_ceiling_minor_units,
+        )
+
     def _validate_model_decision(
         self,
         result: ModelDecision,
         eligible: tuple[Candidate, ...],
         packet: DecisionPacket,
         *,
-        expected_attempt: int,
+        request: ModelChoiceRequest,
     ) -> Refusal | None:
         allowed = {candidate.candidate_id: candidate for candidate in eligible}
-        if result.identity.attempt != expected_attempt:
-            return Refusal(RefusalCode.MODEL_INVALID, "model call attempt identity is invalid")
+        identity = result.identity
+        if (
+            identity.attempt != request.attempt
+            or identity.provider != request.provider
+            or identity.model_id != request.model_id
+            or identity.prompt_digest != request.prompt_digest
+            or identity.generation_parameters_digest != request.generation_parameters_digest
+            or identity.context_classification != request.context_classification
+        ):
+            return Refusal(RefusalCode.MODEL_INVALID, "model call identity is not authorized")
+        if identity.cost_minor_units > request.cost_ceiling_minor_units:
+            return Refusal(RefusalCode.MODEL_BUDGET_EXCEEDED, "model call exceeded its reservation")
         if result.candidate_id not in allowed:
             return Refusal(
                 RefusalCode.MODEL_INVALID, "model invented or selected an ineligible candidate"

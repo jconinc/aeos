@@ -1,0 +1,13 @@
+{
+  "schema_version": "1",
+  "aeos_adapter": "multiagent.wlg@2",
+  "source_commit": "f8b76c9930e590983d1e0c5e232bd8817191db7f",
+  "source_fixture": "claude_coord/tests/test_canon_decision.py",
+  "cases": {
+    "entailed_selection": "same_selected_candidate_and_selection_mode",
+    "fabricated_citation": "both_refuse_without_effect",
+    "ambiguous_entailment": "both_refuse_without_effect",
+    "reverse_order_consensus": "same_selected_candidate_and_selection_mode"
+  },
+  "effect_policy": "read_only_shadow_no_effect_execution"
+}

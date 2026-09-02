@@ -11,11 +11,11 @@ from aeos_kernel import (
     EffectStatus,
     HumanAttestation,
     HumanResponse,
-    OutcomeEvidence,
     OutcomeStatus,
+    build_outcome_evidence,
     stable_fingerprint,
 )
-from aeos_kernel.schemas import load_schema
+from aeos_kernel.schemas import load_schema, schema_path
 from tests.factories import NOW, AcceptingVerifier, FixedClock, candidate, packet
 
 
@@ -26,7 +26,7 @@ def validator(definition: str) -> Draft202012Validator:
     return Draft202012Validator(schema, format_checker=FormatChecker())
 
 
-def test_packet_candidate_and_recommendation_match_published_v1_schemas() -> None:
+def test_packet_candidate_and_recommendation_match_published_v2_schemas() -> None:
     decision_packet = packet()
     selected = candidate()
     recommendation = DecisionEngine(verifier=AcceptingVerifier(), clock=FixedClock()).decide(
@@ -68,13 +68,14 @@ def test_attestation_receipt_and_outcome_match_published_schemas() -> None:
         decision_id=recommendation.decision_id,
         decision_revision=1,
         operation="wema.article.create_revision",
+        operation_version="1",
         request_digest="f" * 64,
         status=EffectStatus.APPLIED,
         applied_at=NOW,
         result_refs=("version-2",),
         actual_postimage_digest="e" * 64,
     )
-    outcome = OutcomeEvidence(
+    outcome = build_outcome_evidence(
         outcome_id="outcome-1",
         receipt_id=receipt.receipt_id,
         metric_id="article_usefulness_window",
@@ -84,7 +85,6 @@ def test_attestation_receipt_and_outcome_match_published_schemas() -> None:
         observed_at=NOW + timedelta(days=7),
         aggregate={"reason": "analytics mode does not yet supply this measure"},
         policy_digest="d" * 64,
-        evidence_digest="c" * 64,
     )
     validator("HumanAttestation").validate(human.as_dict())
     validator("EffectReceipt").validate(receipt.as_dict())
@@ -98,7 +98,16 @@ def test_all_named_entry_schemas_are_published() -> None:
         "recommendation.schema.json",
         "human-attestation.schema.json",
         "authorized-effect.schema.json",
+        "authorization-context.schema.json",
+        "registered-operation.schema.json",
         "effect-receipt.schema.json",
         "outcome-evidence.schema.json",
+        "dependency-snapshot.schema.json",
+        "authority-record.schema.json",
+        "authority-resolution.schema.json",
+        "decision-record.schema.json",
     ):
         assert load_schema(name)["$ref"].startswith("bundle.schema.json#/$defs/")
+    assert schema_path("bundle.schema.json").endswith("schemas/v2/bundle.schema.json")
+    with pytest.raises(FileNotFoundError, match="unknown AEOS schema"):
+        schema_path("not-real.schema.json")

@@ -68,14 +68,15 @@ class ScriptedModel:
             citations=self.citations,
             confidence=0.9,
             identity=ModelCallIdentity(
-                provider="test-provider",
-                model_id="test-model",
-                prompt_digest=stable_fingerprint(
-                    {"packet": request.packet.packet_digest, "order": list(request.candidate_order)}
-                ),
-                generation_parameters_digest=stable_fingerprint({"temperature": 0}),
+                provider=request.provider,
+                model_id=request.model_id,
+                prompt_digest=request.prompt_digest,
+                generation_parameters_digest=request.generation_parameters_digest,
+                context_classification=request.context_classification,
                 attempt=request.attempt,
                 cost_minor_units=1,
+                input_tokens=10,
+                output_tokens=5,
             ),
             retained_output={"candidate_id": candidate_id, "citations": list(self.citations)},
         )
@@ -98,10 +99,18 @@ def policy(
         permits_model_choice=model,
         max_model_calls=2 if model else 0,
         max_model_cost_minor_units=5 if model else 0,
+        model_provider="test-provider" if model else "",
+        model_id="test-model" if model else "",
+        model_context_classification="internal-safe" if model else "",
+        model_generation_parameters_digest=stable_fingerprint({"temperature": 0})
+        if model
+        else "",
     )
 
 
-def subject(*, revision: str = "1", tenant_id: str = "wema") -> DecisionSubject:
+def subject(
+    *, revision: str = "1", tenant_id: str = "wema", model_allowed: bool = False
+) -> DecisionSubject:
     return DecisionSubject(
         vertical_id="wema",
         tenant_id=tenant_id,
@@ -111,6 +120,7 @@ def subject(*, revision: str = "1", tenant_id: str = "wema") -> DecisionSubject:
         content_digest="a" * 64,
         attributes={"status": "draft"},
         source_refs=(SourceRef("wema_article", "article-1", revision, "a" * 64),),
+        allowed_uses=("decision", "model") if model_allowed else ("decision",),
     )
 
 
@@ -122,6 +132,7 @@ def evidence(
     revision: str = "1",
     expires_at: datetime | None = None,
     research_receipt_digest: str = "",
+    model_allowed: bool = False,
 ) -> EvidenceItem:
     return build_evidence_item(
         evidence_id=evidence_id,
@@ -135,6 +146,7 @@ def evidence(
         observed_at=NOW,
         expires_at=expires_at,
         research_receipt_digest=research_receipt_digest,
+        allowed_uses=("decision", "model") if model_allowed else ("decision",),
     )
 
 
@@ -144,12 +156,20 @@ def packet(
     authority_policy: AuthorityPolicy | None = None,
     revision: str = "1",
 ) -> DecisionPacket:
+    current_policy = authority_policy or policy()
     return build_decision_packet(
         packet_id="packet-1",
-        subject=subject(revision=revision),
-        evidence=items if items is not None else (evidence(revision=revision),),
+        subject=subject(revision=revision, model_allowed=current_policy.permits_model_choice),
+        evidence=items
+        if items is not None
+        else (
+            evidence(
+                revision=revision,
+                model_allowed=current_policy.permits_model_choice,
+            ),
+        ),
         authority_bundle_digest="c" * 64,
-        policy=authority_policy or policy(),
+        policy=current_policy,
         allowed_actions=("improve_answer", "improve_description"),
         source_head_pins={"wema_git": "76e7c0f4fb1df28a9b77a02e1743eec83cd5a249"},
         adapter_id="wema.article",
@@ -181,6 +201,7 @@ def candidate(
         expected_benefit="A visitor gets a useful answer sooner.",
         effect=EffectTemplate(
             operation="wema.article.create_revision",
+            operation_version="1",
             parameters={
                 "article_id": "article-1",
                 "expected_digest": "a" * 64,

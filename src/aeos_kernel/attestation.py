@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 
 from aeos_kernel._validation import digest, required, utc
+from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.errors import ContractError
 from aeos_kernel.vocabulary import HumanResponse
 
@@ -40,6 +41,10 @@ class HumanAttestation:
             raise ContractError("snooze response requires snooze_until")
         if self.response is not HumanResponse.SNOOZE and self.snooze_until is not None:
             raise ContractError("snooze_until is only valid for a snooze response")
+        if self.snooze_until is not None and self.snooze_until <= self.decided_at:
+            raise ContractError("snooze_until must be after decided_at")
+        if len(self.note) > 2_000:
+            raise ContractError("attestation note exceeds the 2000 character privacy bound")
 
     def as_dict(self) -> dict[str, object]:
         value = asdict(self)
@@ -47,3 +52,7 @@ class HumanAttestation:
         value["decided_at"] = self.decided_at.isoformat()
         value["snooze_until"] = self.snooze_until.isoformat() if self.snooze_until else None
         return value
+
+    @property
+    def digest(self) -> str:
+        return stable_fingerprint(self.as_dict())

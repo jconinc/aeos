@@ -16,6 +16,12 @@ class ModelChoiceRequest:
     candidates: tuple[Candidate, ...]
     candidate_order: tuple[str, ...]
     attempt: int
+    provider: str
+    model_id: str
+    prompt_digest: str
+    generation_parameters_digest: str
+    context_classification: str
+    cost_ceiling_minor_units: int
 
 
 class TrustVerifier(Protocol):

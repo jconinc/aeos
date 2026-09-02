@@ -43,7 +43,11 @@ def test_more_specific_higher_layer_authority_wins() -> None:
         selector=ScopeSelector(SelectorType.SUBJECT_ID, {"subject_id": "article-1"}),
     )
     result = resolve_authority(
-        [general, exact], scope={"kind": "article", "subject_id": "article-1"}, at=NOW
+        [general, exact],
+        vertical_id="wema",
+        tenant_id="wema",
+        scope={"kind": "article", "subject_id": "article-1"},
+        at=NOW,
     )
     assert result.status == "authorized"
     assert result.selected == (exact,)
@@ -52,7 +56,13 @@ def test_more_specific_higher_layer_authority_wins() -> None:
 def test_same_rank_conflicting_authority_fails_closed() -> None:
     first = record("first", layer=AuthorityLayer.DESIGN_DECISION, value="one")
     second = record("second", layer=AuthorityLayer.DESIGN_DECISION, value="two")
-    result = resolve_authority([first, second], scope={"kind": "article"}, at=NOW)
+    result = resolve_authority(
+        [first, second],
+        vertical_id="wema",
+        tenant_id="wema",
+        scope={"kind": "article"},
+        at=NOW,
+    )
     assert result.status == "authority_conflict"
     assert {item.authority_id for item in result.conflicts} == {"first", "second"}
 
@@ -64,7 +74,13 @@ def test_expired_authority_is_not_runtime_authority() -> None:
         value="old",
         active_until=NOW - timedelta(seconds=1),
     )
-    result = resolve_authority([expired], scope={"kind": "article"}, at=NOW)
+    result = resolve_authority(
+        [expired],
+        vertical_id="wema",
+        tenant_id="wema",
+        scope={"kind": "article"},
+        at=NOW,
+    )
     assert result.status == "authority_gap"
 
 
@@ -77,6 +93,23 @@ def test_wlg_rule_wildcard_compatibility() -> None:
         selector=selector,
     )
     result = resolve_authority(
-        [authority], scope={"rule_id": "any_registered_rule", "domain": "care"}, at=NOW
+        [authority],
+        vertical_id="wema",
+        tenant_id="wema",
+        scope={"rule_id": "any_registered_rule", "domain": "care"},
+        at=NOW,
     )
     assert result.status == "authorized"
+
+
+def test_cross_tenant_authority_is_a_typed_scope_violation() -> None:
+    foreign = record("foreign", layer=AuthorityLayer.DESIGN_DECISION, value="foreign")
+    result = resolve_authority(
+        [foreign],
+        vertical_id="wema",
+        tenant_id="another-tenant",
+        scope={"kind": "article"},
+        at=NOW,
+    )
+    assert result.status == "authority_scope_violation"
+    assert result.conflicts == (foreign,)

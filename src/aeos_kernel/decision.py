@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from aeos_kernel._validation import digest, required
+from aeos_kernel._validation import digest, immutable_json_object, required, thaw_json
 from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.errors import ContractError, Refusal
 from aeos_kernel.vocabulary import DecisionStatus
@@ -23,25 +23,39 @@ class EntailmentProof:
         required(self.reason, "reason")
         if not self.cited_evidence_ids:
             raise ContractError("entailment proof must cite evidence")
+        if len(set(self.cited_evidence_ids)) != len(self.cited_evidence_ids):
+            raise ContractError("entailment proof citations must be unique")
 
 
 @dataclass(frozen=True, slots=True)
 class EffectTemplate:
     operation: str
+    operation_version: str
     parameters: dict[str, Any]
     boundary_tags: tuple[str, ...]
     expected_postcondition: str
     reversible: bool
     compensation_ref: str = ""
     cost_ceiling_minor_units: int = 0
+    fanout_ceiling: int = 1
 
     def __post_init__(self) -> None:
         required(self.operation, "operation")
+        required(self.operation_version, "operation_version")
         required(self.expected_postcondition, "expected_postcondition")
         if self.cost_ceiling_minor_units < 0:
             raise ContractError("effect cost ceiling must be nonnegative")
-        stable_fingerprint(self.parameters)
-        object.__setattr__(self, "parameters", dict(self.parameters))
+        if self.fanout_ceiling <= 0:
+            raise ContractError("effect fanout ceiling must be positive")
+        if len(set(self.boundary_tags)) != len(self.boundary_tags):
+            raise ContractError("effect boundary tags must be unique")
+        for tag in self.boundary_tags:
+            required(tag, "effect boundary tag")
+        object.__setattr__(
+            self,
+            "parameters",
+            immutable_json_object(self.parameters, "effect parameters"),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,13 +72,37 @@ class Candidate:
     def __post_init__(self) -> None:
         for name in ("candidate_id", "action", "title", "explanation"):
             required(str(getattr(self, name)), name)
+        required(self.expected_benefit, "expected_benefit")
 
     def as_dict(self) -> dict[str, Any]:
-        value = asdict(self)
-        value["proof"]["cited_evidence_ids"] = list(self.proof.cited_evidence_ids)
+        effect = None
         if self.effect is not None:
-            value["effect"]["boundary_tags"] = list(self.effect.boundary_tags)
-        return value
+            effect = {
+                "operation": self.effect.operation,
+                "operation_version": self.effect.operation_version,
+                "parameters": thaw_json(self.effect.parameters),
+                "boundary_tags": list(self.effect.boundary_tags),
+                "expected_postcondition": self.effect.expected_postcondition,
+                "reversible": self.effect.reversible,
+                "compensation_ref": self.effect.compensation_ref,
+                "cost_ceiling_minor_units": self.effect.cost_ceiling_minor_units,
+                "fanout_ceiling": self.effect.fanout_ceiling,
+            }
+        return {
+            "candidate_id": self.candidate_id,
+            "action": self.action,
+            "title": self.title,
+            "explanation": self.explanation,
+            "expected_benefit": self.expected_benefit,
+            "uncertainty": self.uncertainty,
+            "proof": {
+                "source_tier": self.proof.source_tier,
+                "cited_evidence_ids": list(self.proof.cited_evidence_ids),
+                "reason": self.proof.reason,
+                "claimed_entailed": self.proof.claimed_entailed,
+            },
+            "effect": effect,
+        }
 
 
 def candidate_set_digest(candidates: tuple[Candidate, ...]) -> str:
@@ -77,16 +115,25 @@ class ModelCallIdentity:
     model_id: str
     prompt_digest: str
     generation_parameters_digest: str
+    context_classification: str
     attempt: int
     cost_minor_units: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
 
     def __post_init__(self) -> None:
         required(self.provider, "provider")
         required(self.model_id, "model_id")
+        required(self.context_classification, "context_classification")
         digest(self.prompt_digest, "prompt_digest")
         digest(self.generation_parameters_digest, "generation_parameters_digest")
-        if self.attempt <= 0 or self.cost_minor_units < 0:
-            raise ContractError("model attempt must be positive and cost nonnegative")
+        if (
+            self.attempt <= 0
+            or self.cost_minor_units < 0
+            or self.input_tokens < 0
+            or self.output_tokens < 0
+        ):
+            raise ContractError("model attempt must be positive and usage nonnegative")
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,9 +150,15 @@ class ModelDecision:
         required(self.rationale, "rationale")
         if not self.citations:
             raise ContractError("model decision must cite evidence")
+        if len(set(self.citations)) != len(self.citations):
+            raise ContractError("model citations must be unique")
         if not 0 <= self.confidence <= 1:
             raise ContractError("model confidence must be between zero and one")
-        stable_fingerprint(self.retained_output)
+        object.__setattr__(
+            self,
+            "retained_output",
+            immutable_json_object(self.retained_output, "model retained_output"),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,6 +187,18 @@ class Recommendation:
             raise ContractError("refused recommendation requires a refusal")
         if self.refusal is None and not self.selected_candidate_id:
             raise ContractError("successful recommendation requires a selected candidate")
+        if self.refusal is not None and self.selected_candidate_id:
+            raise ContractError("refused recommendation cannot select a candidate")
+        if len(self.model_calls) != len(self.model_outputs):
+            raise ContractError("each model call requires one retained structured output")
+        object.__setattr__(
+            self,
+            "model_outputs",
+            tuple(
+                immutable_json_object(output, "recommendation model output")
+                for output in self.model_outputs
+            ),
+        )
 
     def as_dict(self) -> dict[str, Any]:
         refusal = None
@@ -155,7 +220,7 @@ class Recommendation:
             "evidence_ids": list(self.evidence_ids),
             "rejected_alternatives": list(self.rejected_alternatives),
             "model_calls": [asdict(call) for call in self.model_calls],
-            "model_outputs": [dict(output) for output in self.model_outputs],
+            "model_outputs": [thaw_json(output) for output in self.model_outputs],
             "refusal": refusal,
         }
 

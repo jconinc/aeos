@@ -24,7 +24,7 @@ from aeos_kernel.evidence import (
 )
 
 ADAPTER_ID = "wema.article"
-ADAPTER_VERSION = "1"
+ADAPTER_VERSION = "2"
 ARTICLE_REVISION_OPERATION = "wema.article.create_revision"
 ARTICLE_SOURCE_REF_TYPE = "content_article"
 ARTICLE_DECISION_KIND = "aeos_article_revision"
@@ -106,6 +106,7 @@ def build_wema_article_packet(
             "article_class": article.article_class,
         },
         source_refs=(source_ref,),
+        allowed_uses=("decision", "model") if policy.permits_model_choice else ("decision",),
     )
     evidence_payloads = (
         ("article_projection", "host_state", article.safe_payload(), source_ref),
@@ -154,6 +155,9 @@ def build_wema_article_packet(
             payload=payload,
             source_ref=ref,
             observed_at=observed_at,
+            allowed_uses=("decision", "model")
+            if policy.permits_model_choice
+            else ("decision",),
         )
         for evidence_id, source_tier, payload, ref in evidence_payloads
     )
@@ -202,6 +206,7 @@ def prepared_revision_candidate(
         ),
         effect=EffectTemplate(
             operation=ARTICLE_REVISION_OPERATION,
+            operation_version="1",
             parameters={
                 "article_id": article_id,
                 "expected_digest": expected_digest,

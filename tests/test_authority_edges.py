@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import pytest
+
 from aeos_kernel import (
     AuthorityLayer,
     AuthorityRecord,
@@ -34,8 +36,8 @@ def test_all_generic_selector_families_have_deterministic_matching_and_specifici
     assert selector_specificity(exact) > selector_specificity(
         ScopeSelector(SelectorType.SUBJECT_KIND, {"kind": "article"})
     )
-    assert selector_specificity(ScopeSelector("unknown", {})) == (0,)
-    assert not selector_matches(ScopeSelector("unknown", {}), {})
+    with pytest.raises(ValueError, match="unknown authority selector"):
+        ScopeSelector("unknown", {})
 
 
 def test_future_superseded_and_unconfirmed_rows_do_not_become_authority() -> None:
@@ -63,7 +65,13 @@ def test_future_superseded_and_unconfirmed_rows_do_not_become_authority() -> Non
         status=AuthorityStatus.EXTRACTED_TENTATIVE,
         **base,
     )
-    result = resolve_authority([future, superseded, tentative], scope={"kind": "article"}, at=NOW)
+    result = resolve_authority(
+        [future, superseded, tentative],
+        vertical_id="wema",
+        tenant_id="wema",
+        scope={"kind": "article"},
+        at=NOW,
+    )
     assert result.status == "authority_gap"
 
 
@@ -89,5 +97,11 @@ def test_principle_priority_breaks_only_principle_ties() -> None:
         {"choice": "high"},
         priority=2,
     )
-    result = resolve_authority([low, high], scope={"kind": "article"}, at=NOW)
+    result = resolve_authority(
+        [low, high],
+        vertical_id="wema",
+        tenant_id="wema",
+        scope={"kind": "article"},
+        at=NOW,
+    )
     assert result.selected == (high,)

@@ -5,6 +5,7 @@ from aeos_kernel.authority import (
     AuthorityLayer,
     AuthorityRecord,
     AuthorityResolution,
+    AuthorityResolutionStatus,
     AuthorityStatus,
     ScopeSelector,
     SelectorType,
@@ -34,6 +35,7 @@ from aeos_kernel.effect_authorization import (
     AuthorizationContext,
     RegisteredOperation,
     authorize_effect,
+    verify_effect_receipt,
 )
 from aeos_kernel.effects import (
     AuthorizedEffect,
@@ -41,6 +43,7 @@ from aeos_kernel.effects import (
     EffectStatus,
     OutcomeEvidence,
     OutcomeStatus,
+    build_outcome_evidence,
 )
 from aeos_kernel.engine import DecisionEngine
 from aeos_kernel.errors import ContractError, Refusal, RefusalCode
@@ -62,7 +65,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = [
     "EVIDENCE_RANK",
@@ -72,6 +75,7 @@ __all__ = [
     "AuthorityPolicy",
     "AuthorityRecord",
     "AuthorityResolution",
+    "AuthorityResolutionStatus",
     "AuthorityStatus",
     "AuthorizationContext",
     "AuthorizedEffect",
@@ -109,6 +113,7 @@ __all__ = [
     "authorize_effect",
     "build_decision_packet",
     "build_evidence_item",
+    "build_outcome_evidence",
     "candidate_set_digest",
     "canonical_json",
     "classify_drift",
@@ -120,4 +125,5 @@ __all__ = [
     "selector_specificity",
     "stable_fingerprint",
     "transition_record",
+    "verify_effect_receipt",
 ]

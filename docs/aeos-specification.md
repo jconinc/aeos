@@ -159,8 +159,9 @@ An evidence item includes:
 - optional research verification receipt.
 
 A packet binds one subject, all evidence, the authority/canon bundle fingerprint, policy
-version, allowed action vocabulary, candidate-set digest, source-head pins, creation time, and
-packet digest. Cross-tenant, cross-subject, stale, expired, noncanonical, unpinned, or
+version, allowed action vocabulary, source-head pins, creation time, and packet digest. The
+recommendation and effect authorization bind the complete candidate-set digest. Cross-tenant,
+cross-subject, stale, expired, noncanonical, unpinned, or
 disallowed-use evidence is ineligible.
 
 ### 5.4 Authority
@@ -443,7 +444,8 @@ declare that distribution, clicks, or time spent prove usefulness or revenue.
 - Python package: `aeos-kernel` with import namespace `aeos_kernel`.
 - Semantic versioning applies to the Python API and interchange contracts.
 - Published schema IDs include major versions, for example
-  `https://aeos.local/schemas/v1/decision-packet.schema.json`.
+  `https://aeos.local/schemas/v2/decision-packet.schema.json`. V1 resources remain published for
+  historical readers; v2 is the current writer contract.
 - Readers reject unknown major versions. Additive optional fields may be introduced in a minor
   release. Changed meaning or required fields require a new major schema.
 - Canonical serialization recipes are part of the contract and have known-answer vectors.
@@ -491,7 +493,7 @@ their host-defined compensation path; package rollback does not pretend to rever
    validation, candidate eligibility and fail-closed result types.
 3. Add generic subject/effect/receipt contracts and only consumed runtime ports; keep WLG
    concepts in the compatibility adapter.
-4. Publish v1 schemas and known-answer fixtures.
+4. Publish versioned schemas and known-answer fixtures.
 5. Prove the MultiAgent compatibility adapter against committed source fixtures.
 6. Implement Wema article packet and result adapters without changing Desk semantics.
 7. Add Wema persistence and worker integration behind an off-by-default kill switch.
@@ -504,7 +506,8 @@ their host-defined compensation path; package rollback does not pretend to rever
 
 AEOS is complete for this goal only when:
 
-- this repository is independently versioned and publishes a stable typed package and v1 schemas;
+- this repository is independently versioned and publishes a stable typed package and current v2
+  schemas while preserving the historical v1 resources;
 - the provenance inventory accounts for every extracted or deliberately excluded source behavior;
 - MultiAgentCommunication runs through a compatible adapter with selected original tests green;
 - Wema uses AEOS through API/worker adapters and not through the Desk or localhost coordinator;
