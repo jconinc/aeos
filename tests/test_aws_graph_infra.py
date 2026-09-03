@@ -18,6 +18,7 @@ def test_stack_has_project_isolation_and_retained_encrypted_recovery() -> None:
     assert "AssociatePublicIpAddress: true" in template
     assert "DeletionPolicy: Retain" in template
     assert template.count("Encrypted: true") >= 2
+    assert "VolumeType: gp3" in template
     assert "BlockPublicAcls: true" in template
     assert "aws:SecureTransport: false" in template
     assert "GenerateStringKey: password" in template

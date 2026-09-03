@@ -200,7 +200,7 @@ Resources:
       AvailabilityZone: !GetAtt GraphInstance.AvailabilityZone
       Encrypted: true
       Size: !Ref DataVolumeGiB
-      Type: gp3
+      VolumeType: gp3
       Tags:
         - Key: Name
           Value: !Sub "aeos-${ProjectId}-${EnvironmentName}-graph-data"
