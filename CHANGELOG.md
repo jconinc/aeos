@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — 2026-09-03
+
+- Bound each project's online graph history to the current immutable generation and its two
+  immediate predecessors after an atomic publication, with real Memgraph evidence through five
+  generations.
+- Keep longer recovery in transaction-consistent daily dumps so graph growth follows useful
+  current data instead of accumulating complete copies forever.
+
 ## 0.3.0 — 2026-09-03
 
 - Add strict project-neutral graph vocabulary, node, relationship and immutable snapshot

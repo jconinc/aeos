@@ -181,3 +181,26 @@ def test_real_memgraph_isolation_replay_query_and_concurrent_generation() -> Non
         (2, candidates[0].snapshot_digest),
         (2, candidates[1].snapshot_digest),
     }
+
+    for generation in (3, 4, 5):
+        first_store.publish(
+            _snapshot(f"{prefix}-one", generation=generation, title=f"Generation {generation}")
+        )
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            MATCH (s:AEOSSnapshot {project_id: $project_id, vertical_id: $vertical_id,
+                                   tenant_id: $tenant_id})
+            RETURN count(s), min(s.generation), max(s.generation)
+            """,
+            {
+                "project_id": f"{prefix}-one",
+                "vertical_id": "integration",
+                "tenant_id": "tenant-one",
+            },
+        )
+        assert cursor.fetchone() == (3, 3, 5)
+    finally:
+        connection.close()

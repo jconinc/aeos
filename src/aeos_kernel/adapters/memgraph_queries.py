@@ -69,6 +69,14 @@ CREATE (p)-[:CURRENT_SNAPSHOT {
 }]->(s)
 """
 
+PRUNE_OLD_SNAPSHOTS = """
+MATCH (p:AEOSProject {project_key: $project_key})-[:OWNS_SNAPSHOT]->(old:AEOSSnapshot)
+WHERE old.project_id = $project_id AND old.vertical_id = $vertical_id
+  AND old.tenant_id = $tenant_id AND old.generation < $minimum_generation
+OPTIONAL MATCH (old)-[:CONTAINS]->(entity:AEOSEntity)
+DETACH DELETE entity, old
+"""
+
 NEIGHBORHOOD = """
 MATCH (p:AEOSProject {project_key: $project_key})-[:CURRENT_SNAPSHOT]->(s:AEOSSnapshot)
 MATCH (s)-[:CONTAINS]->(root:AEOSEntity {entity_id: $entity_id})

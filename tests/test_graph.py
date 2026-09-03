@@ -16,7 +16,12 @@ from aeos_kernel import (
     PrivacyClass,
     build_graph_snapshot,
 )
-from aeos_kernel.adapters.memgraph import SCHEMA_STATEMENTS, MemgraphProjectStore, mgclient_factory
+from aeos_kernel.adapters.memgraph import (
+    SCHEMA_STATEMENTS,
+    SNAPSHOT_RETENTION_GENERATIONS,
+    MemgraphProjectStore,
+    mgclient_factory,
+)
 
 NOW = datetime(2026, 9, 3, 12, 0, tzinfo=UTC)
 VOCABULARY = GraphVocabulary(
@@ -245,6 +250,11 @@ def test_memgraph_publish_stamps_scope_on_every_stored_row_and_edge() -> None:
         assert parameters["tenant_id"] == "tenant-one"
         assert parameters["snapshot_key"]
     assert write_parameters[1]["edges"][0]["edge_key"]
+    prune_parameters = [
+        params for query, params in cursor.executed if "minimum_generation" in query
+    ]
+    assert prune_parameters[0]["minimum_generation"] == 1
+    assert SNAPSHOT_RETENTION_GENERATIONS == 3
 
 
 def test_memgraph_publish_is_idempotent_and_rejects_stale_or_cross_scope_snapshots() -> None:

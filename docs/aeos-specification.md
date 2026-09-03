@@ -1,6 +1,6 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.3.0
+**Version:** 0.3.1
 **Date:** 3 September 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
@@ -591,8 +591,11 @@ identity. A changed snapshot must advance the generation. Concurrent writers tou
 project anchor; Memgraph transaction conflict aborts a loser rather than admitting two current
 generations. The host retries from current source pins.
 
-Old generations are retained until the project backup and rollback policy permits pruning. A
-reader sees only the current complete generation, never a half-written refresh.
+The active project policy retains the current generation and its two immediate predecessors.
+Publication prunes older generations only after the new current pointer is established inside
+the same transaction. Daily transaction-consistent dumps provide recovery beyond that bounded
+online rollback window. A reader sees only the current complete generation, never a half-written
+refresh, and storage growth does not multiply the complete graph without bound.
 
 ### 19.4 Privacy and model boundary
 

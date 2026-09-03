@@ -24,6 +24,7 @@ from aeos_kernel.adapters.memgraph_queries import (
     CURRENT_SNAPSHOT,
     FLIP_CURRENT,
     NEIGHBORHOOD,
+    PRUNE_OLD_SNAPSHOTS,
     SCHEMA_STATEMENTS,
     UPSERT_PROJECT,
 )
@@ -31,6 +32,8 @@ from aeos_kernel.adapters.memgraph_serialization import snapshot_parameters
 from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.errors import ContractError
 from aeos_kernel.graph import GraphSnapshot
+
+SNAPSHOT_RETENTION_GENERATIONS = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +112,16 @@ class MemgraphProjectStore:
             cursor.execute(CREATE_ENTITIES, params)
             cursor.execute(CREATE_EDGES, params)
             cursor.execute(FLIP_CURRENT, params)
+            cursor.execute(
+                PRUNE_OLD_SNAPSHOTS,
+                {
+                    **params,
+                    "minimum_generation": max(
+                        1,
+                        snapshot.generation - SNAPSHOT_RETENTION_GENERATIONS + 1,
+                    ),
+                },
+            )
             connection.commit()
             return self._publication(snapshot, already_current=False)
         except Exception:

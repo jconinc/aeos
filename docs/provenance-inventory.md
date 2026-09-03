@@ -148,3 +148,12 @@ Memgraph 3.7.2 instance it creates the real schema, publishes two scoped project
 idempotent replay and neighborhood reads, and forces two same-generation writers to establish
 that exactly one transaction commits. Release evidence must name the Memgraph version and port or
 endpoint class used; a mocked green never substitutes for this suite.
+
+## Additive evidence at AEOS 0.3.1
+
+Online snapshot history is bounded to the current graph generation and its two immediate
+predecessors. The real Memgraph integration witness publishes through generation five and proves
+that generations one and two, including their contained entities and relationships, are removed
+while generations three through five remain. Daily transaction-consistent dumps retain the
+separate disaster-recovery boundary without turning every immutable online generation into
+permanent storage cost.

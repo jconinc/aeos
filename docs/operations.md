@@ -7,7 +7,7 @@ From the repository root:
 ```bash
 make verify
 make wheel
-python3.12 -m zipfile -l dist/aeos_kernel-0.3.0-py3-none-any.whl
+python3.12 -m zipfile -l dist/aeos_kernel-0.3.1-py3-none-any.whl
 ```
 
 `make verify` runs Ruff, strict mypy, the complete coverage-gated suite, and the pinned
@@ -31,8 +31,9 @@ rewind the live checkout merely to satisfy the compatibility test.
 9. Enable one internal test subject, verify its decision, attestation, effect and receipt.
 10. Enable the bounded production cohort and monitor typed failures/restarts.
 
-No AEOS public network listener or DNS record is part of the 0.3 release line. Its Memgraph
-dependency is private and worker-facing only.
+No AEOS public network listener or DNS record is part of the 0.3 release line. Its active
+Memgraph dependency is a project-isolated, loopback-only workstation service used by the local
+operator runner; Wema's hosted API and worker do not receive graph credentials.
 
 ## Memgraph project fleet
 
@@ -52,9 +53,10 @@ never by repository files:
 - `AEOS_GRAPH_SSLMODE` — required when the deployment termination model uses Bolt TLS.
 
 Production instances use transactional storage, WAL, periodic snapshots, synchronous-enough WAL
-flush for the agreed recovery point, snapshot retention, telemetry policy declared explicitly,
-and an encrypted volume. Bind Bolt to a private address. Permit inbound Bolt only from the named
-worker security group; do not expose Memgraph Lab, Bolt or a graph HTTP/MCP service publicly.
+flush for the agreed recovery point, bounded online generation retention, telemetry policy
+declared explicitly, and encrypted storage. Bind Bolt to loopback in the active local profile, or
+to a private address in a later remote profile. Never expose Memgraph Lab, Bolt or a graph
+HTTP/MCP service publicly.
 
 ### Local-first operating profile
 
@@ -71,9 +73,11 @@ sudo /usr/local/libexec/aeos/restore-project.sh wema
 
 The installer binds Bolt to loopback, generates TLS and a local credential, caps memory, writes a
 mode-0600 client environment for the invoking operator, and enables a daily recovery point. Each
-later project repeats the command with a new project name and port. A stopped workstation pauses
-only new advisory work. Wema public, Desk, commerce, mail, analytics collection and already
-authorized effects remain independent.
+later project repeats the command with a new project name and port. Each graph retains the current
+generation and two predecessors online; transaction-consistent daily dumps provide older recovery
+without indefinite generation growth. A stopped workstation pauses only new advisory work. Wema
+public, Desk, commerce, mail, analytics collection and already authorized effects remain
+independent.
 
 Local AI use is a separate boundary from Memgraph. The deterministic engine and graph require no
 model call. Optional drafting or judgment assistance may be performed in an operator-initiated
