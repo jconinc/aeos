@@ -1,6 +1,6 @@
 # AEOS provenance and extraction inventory
 
-**Inventory version:** 2
+**Inventory version:** 3
 **Recorded:** 2 September 2026
 
 ## Source snapshots
@@ -77,6 +77,7 @@ graph, provider output, or mutable test artifact.
 | `packages/model-gateway` | Provider-neutral model access, structured context, schema validation, lint, spend ceiling and fail-closed provider controls | Implements AEOS `ModelGateway`; AEOS contains no provider credentials or duplicate provider client. |
 | Wema worker/domain/outbox/idempotency/kill-switch infrastructure | Authorized operations and operational recovery | Implements effect authorizer/executor and receipts. |
 | Wema analytics/event/market-policy registries | Permitted aggregate observations and suppression/evidence floors | Implements outcome source. AEOS never silently activates collection. |
+| Wema public review checklist and saved-feedback projection | Release-bound closed choices and bounded notes; explicitly advisory rather than approval | `wema.review@1` consumes the minimized projection without reviewer identity or model use and emits at most one operator follow-up. |
 
 ## Genuinely new AEOS behavior
 
@@ -120,3 +121,10 @@ adoption; Wema persistence and deployment evidence remains owned and verified in
 
 The 0.2.1 pre-release verification ran 88 complete kernel tests at 91.13% combined line/branch
 coverage, plus 16 pinned-source compatibility tests; Ruff and strict mypy were clean.
+
+## Additive evidence at AEOS 0.2.2
+
+The Wema deployment-review adapter is new host-consumer behavior, not an extraction from
+MultiAgentCommunication. Adapter tests bind its exact release/inventory/payload identities, prove
+that reviewer identity is absent, prove that public notes are ineligible for model use, and prove
+that attention yields one advisory `OwnedAction` projection while an all-clear yields none.

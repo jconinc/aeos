@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -18,7 +19,9 @@ from aeos_kernel import (
     stable_fingerprint,
 )
 
-SOURCE_ROOT = Path("/home/john/code/MultiAgentCommunication")
+SOURCE_ROOT = Path(
+    os.environ.get("AEOS_MULTIAGENT_SOURCE_ROOT", "/home/john/code/MultiAgentCommunication")
+)
 PINNED_HEAD = "f8b76c9930e590983d1e0c5e232bd8817191db7f"
 PINNED_FILES = (
     "claude_coord/wlg/decision_engine/contracts.py",

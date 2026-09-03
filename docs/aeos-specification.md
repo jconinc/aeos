@@ -398,6 +398,12 @@ The adapter excludes raw visitor histories, caregiver or patient content, email 
 private replies, credentials, and relationship notes. Relationship-sensitive work uses a separate
 more restricted decision class and is outside article packet v1.
 
+The secondary `wema.review@1` intake consumes an exact deployed-review release, inventory digest,
+closed checklist choices, item IDs, and bounded notes. It excludes reviewer identity. Public text
+is internal, decision-only evidence and is never eligible for model use. A change or not-sure
+choice deterministically entails one advisory operator follow-up in Wema's existing queue; an
+all-clear packet creates no work. Review feedback never supplies approval or effect authority.
+
 ### 13.3 Article candidate vocabulary v1
 
 The initial closed vocabulary may include only host-backed operations such as:
@@ -464,8 +470,10 @@ Required suites:
 3. **Drift:** material dependency changes reopen; irrelevant changes do not.
 4. **MultiAgent compatibility:** selected source known-answer and red-plant fixtures produce the
    same decision/refusal and compatible receipt.
-5. **Wema contract:** real Wema packet projection validates, maps to one deduplicated Today action,
-   records an attestation, executes only an authorized registered operation and stores its receipt.
+5. **Wema contract:** real Wema packet projections validate; article advice maps to one
+   deduplicated Today action, records an attestation, executes only an authorized registered
+   operation and stores its receipt; deployment-review advice maps to at most one model-forbidden
+   operator follow-up and cannot authorize an effect.
 6. **End to end:** a versioned article recommendation travels from Wema evidence through AEOS,
    Today and the authenticated operation to a measured outcome and a close/revise/reopen result.
 

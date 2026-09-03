@@ -7,12 +7,16 @@ From the repository root:
 ```bash
 make verify
 make wheel
-python3.12 -m zipfile -l dist/aeos_kernel-0.2.1-py3-none-any.whl
+python3.12 -m zipfile -l dist/aeos_kernel-0.2.2-py3-none-any.whl
 ```
 
 `make verify` runs Ruff, strict mypy, the complete coverage-gated suite, and the pinned
 MultiAgent source-compatibility suite. The wheel inspection must show `py.typed`, the schema
 bundle and every named v1 entry schema.
+
+When the live MultiAgent checkout has advanced beyond the provenance pin, verify against a
+detached worktree at the pinned commit by setting `AEOS_MULTIAGENT_SOURCE_ROOT`. Never move or
+rewind the live checkout merely to satisfy the compatibility test.
 
 ## Release
 

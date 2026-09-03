@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 — 2026-09-03
+
+- Add a model-forbidden Wema deployment-review adapter that turns exact release-bound closed
+  choices and bounded notes into one deterministic advisory follow-up in the existing Desk queue.
+- Keep reviewer identity and review text out of the queue projection; retain only references,
+  counts, AEOS decision identity, and canonical digests.
+
 ## 0.2.0 — 2026-09-02
 
 - Publish v2 schemas and a deliberately breaking fail-closed Python contract while retaining the

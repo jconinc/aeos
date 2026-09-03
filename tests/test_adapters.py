@@ -25,6 +25,14 @@ from aeos_kernel.adapters.wema import (
     prepared_revision_candidate,
     to_owned_action_values,
 )
+from aeos_kernel.adapters.wema_reviews import (
+    REVIEW_DECISION_KIND,
+    WemaReviewProjection,
+    WemaReviewResponse,
+    build_wema_review_packet,
+    review_follow_up_candidate,
+    to_review_owned_action_values,
+)
 from tests.factories import NOW, AcceptingVerifier, FixedClock, policy
 
 
@@ -119,6 +127,83 @@ def test_wema_recommendation_projects_to_real_owned_action_columns() -> None:
         "packet_digest",
         "article_digest",
     }
+
+
+def review() -> WemaReviewProjection:
+    return WemaReviewProjection(
+        submission_id="review-1",
+        packet_kind="site",
+        release="release-r32",
+        inventory_digest="b" * 64,
+        payload_digest="d" * 64,
+        responses=(
+            WemaReviewResponse(
+                item_id="home.opening",
+                decision="needs_change",
+                note="The opening feels crowded on my phone.",
+            ),
+            WemaReviewResponse(item_id="privacy", decision="looks_good"),
+        ),
+    )
+
+
+def test_wema_review_adapter_is_internal_model_forbidden_and_identity_minimized() -> None:
+    current = review()
+    decision_packet = build_wema_review_packet(
+        tenant_id="wema",
+        review=current,
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_release": "release-r32"},
+        policy=policy(human=False, intensity=DecisionIntensity.ADVISORY),
+        observed_at=NOW,
+    )
+    assert decision_packet.has_canonical_digest()
+    assert decision_packet.subject.subject_kind == "deployment_review"
+    assert decision_packet.subject.allowed_uses == ("decision",)
+    assert decision_packet.evidence[0].allowed_uses == ("decision",)
+    serialized = str(decision_packet.as_dict()).lower()
+    assert "opening feels crowded" in serialized
+    assert "reviewer" not in serialized
+    assert "email" not in serialized
+
+
+def test_wema_review_attention_becomes_one_aeos_operator_follow_up() -> None:
+    current = review()
+    decision_packet = build_wema_review_packet(
+        tenant_id="wema",
+        review=current,
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_release": "release-r32"},
+        policy=policy(human=False, intensity=DecisionIntensity.ADVISORY),
+        observed_at=NOW,
+    )
+    candidate = review_follow_up_candidate(current)
+    recommendation = DecisionEngine(
+        verifier=AcceptingVerifier(revision=current.payload_digest), clock=FixedClock()
+    ).decide(decision_packet, (candidate,))
+    values = to_review_owned_action_values(
+        recommendation, packet=decision_packet, candidate=candidate
+    )
+    assert recommendation.status is DecisionStatus.PROPOSED
+    assert recommendation.selection_mode == "auto_entailed"
+    assert candidate.effect is None
+    assert values["decision_kind"] == REVIEW_DECISION_KIND
+    assert values["requires_founder_judgment"] is False
+    assert values["evidence"]["attention_count"] == 1
+    assert "opening feels crowded" not in str(values).lower()
+
+
+def test_wema_review_all_clear_does_not_invent_work() -> None:
+    current = WemaReviewProjection(
+        submission_id="review-clear",
+        packet_kind="articles",
+        release="release-r32",
+        inventory_digest="b" * 64,
+        payload_digest="e" * 64,
+        responses=(WemaReviewResponse(item_id="article.one", decision="looks_good"),),
+    )
+    with pytest.raises(ValueError, match="does not entail"):
+        review_follow_up_candidate(current)
 
 
 def test_multiagent_adapter_preserves_project_revision_evidence_and_repair_plan() -> None:

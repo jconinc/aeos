@@ -1,6 +1,6 @@
 # Wema integration contract
 
-**Contract:** `wema.article@1`  
+**Contracts:** `wema.article@2`, `wema.review@1`
 **Wema source inspected:** `76e7c0f4fb1df28a9b77a02e1743eec83cd5a249`
 
 ## Ownership
@@ -21,6 +21,19 @@ caregiving value.
 | Human attestation and idempotency | Wema API/PostgreSQL |
 | Effect authorization and execution | Wema worker/domain service |
 | Receipt and outcome observation | Wema PostgreSQL/worker |
+
+## Deployment-review intake
+
+The public `/review` checklist may explicitly save one release-bound advisory packet to Wema.
+Wema passes the exact packet kind, release, inventory and payload digests, closed choices, item IDs,
+and bounded notes through `wema.review@1`. Reviewer identity is excluded from the AEOS packet.
+
+This lane is deliberately deterministic and model-forbidden. One or more `needs_change` or
+`not_sure` choices entail one `aeos_review_follow_up` action in the existing operator queue; an
+all-clear review creates no action. The queue projection contains only the submission reference,
+counts, release, packet kind, AEOS decision identity, and canonical digests. The review record—not
+the queue—retains the short-lived text. Nothing in this intake approves a screen, publishes
+content, executes an effect, or grants authority.
 
 ## Existing seams used verbatim
 
