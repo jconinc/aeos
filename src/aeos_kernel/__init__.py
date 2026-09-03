@@ -56,6 +56,9 @@ from aeos_kernel.evidence import (
     build_decision_packet,
     build_evidence_item,
 )
+from aeos_kernel.graph import GraphEdge, GraphNode, GraphSnapshot
+from aeos_kernel.graph_builder import build_graph_snapshot
+from aeos_kernel.graph_vocabulary import GraphVocabulary
 from aeos_kernel.lifecycle import DecisionRecord, reopen_record, transition_record
 from aeos_kernel.vocabulary import (
     AuthorityLevel,
@@ -65,7 +68,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 __all__ = [
     "EVIDENCE_RANK",
@@ -94,6 +97,10 @@ __all__ = [
     "EffectTemplate",
     "EntailmentProof",
     "EvidenceItem",
+    "GraphEdge",
+    "GraphNode",
+    "GraphSnapshot",
+    "GraphVocabulary",
     "HumanAttestation",
     "HumanResponse",
     "ModelCallIdentity",
@@ -113,6 +120,7 @@ __all__ = [
     "authorize_effect",
     "build_decision_packet",
     "build_evidence_item",
+    "build_graph_snapshot",
     "build_outcome_evidence",
     "candidate_set_digest",
     "canonical_json",

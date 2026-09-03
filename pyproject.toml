@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aeos-kernel"
-version = "0.2.2"
+version = "0.3.0"
 description = "Evidence- and authority-bound operating decision kernel"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -20,6 +20,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+memgraph = ["pymgclient>=1.5,<2"]
 dev = [
   "build>=1.2",
   "jsonschema>=4.23",
@@ -27,6 +28,7 @@ dev = [
   "pytest>=8.3",
   "pytest-cov>=6.0",
   "ruff>=0.11",
+  "pymgclient>=1.5,<2",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -41,6 +43,7 @@ addopts = "--strict-markers --strict-config"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
   "compatibility: compares AEOS behavior with a pinned upstream source checkout",
+  "integration: requires an explicitly configured external service",
 ]
 
 [tool.coverage.run]
@@ -63,3 +66,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.12"
 strict = true
 packages = ["aeos_kernel"]
+
+[[tool.mypy.overrides]]
+module = ["mgclient"]
+ignore_missing_imports = true

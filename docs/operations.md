@@ -7,7 +7,7 @@ From the repository root:
 ```bash
 make verify
 make wheel
-python3.12 -m zipfile -l dist/aeos_kernel-0.2.2-py3-none-any.whl
+python3.12 -m zipfile -l dist/aeos_kernel-0.3.0-py3-none-any.whl
 ```
 
 `make verify` runs Ruff, strict mypy, the complete coverage-gated suite, and the pinned
@@ -31,8 +31,62 @@ rewind the live checkout merely to satisfy the compatibility test.
 9. Enable one internal test subject, verify its decision, attestation, effect and receipt.
 10. Enable the bounded production cohort and monitor typed failures/restarts.
 
-No AEOS network listener, DNS record, security group, credential, database or graph service is
-part of the 0.2 release line.
+No AEOS public network listener or DNS record is part of the 0.3 release line. Its Memgraph
+dependency is private and worker-facing only.
+
+## Memgraph project fleet
+
+One project graph is one endpoint, one storage directory or volume, one access identity and one
+backup stream. Never place two projects in one Community database and call a `project_id` filter
+the isolation boundary. Multiple project instances may share a sufficiently sized host while
+they are small, but their ports, systemd units, data paths, credentials and recovery artifacts
+remain separate. Moving one project to its own host must require only endpoint configuration.
+
+Required host configuration is supplied by the consuming worker's secret/configuration system,
+never by repository files:
+
+- `AEOS_GRAPH_ENABLED` — off by default and changed through the host's governed deployment path;
+- `AEOS_GRAPH_HOST` and `AEOS_GRAPH_PORT` — one private project endpoint;
+- `AEOS_GRAPH_USERNAME` and `AEOS_GRAPH_PASSWORD` — that endpoint's access identity;
+- `AEOS_GRAPH_PROJECT_ID`, `AEOS_GRAPH_VERTICAL_ID`, `AEOS_GRAPH_TENANT_ID` — exact bound scope;
+- `AEOS_GRAPH_SSLMODE` — required when the deployment termination model uses Bolt TLS.
+
+Production instances use transactional storage, WAL, periodic snapshots, synchronous-enough WAL
+flush for the agreed recovery point, snapshot retention, telemetry policy declared explicitly,
+and an encrypted volume. Bind Bolt to a private address. Permit inbound Bolt only from the named
+worker security group; do not expose Memgraph Lab, Bolt or a graph HTTP/MCP service publicly.
+
+Before activation:
+
+1. Prove endpoint identity and version from the intended worker network identity.
+2. Run `MemgraphProjectStore.ensure_schema()` and record every resulting constraint/index.
+3. Run the real integration suite against a disposable sibling endpoint, never production.
+4. Publish Wema generation 1 from exact source pins; record snapshot and vocabulary digests.
+5. Read the current snapshot and one known neighborhood through the fixed-query adapter.
+6. Prove a different project-bound store cannot observe the Wema snapshot.
+7. Stop or block the graph endpoint and prove Wema public/auth/order/effect paths remain healthy
+   while graph-dependent decision refresh defers without a stale fallback.
+8. Create a database snapshot, restore it into a separate endpoint, and compare current generation
+   and snapshot digest before enabling scheduled refresh.
+
+Monitor process health/restarts, resident memory and memory headroom, data-volume usage, WAL and
+snapshot age, backup age, current-generation age, publish duration/failures, query duration and
+worker deferrals. Alerts must fire before memory or disk exhaustion and when graph freshness
+exceeds the vertical's declared decision window.
+
+Graph credential rotation is project-local: create and activate the replacement access identity,
+update the worker secret, reload the worker, prove a fixed read and publish on a disposable
+generation, then revoke the old identity. Rotation must not require changing any other project.
+
+### Graph rollback and recovery
+
+Disable `AEOS_GRAPH_ENABLED` first. This stops new projection and graph-dependent decision refresh
+without removing canonical data or reversing an effect. To roll back content, point the project
+anchor to a retained complete generation in one transaction only after its source pins and digest
+are revalidated. To recover infrastructure, restore the latest snapshot plus WAL into a new
+private endpoint, compare the stored current digest to the release record, update the worker
+secret/configuration, and re-enable. Never prune the last known-good generation or backup as part
+of the same release that creates its successor.
 
 ## Rollback
 

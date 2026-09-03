@@ -1,7 +1,7 @@
 # AEOS provenance and extraction inventory
 
-**Inventory version:** 3
-**Recorded:** 2 September 2026
+**Inventory version:** 4
+**Recorded:** 3 September 2026
 
 ## Source snapshots
 
@@ -48,6 +48,8 @@ file, project data, graph data, customer data, or generated operational artifact
 | `execution_receipt.py` and graph transaction machinery | Durable commit receipts but graph/temporal-driver coupled | Contract only | Extract receipt invariants and expected-postimage semantics. Exclude implementation and graph temporal types. |
 | WLG task envelopes, claims, pipeline runners and graph stores | Scheduling, unit ownership, graph persistence, transaction chokepoint | Adapter/exclude | Remain MultiAgent application machinery. AEOS defines strict interchange contracts; the compatibility adapter maps to existing implementations without a speculative repository/executor abstraction. |
 | FastAPI coordination/context service | Local personal service using `X-Agent-Id`, without production tenancy/auth boundary | Exclude | Must never be a Wema production dependency. No AEOS network service in the first release. |
+| `docs/sync_review/graph_io.py` | Project-scoped graph I/O, deterministic IDs, transactional mode, snapshot/WAL awareness and an expiring project writer lock | Extract operating law; do not copy | AEOS uses immutable generations, one transactionally flipped current pointer and a project-bound adapter. It deliberately excludes analytical/turbo mode because advisory refresh durability matters more than bulk-import speed. |
+| `claude_coord/wlg/graph/constraints.py` | Query-driven Memgraph indexes, single-property unique identities and project scope on every mutable graph identity | Extract operating law; adapt schema | AEOS uses deterministic single-property keys, fixed project predicates and only indexes justified by its small query registry. WLG labels and its large index surface remain upstream. |
 
 ### Source test evidence to preserve
 
@@ -89,6 +91,8 @@ graph, provider output, or mutable test artifact.
 | Outcome observation port | Existing graph verifier proves structural postconditions, not business outcomes over time | Wema policy-permitted article analytics |
 | Privacy/use metadata on evidence | WLG project scoping alone is insufficient for customer-bearing production systems | Wema article evidence adapter |
 | Host-neutral tenant boundary | WLG's current service is personal/local | Wema API/worker |
+| Immutable project graph snapshot | Growing cross-content and cross-playbook relationships need a reproducible derived read model without moving authority or effects into a graph | Wema content/advisory projection |
+| Project-bound Memgraph adapter | Community single-database filtering is not sufficient isolation for a reusable multi-project product | One isolated Wema endpoint; later projects receive separate endpoints and volumes |
 
 ## Explicitly unresolved at inventory version 2
 
@@ -128,3 +132,17 @@ The Wema deployment-review adapter is new host-consumer behavior, not an extract
 MultiAgentCommunication. Adapter tests bind its exact release/inventory/payload identities, prove
 that reviewer identity is absent, prove that public notes are ineligible for model use, and prove
 that attention yields one advisory `OwnedAction` projection while an all-clear yields none.
+
+## Additive evidence at AEOS 0.3.0
+
+The graph foundation adapts proven operating laws from the pinned MultiAgent source rather than
+copying its product graph. AEOS owns a much smaller project-neutral contract: closed vocabularies,
+public/internal-only nodes, immutable source-pinned generations and fixed reads. WLG shape kinds,
+queries, repair mutations, locks, validators and graph data remain upstream.
+
+`tests/test_graph.py` proves the contract and fail-closed adapter behavior without a database.
+`tests/test_memgraph_integration.py` is the opt-in affected-system witness: on an isolated
+Memgraph 3.7.2 instance it creates the real schema, publishes two scoped projects, proves
+idempotent replay and neighborhood reads, and forces two same-generation writers to establish
+that exactly one transaction commits. Release evidence must name the Memgraph version and port or
+endpoint class used; a mocked green never substitutes for this suite.

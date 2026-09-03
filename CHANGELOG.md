@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 — 2026-09-03
+
+- Add strict project-neutral graph vocabulary, node, relationship and immutable snapshot
+  contracts with a published JSON Schema and privacy-classification boundary.
+- Add a project-bound Memgraph adapter with fixed Cypher, per-object scope stamping, atomic
+  current-generation publication, deterministic idempotent receipts and bounded neighborhood
+  reads.
+- Establish one private Memgraph endpoint, encrypted data volume and access identity per project
+  as the production isolation model; Wema is the first project and the graph remains a derived
+  advisory read model.
+- Add opt-in real Memgraph evidence for schema creation, two-project isolation, replay,
+  traversal and concurrent-writer conflict behavior.
+
 ## 0.2.2 — 2026-09-03
 
 - Add a model-forbidden Wema deployment-review adapter that turns exact release-bound closed

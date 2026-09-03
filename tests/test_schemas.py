@@ -111,3 +111,39 @@ def test_all_named_entry_schemas_are_published() -> None:
     assert schema_path("bundle.schema.json").endswith("schemas/v2/bundle.schema.json")
     with pytest.raises(FileNotFoundError, match="unknown AEOS schema"):
         schema_path("not-real.schema.json")
+
+
+def test_graph_snapshot_matches_its_published_schema() -> None:
+    from aeos_kernel import GraphNode, GraphVocabulary, PrivacyClass, build_graph_snapshot
+
+    graph_schema = load_schema("graph-snapshot.schema.json")
+    Draft202012Validator.check_schema(graph_schema)
+    graph_snapshot = build_graph_snapshot(
+        project_id="wema",
+        vertical_id="wema",
+        tenant_id="founder",
+        generation=1,
+        vocabulary=GraphVocabulary(
+            vocabulary_id="wema.content",
+            version="1",
+            node_kinds=("article",),
+            edge_kinds=("supports",),
+            property_keys=("title",),
+        ),
+        source_head_pins={"articles": "revision-1"},
+        nodes=(
+            GraphNode(
+                entity_id="article-1",
+                kind="article",
+                revision="1",
+                content_digest="a" * 64,
+                properties={"title": "A calm first hour"},
+                privacy_classification=PrivacyClass.PUBLIC,
+            ),
+        ),
+        edges=(),
+        built_at=NOW,
+    )
+    Draft202012Validator(graph_schema, format_checker=FormatChecker()).validate(
+        graph_snapshot.as_dict()
+    )

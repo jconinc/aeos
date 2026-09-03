@@ -1,7 +1,7 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.1.1
-**Date:** 1 September 2026  
+**Version:** 0.3.0
+**Date:** 3 September 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
 **Proven source:** MultiAgentCommunication decision machinery at
@@ -75,7 +75,7 @@ AEOS does not provide:
 - an end-user UI, CRM, CMS, analytics collector, scheduler, mailer, social publisher, or
   payment system;
 - a second model gateway when the host already has one;
-- a graph or vector database requirement;
+- a graph as canonical authority, evidence storage, effect executor, or customer-data store;
 - product-specific business facts, copy, playbooks, routes, database models, or effects;
 - authority for a model to approve its own output;
 - autonomous legal, clinical, privacy, commerce, outreach, spend, publish, delete, or
@@ -116,9 +116,11 @@ Vertical facts, metrics, canon and policies
           retain / revise / close / reopen
 ```
 
-The kernel may run in a vertical worker process. A network service is deferred until a
-second production vertical demonstrates that a process boundary is worth its authentication,
-authorization, tenancy, deployment, availability, and incident-response cost.
+The kernel may run in a vertical worker process. A public AEOS network service remains deferred
+until a second production vertical demonstrates that a process boundary is worth its
+authentication, authorization, tenancy, deployment, availability, and incident-response cost.
+The project-bound graph adapter introduced in 0.3 is a private derived-data dependency used from
+that worker boundary; it is not an AEOS API and does not move effects out of the host.
 
 ## 5. Core vocabulary and contracts
 
@@ -483,10 +485,11 @@ MultiAgent tests remain authoritative for behavior owned by those systems.
 
 ## 16. Packaging, deployment and rollback
 
-The initial deployment is a pinned package imported by the Wema API/worker. No AEOS daemon,
-public endpoint, graph service, or new credential is introduced. Package artifacts include source,
-schemas, type information, changelog and provenance manifest. Wema pins an exact release and
-records it in deployment evidence.
+The initial deployment is a pinned package imported by the Wema API/worker. No AEOS daemon or
+public endpoint is introduced. The private 0.3 graph fleet uses one isolated Memgraph endpoint,
+credential and data volume per project; Wema is the first project. Package artifacts include
+source, schemas, type information, changelog and provenance manifest. Wema pins an exact release
+and records it in deployment evidence.
 
 Database migrations live with the system that owns the data. AEOS publishes contracts and
 reference migrations but never silently migrates a host database. Rollback disables the AEOS
@@ -509,6 +512,8 @@ their host-defined compensation path; package rollback does not pretend to rever
 9. Execute one already registered article operation and record/verify the receipt.
 10. Consume one real or explicitly insufficient outcome window and exercise close/revise/reopen.
 11. Run both repositories' relevant gates, deployment smoke tests and rollback drill.
+12. Publish the safe Wema advisory projection to its isolated Memgraph endpoint, prove a real
+    fixed-query read, and prove loss of that endpoint cannot authorize or execute an effect.
 
 ## 18. Definition of done
 
@@ -527,3 +532,89 @@ AEOS is complete for this goal only when:
 - deterministic, adversarial, drift, compatibility, integration and end-to-end suites pass;
 - packaging, deployment, migration, kill-switch, rollback and recovery evidence is current;
 - every remaining external human or provider dependency is stated with an exact next action.
+
+## 19. Project-isolated advisory graph foundation
+
+This section is the operator-directed 0.3 amendment and supersedes only the earlier statements
+that no graph service or credential would exist in the first deployment. The rest of the
+authority, privacy, host-effect and no-public-service boundaries remain unchanged.
+
+### 19.1 Purpose and ownership
+
+AEOS uses a graph to derive relationships that become more valuable as content, audiences,
+questions, channels, playbooks, decisions and measured outcomes grow. It is an advisory read
+model: every graph snapshot is rebuilt from exact, pinned source-system revisions. PostgreSQL and
+the host's governed files remain authoritative for evidence, decisions, attestations, effects,
+receipts, customer records and publication state. A graph write cannot approve, publish, contact,
+charge, delete or otherwise create a host effect.
+
+Wema is the first consumer, not a special case in the kernel. Product vocabularies and projections
+belong in adapters. The kernel accepts only a closed adapter-owned node, edge and property
+vocabulary and exposes only registered, parameterized queries. It accepts no caller-authored
+Cypher.
+
+### 19.2 Isolation model for many projects
+
+The production unit is a **project graph**, not one shared Community-edition database with a
+`project_id` filter as its only wall. Each project receives its own private Memgraph endpoint,
+encrypted data volume and credential. Projects may initially share a hardened private host, but
+not a Bolt port, storage directory, credential or backup set. A later Enterprise deployment may
+provide equivalent isolated databases and fine-grained access control without changing the AEOS
+graph contract.
+
+Every project, snapshot, entity and relationship is also stamped with `project_id`, `vertical_id`
+and `tenant_id` as defense in depth. The store is bound to those values at construction and rejects
+cross-scope snapshots before opening a connection. Fixed reads repeat the scope predicates.
+
+### 19.3 Immutable snapshot protocol
+
+A projection publishes one immutable graph generation containing:
+
+- a strict graph schema version and closed-vocabulary digest;
+- exact source-head pins;
+- stable entity and relationship identities;
+- content digests and safe public/internal properties;
+- evidence references for each relationship;
+- project, vertical and tenant scope; and
+- a reproducible snapshot digest.
+
+The digest excludes the observational `built_at` timestamp so a retry from identical sources can
+reproduce the same identity. Publication creates the complete new generation and flips one
+`CURRENT_SNAPSHOT` edge in the same transaction. Identical replay is a no-op with the same receipt
+identity. A changed snapshot must advance the generation. Concurrent writers touch the same
+project anchor; Memgraph transaction conflict aborts a loser rather than admitting two current
+generations. The host retries from current source pins.
+
+Old generations are retained until the project backup and rollback policy permits pruning. A
+reader sees only the current complete generation, never a half-written refresh.
+
+### 19.4 Privacy and model boundary
+
+Only `public` or `internal` graph nodes are admissible. Raw review prose, email addresses, visitor
+histories, lead or customer identity, caregiver/patient content, credentials, private
+relationship notes, and anything classified `restricted` or `prohibited` stay out. Aggregate
+outcomes enter only when the host's active analytics policy permits them. A graph neighborhood is
+evidence for candidate preparation, never authority for a model or effect.
+
+### 19.5 Availability and operations
+
+The graph is absent from public-page, sign-in, checkout, fulfillment and synchronous effect paths.
+If it is unavailable, graph-dependent decision preparation defers with a typed retryable failure;
+public delivery and already-authorized host operations continue from canonical data. No code may
+silently fall back to stale graph content for an effect decision.
+
+Production Memgraph runs in transactional mode with WAL and periodic snapshots on encrypted
+storage. Bolt is reachable only from named worker security groups or equivalent private network
+identities; no public listener or public graph console is allowed. Each project has independent
+health, storage, memory, query-latency, refresh-age and backup/restore evidence. Capacity alerts
+trigger before the host or volume is exhausted. Backup restoration into a separate endpoint and
+snapshot-digest comparison are required before graph activation is called production-ready.
+
+### 19.6 Graph definition of done
+
+The foundation is production-ready only when the schema and fixed queries pass unit and real
+Memgraph integration tests; two isolated test projects cannot observe or mutate each other;
+idempotent replay, changed-generation, concurrent-writer, crash/rollback and unavailable-graph
+cases are proven; Wema's first safe projection and real decision read are measured end to end;
+monitoring, backup, restore and credential rotation are rehearsed; and the host remains able to
+run with graph decision refresh disabled.

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aeos.local/schemas/v2/graph-snapshot.schema.json",
+  "title": "AEOS graph snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "vertical_id",
+    "tenant_id",
+    "generation",
+    "vocabulary_digest",
+    "source_head_pins",
+    "nodes",
+    "edges",
+    "built_at",
+    "snapshot_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "project_id": {"$ref": "#/$defs/NonEmpty"},
+    "vertical_id": {"$ref": "#/$defs/NonEmpty"},
+    "tenant_id": {"$ref": "#/$defs/NonEmpty"},
+    "generation": {"type": "integer", "minimum": 1},
+    "vocabulary_digest": {"$ref": "#/$defs/Digest"},
+    "source_head_pins": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/NonEmpty"}
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/GraphNode"}
+    },
+    "edges": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/GraphEdge"}
+    },
+    "built_at": {"type": "string", "format": "date-time"},
+    "snapshot_digest": {"$ref": "#/$defs/Digest"}
+  },
+  "$defs": {
+    "Digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "NonEmpty": {"type": "string", "minLength": 1},
+    "GraphNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity_id",
+        "kind",
+        "revision",
+        "content_digest",
+        "properties",
+        "privacy_classification"
+      ],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/NonEmpty"},
+        "kind": {"$ref": "#/$defs/NonEmpty"},
+        "revision": {"$ref": "#/$defs/NonEmpty"},
+        "content_digest": {"$ref": "#/$defs/Digest"},
+        "properties": {"type": "object"},
+        "privacy_classification": {"enum": ["public", "internal"]}
+      }
+    },
+    "GraphEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "edge_id",
+        "kind",
+        "from_entity_id",
+        "to_entity_id",
+        "evidence_ids",
+        "properties"
+      ],
+      "properties": {
+        "edge_id": {"$ref": "#/$defs/NonEmpty"},
+        "kind": {"$ref": "#/$defs/NonEmpty"},
+        "from_entity_id": {"$ref": "#/$defs/NonEmpty"},
+        "to_entity_id": {"$ref": "#/$defs/NonEmpty"},
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/NonEmpty"}
+        },
+        "properties": {"type": "object"}
+      }
+    }
+  }
+}

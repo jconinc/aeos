@@ -32,9 +32,15 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
 
-The current package line is `0.2.x` with v2 interchange schemas. Historical v1 schema resources
-remain readable, but hosts must explicitly map v1 records before using the stricter v2 authorizer;
-there are no authority-broadening compatibility defaults.
+The current package line is `0.3.x` with v2 decision interchange schemas and the v1 immutable
+graph-snapshot contract. Historical v1 decision resources remain readable, but hosts must
+explicitly map old records before using the stricter v2 authorizer; there are no
+authority-broadening compatibility defaults.
+
+AEOS 0.3 adds a private advisory graph foundation for relationships among safe content,
+questions, audiences, playbooks and aggregate outcomes. It is deliberately a derived read model:
+the host remains authoritative and owns every effect. Production isolation is one Memgraph
+endpoint, data volume and access identity per project, with Wema as the first project.
 
 ## Development
 
@@ -44,4 +50,10 @@ Python 3.12 is required.
 python3.12 -m pip install -e '.[dev]'
 make verify
 make wheel
+```
+
+The live Memgraph integration suite is opt-in and must target a disposable isolated instance:
+
+```bash
+AEOS_MEMGRAPH_TEST_PORT=7697 make integration
 ```
