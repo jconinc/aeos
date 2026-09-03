@@ -93,6 +93,7 @@ graph, provider output, or mutable test artifact.
 | Host-neutral tenant boundary | WLG's current service is personal/local | Wema API/worker |
 | Immutable project graph snapshot | Growing cross-content and cross-playbook relationships need a reproducible derived read model without moving authority or effects into a graph | Wema content/advisory projection |
 | Project-bound Memgraph adapter | Community single-database filtering is not sufficient isolation for a reusable multi-project product | One isolated Wema endpoint; later projects receive separate endpoints and volumes |
+| Generic AWS project-graph stack | A reusable engine needs repeatable project isolation, recovery and alarms rather than a hand-built Wema host | Wema production graph; future projects instantiate the same parameterized stack |
 
 ## Explicitly unresolved at inventory version 2
 

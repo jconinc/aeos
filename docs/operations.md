@@ -56,6 +56,38 @@ flush for the agreed recovery point, snapshot retention, telemetry policy declar
 and an encrypted volume. Bind Bolt to a private address. Permit inbound Bolt only from the named
 worker security group; do not expose Memgraph Lab, Bolt or a graph HTTP/MCP service publicly.
 
+The AWS implementation is project-parameterized rather than Wema-specific. One invocation creates
+one CloudFormation stack with its own instance, security group, generated secret, retained 100 GiB
+encrypted data volume, versioned private backup bucket and CloudWatch alarms. Its default
+`r7g.large` gives the first graph 16 GiB RAM; resize or move that project independently as measured
+memory and traversal work grows. The interface has an outbound-management public address because
+the current VPC subnet has no NAT gateway, but there is no public ingress and Docker publishes Bolt
+only on the instance's private address.
+
+```bash
+AWS_PROFILE=personal AWS_REGION=us-east-1 \
+  infra/aws/deploy-project.sh wema production
+```
+
+The deployer updates the generated secret with the resulting private address and sends only
+committed bootstrap scripts through SSM; it never places a credential in command history or an
+SSM command. On-host checks are run through SSM:
+
+```bash
+/opt/aeos/bootstrap/verify-project.sh wema
+/opt/aeos/bootstrap/backup-project.sh wema
+/opt/aeos/bootstrap/restore-project.sh wema
+```
+
+The first check proves the listener address, TLS-only behavior, mandatory authentication and exact
+Memgraph version. The second triggers a full Memgraph snapshot and stores the file plus SHA-256 in
+the project's S3 stream. The third restores that object into a disposable second endpoint and
+compares its current generation and snapshot digest to production before removing only the
+disposable recovery directory. Community user/password authentication is sufficient for the
+isolated single-project process but has no fine-grained role boundary; security therefore depends
+on the per-project endpoint, generated credential, worker-only security-group rule and fixed-query
+AEOS adapter together.
+
 Before activation:
 
 1. Prove endpoint identity and version from the intended worker network identity.
@@ -73,6 +105,12 @@ Monitor process health/restarts, resident memory and memory headroom, data-volum
 snapshot age, backup age, current-generation age, publish duration/failures, query duration and
 worker deferrals. Alerts must fire before memory or disk exhaustion and when graph freshness
 exceeds the vertical's declared decision window.
+
+The host emits `ProcessUp`, `ContainerMemoryUsed`, `DataVolumeUsed`, `SnapshotAge`, `BackupAge`
+and `BackupSucceeded` to `AEOS/GraphFleet`, scoped by project and environment. The stack alarms on
+process loss, missing metrics, 80% memory or disk, a 30-minute snapshot gap, a 26-hour backup gap,
+and EC2 status failure. The consuming worker remains responsible for graph refresh/publish/query
+duration and typed `aeos_graph_unavailable` deferral evidence because only it knows decision age.
 
 Graph credential rotation is project-local: create and activate the replacement access identity,
 update the worker secret, reload the worker, prove a fixed read and publish on a disposable

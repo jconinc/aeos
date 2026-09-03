@@ -610,6 +610,15 @@ health, storage, memory, query-latency, refresh-age and backup/restore evidence.
 trigger before the host or volume is exhausted. Backup restoration into a separate endpoint and
 snapshot-digest comparison are required before graph activation is called production-ready.
 
+The first production implementation is the generic `infra/aws/project-graph.yaml` stack. A stack
+owns exactly one project endpoint, generated secret, retained encrypted data volume, versioned
+private backup bucket and alarm set. The EC2 interface may have an outbound-management public
+address while running in a public subnet, but Bolt is bound only to the interface's private VPC
+address and its security group admits that port only from the consuming worker security group.
+There is no SSH rule, Lab, monitoring WebSocket, MCP endpoint or graph-facing DNS record. Community
+authentication supplies the project-local user/password boundary; because Community does not
+provide fine-grained roles, network and process isolation remain mandatory rather than optional.
+
 ### 19.6 Graph definition of done
 
 The foundation is production-ready only when the schema and fixed queries pass unit and real

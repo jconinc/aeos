@@ -1,0 +1,337 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Project-isolated AEOS Memgraph host with retained encrypted data and backups
+
+Parameters:
+  ProjectId:
+    Type: String
+    AllowedPattern: "^[a-z][a-z0-9-]{1,31}$"
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedPattern: "^[a-z][a-z0-9-]{1,31}$"
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+  WorkerSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+  InstanceType:
+    Type: String
+    Default: r7g.large
+  BoltPort:
+    Type: Number
+    Default: 7687
+    MinValue: 1024
+    MaxValue: 65535
+  DataVolumeGiB:
+    Type: Number
+    Default: 100
+    MinValue: 40
+    MaxValue: 16384
+  UbuntuArmAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id
+
+Resources:
+  GraphSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "AEOS ${ProjectId} graph; Bolt only from its worker"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref BoltPort
+          ToPort: !Ref BoltPort
+          SourceSecurityGroupId: !Ref WorkerSecurityGroupId
+          Description: Bound Wema worker only
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          Description: Package, SSM, CloudWatch, Secrets Manager and S3 egress
+      Tags:
+        - Key: Name
+          Value: !Sub "aeos-${ProjectId}-${EnvironmentName}-graph"
+        - Key: aeos:project
+          Value: !Ref ProjectId
+
+  GraphSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "aeos/${EnvironmentName}/projects/${ProjectId}/graph-runtime"
+      Description: !Sub "Worker-only credentials and scope for AEOS ${ProjectId} graph"
+      GenerateSecretString:
+        SecretStringTemplate: !Sub >-
+          {"host":"pending","port":${BoltPort},"username":"${ProjectId}_runtime",
+          "sslmode":"require","project_id":"${ProjectId}",
+          "vertical_id":"article_decision","tenant_id":"${ProjectId}_${EnvironmentName}"}
+        GenerateStringKey: password
+        PasswordLength: 48
+        ExcludeCharacters: "'\"\\/:@"
+      Tags:
+        - Key: aeos:project
+          Value: !Ref ProjectId
+
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: RetainProjectRecoveryPoints
+            Status: Enabled
+            ExpirationInDays: 35
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 7
+      Tags:
+        - Key: aeos:project
+          Value: !Ref ProjectId
+
+  BackupBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BackupBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt BackupBucket.Arn
+              - !Sub "${BackupBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  GraphRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: ProjectGraphRuntime
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref GraphSecret
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt BackupBucket.Arn
+                  - !Sub "${BackupBucket.Arn}/*"
+              - Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: AEOS/GraphFleet
+
+  GraphProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref GraphRole
+
+  GraphInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref UbuntuArmAmi
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref GraphProfile
+      Monitoring: true
+      MetadataOptions:
+        HttpEndpoint: enabled
+        HttpTokens: required
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: enabled
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: "0"
+          GroupSet:
+            - !Ref GraphSecurityGroup
+          SubnetId: !Ref SubnetId
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            DeleteOnTermination: true
+            Encrypted: true
+            VolumeSize: 24
+            VolumeType: gp3
+      Tags:
+        - Key: Name
+          Value: !Sub "aeos-${ProjectId}-${EnvironmentName}-graph"
+        - Key: aeos:project
+          Value: !Ref ProjectId
+
+  GraphDataVolume:
+    Type: AWS::EC2::Volume
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AvailabilityZone: !GetAtt GraphInstance.AvailabilityZone
+      Encrypted: true
+      Size: !Ref DataVolumeGiB
+      Type: gp3
+      Tags:
+        - Key: Name
+          Value: !Sub "aeos-${ProjectId}-${EnvironmentName}-graph-data"
+        - Key: aeos:project
+          Value: !Ref ProjectId
+
+  GraphDataAttachment:
+    Type: AWS::EC2::VolumeAttachment
+    Properties:
+      Device: /dev/sdf
+      InstanceId: !Ref GraphInstance
+      VolumeId: !Ref GraphDataVolume
+
+  StatusAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "AEOS ${ProjectId} graph EC2 status check"
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref GraphInstance
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: breaching
+
+  ProcessAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "AEOS ${ProjectId} graph process is unavailable"
+      Namespace: AEOS/GraphFleet
+      MetricName: ProcessUp
+      Dimensions:
+        - Name: ProjectId
+          Value: !Ref ProjectId
+        - Name: Environment
+          Value: !Ref EnvironmentName
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+
+  CapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "AEOS ${ProjectId} graph container memory is above 80 percent"
+      Namespace: AEOS/GraphFleet
+      MetricName: ContainerMemoryUsed
+      Dimensions:
+        - Name: ProjectId
+          Value: !Ref ProjectId
+        - Name: Environment
+          Value: !Ref EnvironmentName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: breaching
+
+  DiskAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "AEOS ${ProjectId} graph data volume is above 80 percent"
+      Namespace: AEOS/GraphFleet
+      MetricName: DataVolumeUsed
+      Dimensions:
+        - Name: ProjectId
+          Value: !Ref ProjectId
+        - Name: Environment
+          Value: !Ref EnvironmentName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: breaching
+
+  SnapshotAgeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "AEOS ${ProjectId} graph has no snapshot newer than 30 minutes"
+      Namespace: AEOS/GraphFleet
+      MetricName: SnapshotAge
+      Dimensions:
+        - Name: ProjectId
+          Value: !Ref ProjectId
+        - Name: Environment
+          Value: !Ref EnvironmentName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1800
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: breaching
+
+  BackupAgeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "AEOS ${ProjectId} graph has no recovery point newer than 26 hours"
+      Namespace: AEOS/GraphFleet
+      MetricName: BackupAge
+      Dimensions:
+        - Name: ProjectId
+          Value: !Ref ProjectId
+        - Name: Environment
+          Value: !Ref EnvironmentName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 93600
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: breaching
+
+Outputs:
+  InstanceId:
+    Value: !Ref GraphInstance
+  PrivateIp:
+    Value: !GetAtt GraphInstance.PrivateIp
+  SecretArn:
+    Value: !Ref GraphSecret
+  SecretName:
+    Value: !Sub "aeos/${EnvironmentName}/projects/${ProjectId}/graph-runtime"
+  BackupBucket:
+    Value: !Ref BackupBucket
+  DataVolumeId:
+    Value: !Ref GraphDataVolume
+  BoltPort:
+    Value: !Ref BoltPort

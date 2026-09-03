@@ -42,6 +42,10 @@ questions, audiences, playbooks and aggregate outcomes. It is deliberately a der
 the host remains authoritative and owns every effect. Production isolation is one Memgraph
 endpoint, data volume and access identity per project, with Wema as the first project.
 
+`infra/aws/` contains the generic one-project-per-stack AWS deployment, SSM bootstrap, private
+listener/authentication verification, snapshot backup, and disposable restore rehearsal. It adds
+no AEOS public service; consuming workers remain the only graph clients.
+
 ## Development
 
 Python 3.12 is required.
