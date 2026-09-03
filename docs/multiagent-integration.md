@@ -1,7 +1,7 @@
 # MultiAgentCommunication compatibility contract
 
 **Adapter:** `multiagent.wlg@3`
-**Pinned source:** `f8b76c9930e590983d1e0c5e232bd8817191db7f`
+**Pinned source:** `d1047fb62d6fd6cba91fe262e8a9d3ddc9259bff`
 
 The adapter is additive. It does not move graph storage, task claims, pipeline scheduling,
 static patch gates, mutation lowering, transactions, or graph receipts into AEOS.
