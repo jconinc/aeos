@@ -37,6 +37,8 @@ def test_bootstrap_binds_only_private_bolt_with_tls_auth_and_durability() -> Non
     assert "--storage-wal-file-flush-every-n-tx=1" in bootstrap
     assert "--storage-snapshot-interval-sec=900" in bootstrap
     assert "--telemetry-enabled=false" in bootstrap
+    assert "awscli-exe-linux-aarch64-${awscli_version}.zip" in bootstrap
+    assert "sha256sum -c" in bootstrap
     assert "-p 3000:" not in bootstrap
     assert "-p 7444:" not in bootstrap
 

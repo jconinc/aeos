@@ -27,7 +27,18 @@ CONFIG_DIR="/etc/aeos/projects"
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq awscli ca-certificates curl docker.io jq openssl unattended-upgrades
+apt-get install -y -qq ca-certificates curl docker.io jq openssl unattended-upgrades unzip
+if ! command -v aws >/dev/null 2>&1; then
+  awscli_version=2.32.2
+  awscli_sha256=572acdf73eec819a637dae60d165ae30c0eff1c94256e4b65a52033ee1d7c1f3
+  awscli_root=$(mktemp -d /tmp/aeos-awscli.XXXXXX)
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-${awscli_version}.zip" \
+    -o "$awscli_root/awscliv2.zip"
+  printf '%s  %s\n' "$awscli_sha256" "$awscli_root/awscliv2.zip" | sha256sum -c -
+  unzip -q "$awscli_root/awscliv2.zip" -d "$awscli_root"
+  "$awscli_root/aws/install" --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli
+  rm -rf -- "$awscli_root"
+fi
 systemctl enable --now docker
 systemctl disable --now ssh 2>/dev/null || true
 
