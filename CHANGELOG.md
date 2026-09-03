@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-09-03
+
+- Add a Wema daily-growth adapter that consumes the complete safe Reach route portfolio,
+  aggregate outcomes, independent research-source states, and a pinned local graph snapshot.
+- Select exactly one governed route while retaining cited alternatives and projecting advice
+  into Wema's existing operator queue without contact, publication, approval, spend, or effects.
+
 ## 0.3.1 — 2026-09-03
 
 - Bound each project's online graph history to the current immutable generation and its two

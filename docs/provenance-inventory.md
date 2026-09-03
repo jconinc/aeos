@@ -75,6 +75,7 @@ graph, provider output, or mutable test artifact.
 | `apps/api/wema_api/authority_decisions.py` and migration `0059` | Capacity-tagged founder/clinical authority decisions | Reuse or generalize storage for AEOS attestation; no parallel approval database. |
 | `apps/desk/src/screens/articleEditor/` and article API/services | Real plain-language editing, preview, save, publish and revision workflow | Today recommendation deep-links here. AEOS does not build an editor. |
 | `apps/worker/wema_worker/guidance_refresh.py` and guidance handlers | Reads Wema evidence and computes current commercial focus | First evidence/refresh host; adapt its safe projection rather than adding a second scheduler. |
+| Reach route catalogue, ranking and verified aggregate outcomes | Existing governed channel availability and learning policy | `wema.daily_growth@1` consumes the safe complete projection and emits one advice-only operator preparation recommendation; Wema retains discovery, packaging, approval, execution and measurement. |
 | `apps/api/wema_api/guidance.py` | Safe guidance projected on Today actions | Recommendation explanation mapping. |
 | `packages/model-gateway` | Provider-neutral model access, structured context, schema validation, lint, spend ceiling and fail-closed provider controls | Implements AEOS `ModelGateway`; AEOS contains no provider credentials or duplicate provider client. |
 | Wema worker/domain/outbox/idempotency/kill-switch infrastructure | Authorized operations and operational recovery | Implements effect authorizer/executor and receipts. |
@@ -157,3 +158,12 @@ that generations one and two, including their contained entities and relationshi
 while generations three through five remain. Daily transaction-consistent dumps retain the
 separate disaster-recovery boundary without turning every immutable online generation into
 permanent storage cost.
+
+## Additive evidence at AEOS 0.4.0
+
+The Wema growth adapter is new vertical behavior over the same project-neutral engine and graph
+contracts. Adapter tests prove the full safe route portfolio and aggregate outcome projection,
+single entailed daily choice, cited alternatives, source-status/highlight boundary, and exact
+operator-action mapping. They also prove the output contains no recipient, private message,
+provider credential, approval, spend, publication, or effect request. The Wema consumer remains
+responsible for reconstructing the graph context and performing every later Reach operation.

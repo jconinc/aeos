@@ -22,7 +22,8 @@ The governing documents are:
   compatibility and adoption contract.
 - [`docs/operations.md`](docs/operations.md) — package, deployment, migration and rollback.
 
-The first vertical slice is an article decision. Runtime activation remains host-controlled:
+The first Wema slices are article revision advice, saved-review follow-up, and one daily growth
+route decision. Runtime activation remains host-controlled:
 
 ```text
 Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
@@ -32,15 +33,17 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
 
-The current package line is `0.3.x` with v2 decision interchange schemas and the v1 immutable
+The current package line is `0.4.x` with v2 decision interchange schemas and the v1 immutable
 graph-snapshot contract. Historical v1 decision resources remain readable, but hosts must
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
 
-AEOS 0.3 adds a private advisory graph foundation for relationships among safe content,
-questions, audiences, playbooks and aggregate outcomes. It is deliberately a derived read model:
-the host remains authoritative and owns every effect. Production isolation is one Memgraph
-endpoint, data volume and access identity per project, with Wema as the first project.
+AEOS 0.4 uses that private graph foundation for relationships among safe content, questions,
+audiences, routes, source states, playbooks and aggregate outcomes. Wema's daily-growth adapter
+compares the complete governed route portfolio, retains alternatives, and proposes exactly one
+effect-free operator preparation step. It is deliberately a derived read model: the host remains
+authoritative and owns every effect. Runtime isolation is one Memgraph endpoint, data directory
+and access identity per project, with Wema as the first project.
 
 `infra/aws/` contains the generic one-project-per-stack AWS deployment, SSM bootstrap, private
 listener/authentication verification, snapshot backup, and disposable restore rehearsal. It adds

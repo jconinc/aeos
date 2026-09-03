@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from aeos_kernel import (
@@ -24,6 +26,15 @@ from aeos_kernel.adapters.wema import (
     build_wema_article_packet,
     prepared_revision_candidate,
     to_owned_action_values,
+)
+from aeos_kernel.adapters.wema_growth import (
+    GROWTH_DECISION_KIND,
+    WemaGrowthProjection,
+    WemaGrowthSourceStatus,
+    WemaReachRouteProjection,
+    build_wema_growth_packet,
+    growth_route_candidates,
+    to_growth_owned_action_values,
 )
 from aeos_kernel.adapters.wema_reviews import (
     REVIEW_DECISION_KIND,
@@ -204,6 +215,91 @@ def test_wema_review_all_clear_does_not_invent_work() -> None:
     )
     with pytest.raises(ValueError, match="does not entail"):
         review_follow_up_candidate(current)
+
+
+def _growth_route(route_id: str, rank: int, *, active: bool = False) -> WemaReachRouteProjection:
+    return WemaReachRouteProjection(
+        route_id=route_id,
+        label=route_id.replace("_", " ").title(),
+        availability="test_now",
+        participation="text_only",
+        priority_rank=rank,
+        priority_score=100 - rank,
+        signal="untried",
+        reason="This route has high repeat leverage and no prior test.",
+        attempts=0,
+        positive_replies=0,
+        qualified_relationships=0,
+        active_placements=0,
+        useful_outputs=0,
+        purchases=0,
+        contribution_minor=0,
+        founder_minutes=0,
+        cash_cost_minor=0,
+        discovery_source="public directory",
+        has_active_opportunity=active,
+    )
+
+
+def test_wema_growth_adapter_selects_one_ranked_route_and_retains_alternatives() -> None:
+    projection = WemaGrowthProjection(
+        analysis_day=date(2026, 9, 3),
+        route_catalog_version="wema-reach-routes@1",
+        ranking_policy_version="reach-ranking@1",
+        routes=(
+            _growth_route("already_active", 1, active=True),
+            _growth_route("cms_guide_participants", 2),
+            _growth_route("care_act_discharge", 3),
+        ),
+        source_statuses=(
+            WemaGrowthSourceStatus(
+                "gsc",
+                "current",
+                1,
+                "a" * 64,
+                highlight="Google showed /care 12 times and sent 2 visits.",
+            ),
+            WemaGrowthSourceStatus("x", "unavailable", 0, "b" * 64),
+        ),
+        graph_snapshot_digest="d" * 64,
+        graph_generation=4,
+    )
+    packet = build_wema_growth_packet(
+        tenant_id="wema",
+        projection=projection,
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_release": "76e7c0f4fb1df28a9b77a02e1743eec83cd5a249"},
+        policy=policy(human=False, intensity=DecisionIntensity.ADVISORY),
+        observed_at=NOW,
+    )
+    candidates = growth_route_candidates(projection)
+    recommendation = DecisionEngine(
+        verifier=AcceptingVerifier(revision=projection.digest), clock=FixedClock()
+    ).decide(packet, candidates)
+    selected = projection.eligible_routes[0]
+    values = to_growth_owned_action_values(
+        recommendation,
+        packet=packet,
+        selected=selected,
+        alternatives=projection.eligible_routes[1:],
+        source_statuses=projection.source_statuses,
+    )
+
+    assert packet.has_canonical_digest()
+    assert recommendation.status is DecisionStatus.PROPOSED
+    assert recommendation.selection_mode == "auto_entailed"
+    assert recommendation.selected_candidate_id == "prepare:cms_guide_participants"
+    assert recommendation.rejected_alternatives == ("prepare:care_act_discharge",)
+    assert values["decision_kind"] == GROWTH_DECISION_KIND
+    assert values["requires_founder_judgment"] is False
+    assert values["evidence"]["alternative_route_ids"] == ["care_act_discharge"]
+    assert values["evidence"]["source_highlights"] == [
+        "Google showed /care 12 times and sent 2 visits."
+    ]
+    assert "Current evidence: Google showed /care" in recommendation.explanation
+    serialized = str(packet.as_dict()).lower()
+    for prohibited in ("email", "password", "patient", "caregiver_name", "raw_reply"):
+        assert prohibited not in serialized
 
 
 def test_multiagent_adapter_preserves_project_revision_evidence_and_repair_plan() -> None:

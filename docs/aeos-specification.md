@@ -1,6 +1,6 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.3.1
+**Version:** 0.4.0
 **Date:** 3 September 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
@@ -446,6 +446,23 @@ Its workers execute the operation using existing outbox, idempotency, kill-switc
 recovery mechanisms. The receipt links back to the AEOS decision. Later policy-permitted aggregate
 outcomes become evidence. AEOS then retains, revises, closes, or reopens the decision; it does not
 declare that distribution, clicks, or time spent prove usefulness or revenue.
+
+### 13.6 Daily growth adapter
+
+The second Wema advisory slice consumes the complete versioned Reach route catalogue, the
+catalogue's deterministic rank and availability prerequisite, independently verified cumulative
+route outcomes, current safe state of each named research source, and one exact project-local
+graph snapshot. It maps every eligible route to an advice-only candidate, while the governed first
+rank is the sole entailed candidate. The recommendation retains alternatives for John's detail
+view and creates or updates at most one operator-owned preparation action in Wema's existing queue.
+
+This slice never imports a prospect identity, address, reply, private community content, follower
+list, caregiver story, or provider credential. It cannot contact, post, spend, approve, or select
+words on the founder's behalf. Research and preparation remain John's work. Only after Wema has
+rendered an exact destination-and-words package does the existing founder Today approval appear.
+An unavailable source remains unavailable; it cannot be inferred as zero or replaced by another
+source. A stale or unreconstructable graph context refuses the recommendation rather than reusing
+yesterday's choice.
 
 ## 14. Schema and compatibility policy
 

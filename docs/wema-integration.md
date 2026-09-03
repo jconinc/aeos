@@ -156,3 +156,17 @@ is reconciled against the current article/version and idempotency identity befor
 - Real API/worker integration from packet through unapproved revision receipt.
 - Browser proof that Today opens the real article and all four answers are usable on mobile.
 - Serialized Wema `verify:arch`, `verify`, and `verify:ui` at the exact integration commit.
+
+## Daily growth advisory
+
+Wema's authenticated local runner may pull the closed Reach route projection and independent
+research-source states, publish their safe relationship projection to Wema's isolated local
+Memgraph store, and return the exact snapshot context. Wema reconstructs the route ranking,
+active-opportunity set, source receipts, and graph digest before accepting it. The
+`wema.daily_growth` adapter records one advice-only recommendation for the highest-ranked eligible
+route and retains cited alternatives.
+
+The recommendation is operator preparation, not founder approval. It appears in Reach as the best
+next step and is routed to John until an exact package exists. The later package alone may enter the
+founder's five-card Today frontier. No Desk password, MFA code, session cookie, graph credential,
+provider credential, or raw source export is retained by either handoff.

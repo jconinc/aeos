@@ -7,7 +7,7 @@ From the repository root:
 ```bash
 make verify
 make wheel
-python3.12 -m zipfile -l dist/aeos_kernel-0.3.1-py3-none-any.whl
+python3.12 -m zipfile -l dist/aeos_kernel-0.4.0-py3-none-any.whl
 ```
 
 `make verify` runs Ruff, strict mypy, the complete coverage-gated suite, and the pinned
@@ -31,7 +31,7 @@ rewind the live checkout merely to satisfy the compatibility test.
 9. Enable one internal test subject, verify its decision, attestation, effect and receipt.
 10. Enable the bounded production cohort and monitor typed failures/restarts.
 
-No AEOS public network listener or DNS record is part of the 0.3 release line. Its active
+No AEOS public network listener or DNS record is part of the 0.4 release line. Its active
 Memgraph dependency is a project-isolated, loopback-only workstation service used by the local
 operator runner; Wema's hosted API and worker do not receive graph credentials.
 
