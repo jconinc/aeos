@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily local AEOS Memgraph recovery point (%i)
+
+[Timer]
+OnCalendar=*-*-* 03:20:00
+Persistent=true
+RandomizedDelaySec=900
+
+[Install]
+WantedBy=timers.target

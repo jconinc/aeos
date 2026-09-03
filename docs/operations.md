@@ -56,6 +56,34 @@ flush for the agreed recovery point, snapshot retention, telemetry policy declar
 and an encrypted volume. Bind Bolt to a private address. Permit inbound Bolt only from the named
 worker security group; do not expose Memgraph Lab, Bolt or a graph HTTP/MCP service publicly.
 
+### Local-first operating profile
+
+Wema begins on the operator's local workstation. This uses the existing Memgraph 3.7.2 binary but
+not MultiAgentCommunication's process, port, user, credential or data. Project directories grow
+with actual data; no volume is reserved or preallocated.
+
+```bash
+sudo infra/local/install-project.sh wema 7697
+infra/local/run-integration-instance.sh 7698
+sudo systemctl start aeos-memgraph-backup@wema.service
+sudo /usr/local/libexec/aeos/restore-project.sh wema
+```
+
+The installer binds Bolt to loopback, generates TLS and a local credential, caps memory, writes a
+mode-0600 client environment for the invoking operator, and enables a daily recovery point. Each
+later project repeats the command with a new project name and port. A stopped workstation pauses
+only new advisory work. Wema public, Desk, commerce, mail, analytics collection and already
+authorized effects remain independent.
+
+Local AI use is a separate boundary from Memgraph. The deterministic engine and graph require no
+model call. Optional drafting or judgment assistance may be performed in an operator-initiated
+local agent session using the subscriptions the operator already maintains. A consumer
+subscription is never represented as an unattended API credential, and AEOS must not fabricate a
+server API entitlement from it. The local runner persists the resulting bounded artifact and
+receipt; it does not persist chain-of-thought.
+
+### Optional costed AWS profile
+
 The AWS implementation is project-parameterized rather than Wema-specific. One invocation creates
 one CloudFormation stack with its own instance, security group, generated secret, retained 100 GiB
 encrypted data volume, versioned private backup bucket and CloudWatch alarms. Its default
@@ -69,7 +97,8 @@ AWS_PROFILE=personal AWS_REGION=us-east-1 \
   infra/aws/deploy-project.sh wema production
 ```
 
-The deployer updates the generated secret with the resulting private address and sends only
+This profile remains dark until a measured availability, capacity or revenue trigger justifies its
+recurring cost. The deployer updates the generated secret with the resulting private address and sends only
 committed bootstrap scripts through SSM; it never places a credential in command history or an
 SSM command. On-host checks are run through SSM:
 
@@ -106,7 +135,7 @@ snapshot age, backup age, current-generation age, publish duration/failures, que
 worker deferrals. Alerts must fire before memory or disk exhaustion and when graph freshness
 exceeds the vertical's declared decision window.
 
-The host emits `ProcessUp`, `ContainerMemoryUsed`, `DataVolumeUsed`, `SnapshotAge`, `BackupAge`
+The optional AWS host emits `ProcessUp`, `ContainerMemoryUsed`, `DataVolumeUsed`, `SnapshotAge`, `BackupAge`
 and `BackupSucceeded` to `AEOS/GraphFleet`, scoped by project and environment. The stack alarms on
 process loss, missing metrics, 80% memory or disk, a 30-minute snapshot gap, a 26-hour backup gap,
 and EC2 status failure. The consuming worker remains responsible for graph refresh/publish/query

@@ -94,6 +94,7 @@ graph, provider output, or mutable test artifact.
 | Immutable project graph snapshot | Growing cross-content and cross-playbook relationships need a reproducible derived read model without moving authority or effects into a graph | Wema content/advisory projection |
 | Project-bound Memgraph adapter | Community single-database filtering is not sufficient isolation for a reusable multi-project product | One isolated Wema endpoint; later projects receive separate endpoints and volumes |
 | Generic AWS project-graph stack | A reusable engine needs repeatable project isolation, recovery and alarms rather than a hand-built Wema host | Wema production graph; future projects instantiate the same parameterized stack |
+| Local project service and subscription-assisted runner boundary | The first operator already has capable local hardware and interactive agent subscriptions; recurring infrastructure/model spend is unjustified before measured return | Wema's loopback-only AEOS graph and local decision runs |
 
 ## Explicitly unresolved at inventory version 2
 

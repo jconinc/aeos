@@ -46,6 +46,12 @@ endpoint, data volume and access identity per project, with Wema as the first pr
 listener/authentication verification, snapshot backup, and disposable restore rehearsal. It adds
 no AEOS public service; consuming workers remain the only graph clients.
 
+`infra/local/` is the active cost-minimizing profile: one loopback-only system service, operating
+system user, credential, grow-as-used data directory and backup stream per project. Optional AI
+assistance runs through operator-initiated local subscription sessions; the kernel and graph make
+no paid model call. The AWS profile stays available for a later measured capacity or revenue
+trigger, but is not required for Wema's first use.
+
 ## Development
 
 Python 3.12 is required.

@@ -1,0 +1,11 @@
+[Unit]
+Description=Create a local AEOS Memgraph recovery point (%i)
+After=aeos-memgraph@%i.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/aeos/backup-project.sh %i
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/aeos/memgraph/%i /var/lib/aeos/memgraph/projects/%i

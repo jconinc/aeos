@@ -562,6 +562,12 @@ not a Bolt port, storage directory, credential or backup set. A later Enterprise
 provide equivalent isolated databases and fine-grained access control without changing the AEOS
 graph contract.
 
+For the first vertical, that host is the operator's local workstation. This is intentional: the
+advisory graph and subscription-backed agent work stay local, while Wema production remains
+graph-independent. A local outage pauses new recommendations and nothing else. Remote graph or
+metered model infrastructure is introduced only after measured workload, availability or revenue
+shows that its recurring cost can create more value than it consumes.
+
 Every project, snapshot, entity and relationship is also stamped with `project_id`, `vertical_id`
 and `tenant_id` as defense in depth. The store is bound to those values at construction and rejects
 cross-scope snapshots before opening a connection. Fixed reads repeat the scope predicates.
@@ -610,14 +616,13 @@ health, storage, memory, query-latency, refresh-age and backup/restore evidence.
 trigger before the host or volume is exhausted. Backup restoration into a separate endpoint and
 snapshot-digest comparison are required before graph activation is called production-ready.
 
-The first production implementation is the generic `infra/aws/project-graph.yaml` stack. A stack
-owns exactly one project endpoint, generated secret, retained encrypted data volume, versioned
-private backup bucket and alarm set. The EC2 interface may have an outbound-management public
-address while running in a public subnet, but Bolt is bound only to the interface's private VPC
-address and its security group admits that port only from the consuming worker security group.
-There is no SSH rule, Lab, monitoring WebSocket, MCP endpoint or graph-facing DNS record. Community
-authentication supplies the project-local user/password boundary; because Community does not
-provide fine-grained roles, network and process isolation remain mandatory rather than optional.
+The first production implementation is `infra/local`: one systemd service and operating-system
+user per project, loopback-only Bolt, a generated per-project credential, separate grow-as-used
+data/log/backup directories, transactional WAL and snapshots, and a disposable restore endpoint.
+MultiAgentCommunication's graph is neither a dependency nor a shared database. `infra/aws` is a
+later costed deployment option, not the active topology. Community authentication supplies the
+project-local user/password boundary; because Community does not provide fine-grained roles,
+network and process isolation remain mandatory rather than optional.
 
 ### 19.6 Graph definition of done
 

@@ -1,0 +1,30 @@
+[Unit]
+Description=AEOS project-isolated Memgraph (%i)
+After=network.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+User=aeos-mg-%i
+Group=aeos-mg-%i
+Environment=MEMGRAPH_PASSFILE=/etc/aeos/memgraph/%i.pass
+ExecStart=/usr/lib/memgraph/memgraph --flag-file=/etc/aeos/memgraph/%i.conf
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=120
+LimitNOFILE=100000
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+ReadWritePaths=/var/lib/aeos/memgraph/projects/%i /var/log/aeos/memgraph/%i
+
+[Install]
+WantedBy=multi-user.target

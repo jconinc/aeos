@@ -22,6 +22,10 @@ from aeos_kernel.adapters.memgraph import MemgraphProjectStore, mgclient_factory
 pytestmark = pytest.mark.integration
 
 PORT = int(os.environ.get("AEOS_MEMGRAPH_TEST_PORT", "0"))
+HOST = os.environ.get("AEOS_MEMGRAPH_TEST_HOST", "127.0.0.1")
+USERNAME = os.environ.get("AEOS_MEMGRAPH_TEST_USERNAME", "")
+PASSWORD = os.environ.get("AEOS_MEMGRAPH_TEST_PASSWORD", "")
+SSLMODE = int(os.environ.get("AEOS_MEMGRAPH_TEST_SSLMODE", "0"))
 VOCABULARY = GraphVocabulary(
     vocabulary_id="aeos.integration",
     version="1",
@@ -74,7 +78,13 @@ def _snapshot(project_id: str, *, generation: int, title: str):
 @pytest.mark.skipif(PORT == 0, reason="set AEOS_MEMGRAPH_TEST_PORT to an isolated Memgraph")
 def test_real_memgraph_isolation_replay_query_and_concurrent_generation() -> None:
     prefix = f"integration-{uuid4().hex}"
-    connect = mgclient_factory(host="127.0.0.1", port=PORT)
+    connect = mgclient_factory(
+        host=HOST,
+        port=PORT,
+        username=USERNAME,
+        password=PASSWORD,
+        sslmode=SSLMODE,
+    )
     first_store = MemgraphProjectStore(
         project_id=f"{prefix}-one",
         vertical_id="integration",
@@ -124,7 +134,13 @@ def test_real_memgraph_isolation_replay_query_and_concurrent_generation() -> Non
 
     class BarrierConnection:
         def __init__(self) -> None:
-            self._connection = mgclient.connect(host="127.0.0.1", port=PORT)
+            self._connection = mgclient.connect(
+                host=HOST,
+                port=PORT,
+                username=USERNAME,
+                password=PASSWORD,
+                sslmode=SSLMODE,
+            )
             self.autocommit = False
 
         def cursor(self) -> BarrierCursor:
