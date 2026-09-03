@@ -45,11 +45,32 @@ def test_project_config_is_loopback_tls_transactional_and_bounded() -> None:
 
 def test_security_and_recovery_checks_can_fail() -> None:
     verify = _read("verify-project.sh")
+    backup = _read("backup-project.sh")
     restore = _read("restore-project.sh")
     assert "anonymous AEOS graph access unexpectedly succeeded" in verify
     assert "unencrypted AEOS graph access unexpectedly succeeded" in verify
     assert '"$restored" == "$current"' in restore
     assert "snapshot_digest" in restore
+    assert 'chown "$SERVICE_USER:$SERVICE_USER" "$restore_root"' in restore
+    assert 'chmod 0750 "$restore_root"' in restore
+    assert "recovery endpoint did not become ready" in restore
+    assert '"$restore_root/log/process.log"' in restore
+    assert "DUMP DATABASE" in backup
+    assert "CURRENT_SNAPSHOT" in backup
+    assert 'name \'*.cypherl\'' in restore
+    assert '<"$latest"' in restore
+    assert "--fromenv=password" in backup
+    assert "--fromenv=password" in restore
+    assert "--fromenv=password" in verify
+    assert "--password" not in backup
+    assert "--password" not in restore
+    assert "--password" not in verify
+
+
+def test_backup_service_cannot_write_project_data() -> None:
+    service = _read("aeos-memgraph-backup@.service")
+    assert "ReadWritePaths=/var/backups/aeos/memgraph/%i" in service
+    assert "/var/lib/aeos/memgraph/projects/%i" not in service
 
 
 def test_integration_suite_uses_a_disposable_sibling() -> None:

@@ -2,8 +2,8 @@
 
 This is the cost-minimizing default. It uses the already installed Memgraph binary but gives each
 AEOS project its own loopback port, operating-system user, credential, data/log/backup directories,
-systemd unit, resource ceiling, snapshot stream and restore rehearsal. It never connects to or
-reuses MultiAgentCommunication's port 7687 or `/var/lib/memgraph` data.
+systemd unit, resource ceiling, transaction-consistent graph-dump stream and restore rehearsal. It
+never connects to or reuses MultiAgentCommunication's port 7687 or `/var/lib/memgraph` data.
 
 Install Wema's graph:
 

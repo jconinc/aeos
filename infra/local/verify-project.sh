@@ -18,13 +18,15 @@ if printf 'RETURN 1;\n' | "$MGCONSOLE" --host 127.0.0.1 --port "$port" \
   echo "anonymous AEOS graph access unexpectedly succeeded" >&2
   exit 1
 fi
-if printf 'RETURN 1;\n' | "$MGCONSOLE" --host 127.0.0.1 --port "$port" \
-  --use-ssl=false --username "$username" --password "$password" >/dev/null 2>&1; then
+if printf 'RETURN 1;\n' | env FLAGS_password="$password" "$MGCONSOLE" \
+  --fromenv=password --host 127.0.0.1 --port "$port" --use-ssl=false \
+  --username "$username" >/dev/null 2>&1; then
   echo "unencrypted AEOS graph access unexpectedly succeeded" >&2
   exit 1
 fi
-version=$(printf 'SHOW VERSION;\n' | "$MGCONSOLE" --host 127.0.0.1 --port "$port" \
-  --use-ssl=true --username "$username" --password "$password")
+version=$(printf 'SHOW VERSION;\n' | env FLAGS_password="$password" "$MGCONSOLE" \
+  --fromenv=password --host 127.0.0.1 --port "$port" --use-ssl=true \
+  --username "$username")
 grep -q '3.7.2' <<<"$version"
 systemctl is-active --quiet "aeos-memgraph@${PROJECT_ID}.service"
 echo "Local AEOS graph loopback, TLS, authentication and version verified"

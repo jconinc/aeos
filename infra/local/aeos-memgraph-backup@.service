@@ -8,4 +8,4 @@ ExecStart=/usr/local/libexec/aeos/backup-project.sh %i
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/backups/aeos/memgraph/%i /var/lib/aeos/memgraph/projects/%i
+ReadWritePaths=/var/backups/aeos/memgraph/%i
