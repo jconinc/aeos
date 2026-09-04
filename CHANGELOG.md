@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 — 2026-09-04
+
+- Add the Wema mailbox-triage adapter `wema.mail_triage@1`: closed projections of a mailbox's
+  registry policy, a routed message and a matched order; one entailed candidate from the
+  registry's recommendation and its facts; outward send and refund effects named for the host
+  to register and a person to attest; one operator-queue card per message with the decision
+  identity in its evidence and no message text anywhere.
+
 ## 0.5.0 — 2026-09-04
 
 - Extract the WLG text-quality lane: `aeos_kernel.rubric` (rubric contract, status lifecycle,

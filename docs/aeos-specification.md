@@ -1,6 +1,6 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.5.0
+**Version:** 0.6.0
 **Date:** 4 September 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
@@ -490,6 +490,23 @@ rendered an exact destination-and-words package does the existing founder Today 
 An unavailable source remains unavailable; it cannot be inferred as zero or replaced by another
 source. A stale or unreconstructable graph context refuses the recommendation rather than reusing
 yesterday's choice.
+
+### 13.7 Mailbox triage adapter
+
+The third Wema slice decides what one inbound business message gets — a refund and a reply, a
+reply, a privacy request, or a person reading it in the mailbox — from closed values only: the
+mailbox registry's policy for that mailbox, the message's class and routing facts as the host's
+sync recorded them, and the matched order's state. The projections refuse an address, a line
+break or an unregistered value; no subject, body, sender or name has a field to travel in.
+
+The registry's recommended action is the single entailed candidate while its named facts hold,
+the fallback is entailed when they do not, a risky message always entails reading it, and "read it
+in the mailbox" is always offered and never entailed. Sending a reply and refunding an order are
+outward effects with the boundary tags `outbound_mail` and `payment`; the host registers them,
+a person attests every one in this slice, and a refund carries the order amount as its cost
+ceiling. The recommendation becomes or updates one card in Wema's existing queue with the
+decision identity in its evidence; the reply text a person approves is the host's, drafted and
+gated under the text-quality lane of §9.1, and never part of the packet.
 
 ## 14. Schema and compatibility policy
 

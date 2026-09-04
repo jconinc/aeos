@@ -399,3 +399,300 @@ def test_multiagent_adapter_contracts_are_strict_immutable_and_gate_bound() -> N
     )
     with pytest.raises(ValueError, match="static gate"):
         map_wlg_candidate(ungated)
+
+
+# ── wema.mail_triage@1 ────────────────────────────────────────────────────────
+
+from aeos_kernel.adapters.wema_mail import (  # noqa: E402
+    MAIL_DECISION_KIND,
+    MAIL_SOURCE_REF_TYPE,
+    REFUND_OPERATION,
+    SEND_REPLY_OPERATION,
+    WemaMailboxPolicy,
+    WemaMailMessageProjection,
+    WemaOrderContext,
+    build_wema_mail_packet,
+    mail_candidates,
+    to_mail_owned_action_values,
+)
+
+
+def _mail_policy(*, outward: bool) -> AuthorityPolicy:
+    return AuthorityPolicy(
+        policy_id="wema.mail.reply" if outward else "wema.mail.read",
+        policy_version="1",
+        level=AuthorityLevel.STANDARD_DEFAULT,
+        intensity=(
+            DecisionIntensity.OUTWARD_OR_IRREVERSIBLE if outward else DecisionIntensity.ADVISORY
+        ),
+        allowed_boundary_tags=("outbound_mail", "payment") if outward else (),
+        required_capacity="founder",
+        requires_human_attestation=True,
+        permits_model_choice=False,
+    )
+
+
+def _mailbox() -> WemaMailboxPolicy:
+    return WemaMailboxPolicy(
+        mailbox_id="support",
+        purpose="support",
+        owner="founder",
+        response_promise_hours=48,
+        allowed_actions=("refund_and_reply", "reply_only", "open_mailbox"),
+        registry_version="mailboxes@1",
+        registry_digest="d" * 64,
+    )
+
+
+def _mail_message(
+    *,
+    risk: bool = False,
+    satisfied: tuple[str, ...] = ("order_matched", "order_refundable"),
+) -> WemaMailMessageProjection:
+    return WemaMailMessageProjection(
+        message_id="019a-message",
+        mailbox_id="support",
+        classification="refund_request",
+        risk_flag=risk,
+        owner="john" if risk else "founder",
+        recommended_action="refund_and_reply",
+        fallback_action="reply_only",
+        requires=("order_matched", "order_refundable"),
+        requires_satisfied=satisfied,
+        template_id="refund_done",
+        safe_summary="Asks for a refund. Order from 12 days ago, $49.",
+        received_at=NOW,
+        deadline_at=NOW,
+    )
+
+
+def _order(*, refundable: bool = True) -> WemaOrderContext:
+    return WemaOrderContext(
+        order_id="019a-order",
+        status="fulfilled",
+        amount_minor=4900,
+        currency="USD",
+        days_since_purchase=12,
+        refundable=refundable,
+    )
+
+
+def test_wema_mail_projections_refuse_addresses_and_unregistered_values() -> None:
+    with pytest.raises(ValueError, match="look like mailboxes@1"):
+        WemaMailboxPolicy(
+            mailbox_id="support",
+            purpose="support",
+            owner="founder",
+            response_promise_hours=48,
+            allowed_actions=("reply_only",),
+            registry_version="someone@example.test",
+            registry_digest="d" * 64,
+        )
+    with pytest.raises(ValueError, match="address"):
+        WemaMailboxPolicy(
+            mailbox_id="support@example.test",
+            purpose="support",
+            owner="founder",
+            response_promise_hours=48,
+            allowed_actions=("reply_only",),
+            registry_version="mailboxes@1",
+            registry_digest="d" * 64,
+        )
+    with pytest.raises(ValueError, match="registered mail action"):
+        WemaMailboxPolicy(
+            mailbox_id="support",
+            purpose="support",
+            owner="founder",
+            response_promise_hours=48,
+            allowed_actions=("suppress_only",),
+            registry_version="mailboxes@1",
+            registry_digest="d" * 64,
+        )
+    with pytest.raises(ValueError, match="satisfied requirement"):
+        _mail_message(satisfied=("card_present",))
+    with pytest.raises(ValueError, match="support reply can act on"):
+        WemaOrderContext(
+            order_id="o",
+            status="refunded",
+            amount_minor=1,
+            currency="USD",
+            days_since_purchase=1,
+            refundable=False,
+        )
+
+
+def test_wema_mail_refund_is_the_single_entailed_candidate_with_an_outward_effect() -> None:
+    mailbox, message, order = _mailbox(), _mail_message(), _order()
+    packet = build_wema_mail_packet(
+        tenant_id="wema",
+        mailbox=mailbox,
+        message=message,
+        order=order,
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_mailbox_registry": "mailboxes@1"},
+        policy=_mail_policy(outward=True),
+        observed_at=NOW,
+    )
+    assert packet.has_canonical_digest()
+    assert packet.subject.subject_kind == "mail_message"
+    assert packet.subject.attributes["entailed_action"] == "refund_and_reply"
+    assert [item.evidence_id for item in packet.evidence] == [
+        "mailbox_policy",
+        "mail_message_projection",
+        "order_context",
+    ]
+    candidates = mail_candidates(mailbox, message, order)
+    assert [c.action for c in candidates] == ["refund_and_reply", "reply_only", "open_mailbox"]
+    assert [c.proof.claimed_entailed for c in candidates] == [True, False, False]
+    refund = candidates[0]
+    assert refund.effect is not None
+    assert refund.effect.operation == REFUND_OPERATION
+    assert refund.effect.boundary_tags == ("outbound_mail", "payment")
+    assert refund.effect.cost_ceiling_minor_units == 4900
+    assert candidates[1].effect is not None
+    assert candidates[1].effect.operation == SEND_REPLY_OPERATION
+    assert candidates[2].effect is None
+
+    recommendation = DecisionEngine(
+        verifier=AcceptingVerifier(revision=packet.subject.revision), clock=FixedClock()
+    ).decide(packet, candidates)
+    assert recommendation.status is DecisionStatus.PROPOSED
+    assert recommendation.selection_mode == "auto_entailed"
+    assert recommendation.selected_candidate_id == "mail-refund-and-reply"
+    assert recommendation.model_calls == ()
+
+    values = to_mail_owned_action_values(
+        recommendation,
+        packet=packet,
+        candidate=refund,
+        mailbox=mailbox,
+        message=message,
+        order=order,
+        rank_class="customer_recovery",
+    )
+    assert values["title"] == "Support: Asks for a refund."
+    assert values["body"] == "Recommended: refund $49 and send the reply below."
+    assert values["requires_founder_judgment"] is True
+    assert values["source_ref_type"] == MAIL_SOURCE_REF_TYPE
+    assert values["decision_kind"] == MAIL_DECISION_KIND
+    assert values["evidence"]["aeos_decision_id"] == recommendation.decision_id
+    assert values["evidence"]["recommended_action"] == "refund_and_reply"
+
+
+def test_wema_mail_facts_that_do_not_hold_entail_the_fallback() -> None:
+    mailbox = _mailbox()
+    message = _mail_message(satisfied=("order_matched",))
+    order = _order(refundable=False)
+    candidates = mail_candidates(mailbox, message, order)
+    # The refund is not offered without a refundable order; the fallback is entailed.
+    assert [c.action for c in candidates] == ["reply_only", "open_mailbox"]
+    assert candidates[0].proof.claimed_entailed is True
+    packet = build_wema_mail_packet(
+        tenant_id="wema",
+        mailbox=mailbox,
+        message=message,
+        order=order,
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_mailbox_registry": "mailboxes@1"},
+        policy=_mail_policy(outward=True),
+        observed_at=NOW,
+    )
+    recommendation = DecisionEngine(
+        verifier=AcceptingVerifier(revision=packet.subject.revision), clock=FixedClock()
+    ).decide(packet, candidates)
+    assert recommendation.selected_candidate_id == "mail-reply-only"
+
+
+def test_wema_mail_a_risky_message_is_read_by_a_person_and_carries_no_effect() -> None:
+    mailbox, message = _mailbox(), _mail_message(risk=True)
+    assert message.entailed_action == "open_mailbox"
+    candidates = mail_candidates(mailbox, message, None)
+    assert candidates[0].action == "open_mailbox" and candidates[0].proof.claimed_entailed
+    packet = build_wema_mail_packet(
+        tenant_id="wema",
+        mailbox=mailbox,
+        message=message,
+        order=None,
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_mailbox_registry": "mailboxes@1"},
+        policy=_mail_policy(outward=False),
+        observed_at=NOW,
+    )
+    recommendation = DecisionEngine(
+        verifier=AcceptingVerifier(revision=packet.subject.revision), clock=FixedClock()
+    ).decide(packet, candidates)
+    assert recommendation.selected_candidate_id == "mail-open-mailbox"
+    # The sending alternative is rejected under an advisory policy, not selected by accident.
+    assert "mail-reply-only" in recommendation.rejected_alternatives
+    values = to_mail_owned_action_values(
+        recommendation,
+        packet=packet,
+        candidate=candidates[0],
+        mailbox=mailbox,
+        message=message,
+        order=None,
+        rank_class="critical_containment",
+    )
+    assert values["impact_label"] == "safety"
+    assert values["requires_founder_judgment"] is False  # routed to John by the registry
+    assert values["body"].startswith("Recommended: read it in the mailbox")
+
+
+def test_wema_mail_inconsistent_host_facts_fail_loudly() -> None:
+    mailbox, message = _mailbox(), _mail_message()
+    with pytest.raises(ValueError, match="refundable matched order"):
+        mail_candidates(mailbox, message, None)
+    with pytest.raises(ValueError, match="disagree about the mailbox"):
+        build_wema_mail_packet(
+            tenant_id="wema",
+            mailbox=WemaMailboxPolicy(
+                mailbox_id="hello",
+                purpose="general",
+                owner="founder",
+                response_promise_hours=72,
+                allowed_actions=("reply_only", "open_mailbox"),
+                registry_version="mailboxes@1",
+                registry_digest="d" * 64,
+            ),
+            message=message,
+            order=_order(),
+            authority_bundle_digest="c" * 64,
+            source_head_pins={"wema_mailbox_registry": "mailboxes@1"},
+            policy=_mail_policy(outward=True),
+            observed_at=NOW,
+        )
+
+
+def test_wema_mail_packet_and_card_carry_no_message_text() -> None:
+    mailbox, message, order = _mailbox(), _mail_message(), _order()
+    packet = build_wema_mail_packet(
+        tenant_id="wema",
+        mailbox=mailbox,
+        message=message,
+        order=order,
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_mailbox_registry": "mailboxes@1"},
+        policy=_mail_policy(outward=True),
+        observed_at=NOW,
+    )
+    candidates = mail_candidates(mailbox, message, order)
+    recommendation = DecisionEngine(
+        verifier=AcceptingVerifier(revision=packet.subject.revision), clock=FixedClock()
+    ).decide(packet, candidates)
+    values = to_mail_owned_action_values(
+        recommendation,
+        packet=packet,
+        candidate=candidates[0],
+        mailbox=mailbox,
+        message=message,
+        order=order,
+        rank_class="customer_recovery",
+    )
+    serialized = (
+        str(packet.as_dict()) + str([c.as_dict() for c in candidates]) + str(values)
+    ).lower()
+    # The registry version label is the one `@` allowed; every other `@` is an address.
+    assert "@" not in serialized.replace("mailboxes@1", "")
+    # Words a message would carry and a projection cannot: the adapter has no field for them.
+    for forbidden in ("dear", "hi there", "regards", "from:"):
+        assert forbidden not in serialized, forbidden
