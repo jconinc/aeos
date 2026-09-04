@@ -7,7 +7,7 @@
 
 | Source | Committed revision inspected | State qualification |
 | --- | --- | --- |
-| MultiAgentCommunication | `d1047fb62d6fd6cba91fe262e8a9d3ddc9259bff` | The nine pinned decision, planner, mutation-plan, and host-fixture files are byte-identical to the previous pin; compatibility and shadow-parity checks were re-run against this committed revision. |
+| MultiAgentCommunication | `1b71c35c9f1150930618ef56c8bbdf94ff0caf11` | The nine pinned decision, planner, mutation-plan, and host-fixture files are byte-identical to the previous pin; compatibility and shadow-parity checks were re-run against this committed revision. |
 | Wema | `76e7c0f4fb1df28a9b77a02e1743eec83cd5a249` | Clean `build/p0` tree when inventoried. Wema is the first consumer, not the source of generic kernel behavior. |
 
 MultiAgentCommunication declares its Python package MIT in `pyproject.toml`. Extracted behavior

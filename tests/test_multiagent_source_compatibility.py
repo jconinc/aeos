@@ -22,7 +22,7 @@ from aeos_kernel import (
 SOURCE_ROOT = Path(
     os.environ.get("AEOS_MULTIAGENT_SOURCE_ROOT", "/home/john/code/MultiAgentCommunication")
 )
-PINNED_HEAD = "d1047fb62d6fd6cba91fe262e8a9d3ddc9259bff"
+PINNED_HEAD = "1b71c35c9f1150930618ef56c8bbdf94ff0caf11"
 PINNED_FILES = (
     "claude_coord/wlg/decision_engine/contracts.py",
     "claude_coord/wlg/decision_engine/authority.py",

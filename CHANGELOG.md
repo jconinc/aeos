@@ -6,6 +6,9 @@
   aggregate outcomes, independent research-source states, and a pinned local graph snapshot.
 - Select exactly one governed route while retaining cited alternatives and projecting advice
   into Wema's existing operator queue without contact, publication, approval, spend, or effects.
+- Advance the certified MultiAgentCommunication source pin after proving the nine decision and
+  known-answer files are byte-identical and rerunning the full compatibility suite in a clean
+  detached checkout.
 
 ## 0.3.1 — 2026-09-03
 

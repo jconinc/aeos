@@ -1,7 +1,7 @@
 """Evidence-ranked fail-closed unique candidate resolution.
 
 Extracted from MultiAgentCommunication ``decision_engine/candidate_resolvers.py`` at
-d1047fb62d6fd6cba91fe262e8a9d3ddc9259bff. Product-specific route, screen, field, and
+1b71c35c9f1150930618ef56c8bbdf94ff0caf11. Product-specific route, screen, field, and
 endpoint projections remain in the WLG adapter.
 """
 

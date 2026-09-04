@@ -5,7 +5,7 @@
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
 **Proven source:** MultiAgentCommunication decision machinery at
-`d1047fb62d6fd6cba91fe262e8a9d3ddc9259bff`
+`1b71c35c9f1150930618ef56c8bbdf94ff0caf11`
 
 ## 1. Mission
 

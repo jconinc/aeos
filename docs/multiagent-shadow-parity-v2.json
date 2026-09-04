@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "aeos_adapter": "multiagent.wlg@3",
-  "source_commit": "d1047fb62d6fd6cba91fe262e8a9d3ddc9259bff",
+  "source_commit": "1b71c35c9f1150930618ef56c8bbdf94ff0caf11",
   "replayed_source_fixture": "claude_coord/tests/test_canon_decision.py",
   "replayed_cases": {
     "entailed_selection": "same selected candidate, citations, typed effect, and receipt expectation",
