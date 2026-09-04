@@ -167,3 +167,11 @@ single entailed daily choice, cited alternatives, source-status/highlight bounda
 operator-action mapping. They also prove the output contains no recipient, private message,
 provider credential, approval, spend, publication, or effect request. The Wema consumer remains
 responsible for reconstructing the graph context and performing every later Reach operation.
+
+## Additive evidence at AEOS 0.4.1
+
+The certified MultiAgentCommunication revision advanced to
+`1b71c35c9f1150930618ef56c8bbdf94ff0caf11`. The nine decision-engine, planner,
+mutation-plan, and known-answer fixture files remain byte-identical to the prior pin. The complete
+AEOS verification and all 16 compatibility/parity cases pass against a clean detached checkout at
+the new revision; unrelated upstream working-tree changes were not used as source evidence.

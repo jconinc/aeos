@@ -7,7 +7,7 @@ From the repository root:
 ```bash
 make verify
 make wheel
-python3.12 -m zipfile -l dist/aeos_kernel-0.4.0-py3-none-any.whl
+python3.12 -m zipfile -l dist/aeos_kernel-0.4.1-py3-none-any.whl
 ```
 
 `make verify` runs Ruff, strict mypy, the complete coverage-gated suite, and the pinned
