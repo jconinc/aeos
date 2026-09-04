@@ -22,7 +22,7 @@ from aeos_kernel import (
 SOURCE_ROOT = Path(
     os.environ.get("AEOS_MULTIAGENT_SOURCE_ROOT", "/home/john/code/MultiAgentCommunication")
 )
-PINNED_HEAD = "1b71c35c9f1150930618ef56c8bbdf94ff0caf11"
+PINNED_HEAD = "d99002a1903a56b5601d7ec3455e5dfa43028935"
 PINNED_FILES = (
     "claude_coord/wlg/decision_engine/contracts.py",
     "claude_coord/wlg/decision_engine/authority.py",
@@ -33,6 +33,10 @@ PINNED_FILES = (
     "claude_coord/tests/test_canon_decision.py",
     "claude_coord/tests/test_canon_decision_pipeline.py",
     "claude_coord/tests/test_intent_authority_lift_canon_decision.py",
+    "claude_coord/wlg/pipeline/rubrics.py",
+    "claude_coord/wlg/pipeline/t3.py",
+    "claude_coord/wlg/pipeline/t2_scorer.py",
+    "claude_coord/wlg/pipeline/validator_hooks.py",
 )
 
 pytestmark = pytest.mark.compatibility

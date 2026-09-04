@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aeos-kernel"
-version = "0.4.1"
+version = "0.5.0"
 description = "Evidence- and authority-bound operating decision kernel"
 readme = "README.md"
 requires-python = ">=3.12"

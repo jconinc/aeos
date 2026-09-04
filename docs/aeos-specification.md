@@ -1,11 +1,11 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.4.1
-**Date:** 3 September 2026
+**Version:** 0.5.0
+**Date:** 4 September 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
 **Proven source:** MultiAgentCommunication decision machinery at
-`1b71c35c9f1150930618ef56c8bbdf94ff0caf11`
+`d99002a1903a56b5601d7ec3455e5dfa43028935`
 
 ## 1. Mission
 
@@ -313,6 +313,33 @@ prompt digest, generation-parameter digest, attempt number, token usage, and ret
 output are recorded. Spend and call-count ceilings are supplied by the host. A missing identity,
 invented candidate, invalid citation, low confidence, order-sensitive choice, malformed output,
 or exceeded budget fails closed.
+
+### 9.1 Text-quality lane
+
+A host that lets a model write words (not choose a candidate) gates them with the rubric
+machinery extracted from the WLG pipeline, in the pipeline's own order — T0 context → generate →
+T3 deterministic gate → T2 score → bounded repair → ratchet → T1 human audit:
+
+- `Rubric` declares, per target kind and field, `Subcriterion`s with exact scoring prompts and
+  `blocking` flags, a `FormatSpec` the deterministic gate enforces, `ScoredExample`s, and
+  `EscalationRules` (defaults: composite floor 0.67, spot-check 5 % with 10–50 samples, 100
+  artifacts per family, pause at 0.08 must-pass / 0.15 overall disagreement).
+- `text_gate.sanitize` and `t3_check` reject unsafe or off-format text at no model cost; a host
+  registers its own per-field `FieldHookRegistry` hooks beside them, and a raising hook is a
+  finding.
+- `scoring.build_scoring_prompt` renders the reviewer prompt from a host context; the host calls
+  its own gateway under `AuthorityPolicy` ceilings and hands the JSON reply to `parse_scores`:
+  any blocking FAIL fails, the non-blocking pass rate must reach the floor, and a missing,
+  unrecognized or malformed verdict abstains. Escalation on abstention is the host's decision
+  under `EscalationRules.escalate_on_abstain`.
+- `RubricStatus` is the ladder: `draft` scores in shadow, `calibrating` scores everything,
+  `frozen` samples, `degraded` routes to T1. `CalibrationState.check_promotion` is the only way
+  from calibrating to frozen; a host records promotion as an explicit, reviewable change, never
+  as a computed side effect.
+
+The lane never selects a candidate, authorizes an effect, or sends anything: a passing text is
+one input to a candidate, and the human attestation and effect authorization of §5.6–5.7 stand
+unchanged above it.
 
 ## 10. Drift and reopening
 

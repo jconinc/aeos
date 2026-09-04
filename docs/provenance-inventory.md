@@ -1,13 +1,13 @@
 # AEOS provenance and extraction inventory
 
-**Inventory version:** 4
-**Recorded:** 3 September 2026
+**Inventory version:** 5
+**Recorded:** 4 September 2026
 
 ## Source snapshots
 
 | Source | Committed revision inspected | State qualification |
 | --- | --- | --- |
-| MultiAgentCommunication | `1b71c35c9f1150930618ef56c8bbdf94ff0caf11` | The nine pinned decision, planner, mutation-plan, and host-fixture files are byte-identical to the previous pin; compatibility and shadow-parity checks were re-run against this committed revision. |
+| MultiAgentCommunication | `d99002a1903a56b5601d7ec3455e5dfa43028935` | The nine pinned decision, planner, mutation-plan, and host-fixture files are byte-identical to the previous pin (`1b71c35c`); four text-quality pipeline modules were added to the pin. At inventory time the upstream working tree carried uncommitted edits to `pipeline/t3.py` and `pipeline/validator_hooks.py` and an untracked `tests/test_wlg_t3_sanitize.py`; none was used — extraction and compatibility ran against a clean detached checkout of the committed revision. |
 | Wema | `76e7c0f4fb1df28a9b77a02e1743eec83cd5a249` | Clean `build/p0` tree when inventoried. Wema is the first consumer, not the source of generic kernel behavior. |
 
 MultiAgentCommunication declares its Python package MIT in `pyproject.toml`. Extracted behavior
@@ -48,6 +48,11 @@ file, project data, graph data, customer data, or generated operational artifact
 | `execution_receipt.py` and graph transaction machinery | Durable commit receipts but graph/temporal-driver coupled | Contract only | Extract receipt invariants and expected-postimage semantics. Exclude implementation and graph temporal types. |
 | WLG task envelopes, claims, pipeline runners and graph stores | Scheduling, unit ownership, graph persistence, transaction chokepoint | Adapter/exclude | Remain MultiAgent application machinery. AEOS defines strict interchange contracts; the compatibility adapter maps to existing implementations without a speculative repository/executor abstraction. |
 | FastAPI coordination/context service | Local personal service using `X-Agent-Id`, without production tenancy/auth boundary | Exclude | Must never be a Wema production dependency. No AEOS network service in the first release. |
+| `claude_coord/wlg/pipeline/rubrics.py` | Rubric contract for generated text: status lifecycle `draft→calibrating→frozen→degraded→retired`, execution profiles, blocking subcriteria, deterministic `FormatSpec`, scored examples, escalation thresholds, calibration promotion rule, prompt renderers | Extract | `aeos_kernel.rubric`. Frozen, validated dataclasses with tuple sequences; `needs_t2_scoring(enabled)` takes the host's global switch as a parameter instead of reading `pcfg("t2_scoring_enabled")`. Every default threshold and every rendered prompt string is preserved and compared. |
+| `pipeline/t3.py` | Deterministic pre-scoring gate: null bytes, injection/XSS/code/template/prompt-leak rejection, quote normalization with JSON preservation, length and Latin-ratio limits, `FormatSpec` enforcement | Extract | `aeos_kernel.text_gate` (`sanitize`, `t3_check`, `T3Result`). Pattern lists kept verbatim as module constants so known answers match; committed revision only (the uncommitted upstream `CODE_INDICATORS_HARD` edit was not taken). |
+| `pipeline/t2_scorer.py` | Reviewer prompt (PASS/FAIL/ABSTAIN with one sentence of evidence per criterion, composite, confidence) and the verdict parser; retired repair lane | Invert + exclude | `aeos_kernel.scoring`: `build_scoring_prompt` renders the same prompt from a host-supplied context mapping; `parse_scores` preserves the pass rule (blocking FAIL fails; non-blocking pass rate ≥ `min_pass_rate`; missing verdict abstains) and tightens an unrecognized or malformed verdict to ABSTAIN where upstream keeps the string or raises. `score_artifact`'s task-packet and DeepSeek bindings stay upstream; `repair_artifact` is retired upstream (fails closed unconditionally) and is not extracted. |
+| `pipeline/validator_hooks.py` | Per-field pre-commit hook contract (`hook(value, context) -> Optional[List[str]]`, "pass pre-commit, pass the validator") and runner; WLG definition/AC/description hooks | Extract contract + adapter | `aeos_kernel.field_hooks.FieldHookRegistry`: instance-owned registry, same contract and ordering; a raising hook is a finding (upstream swallows and logs). The WLG field hooks and their validator constants remain upstream. |
+| `pipeline/generation.py` banned-phrase repair and single escalated retry; `pipeline/registry.py` rubric registry and routing; `pipeline/llm.py` provider tiers; `pipeline/provider_budget.py` | Bounded text repair, rubric declaration idiom, provider ladder and budgets | Contract only / exclude | The repair shape (deterministic phrase repair, then one regenerate accepted only on pass, ≤ 2 attempts) is documented for hosts; the job plumbing, provider clients and budget ledger stay upstream. Hosts declare rubrics as module constants and supply their own gateway and budgets through `AuthorityPolicy`. |
 | `docs/sync_review/graph_io.py` | Project-scoped graph I/O, deterministic IDs, transactional mode, snapshot/WAL awareness and an expiring project writer lock | Extract operating law; do not copy | AEOS uses immutable generations, one transactionally flipped current pointer and a project-bound adapter. It deliberately excludes analytical/turbo mode because advisory refresh durability matters more than bulk-import speed. |
 | `claude_coord/wlg/graph/constraints.py` | Query-driven Memgraph indexes, single-property unique identities and project scope on every mutable graph identity | Extract operating law; adapt schema | AEOS uses deterministic single-property keys, fixed project predicates and only indexes justified by its small query registry. WLG labels and its large index surface remain upstream. |
 
@@ -59,6 +64,7 @@ file, project data, graph data, customer data, or generated operational artifact
 | `claude_coord/tests/test_canon_decision.py` | entailed selection, cardinality-not-entailment, evidence/citation/pin/identity validation, authority precedence/conflict, bounded model choice, order consensus, low confidence, cross-project/stale refusal, static-gate refusal and strict envelopes |
 | `claude_coord/tests/test_canon_decision_pipeline.py` | real worker commit/readback, provider trace, no-mutation escalation, rollback, durable receipt, replay-zero, source-head and stale-revision refusal |
 | `claude_coord/tests/test_intent_authority_lift_canon_decision.py` | exact plan compilation, cross-project refusal, receipt-bound retraction, bounded candidate enumeration and red plants |
+| `pipeline/rubrics.py`, `pipeline/t3.py`, `pipeline/t2_scorer.py`, `pipeline/validator_hooks.py` (pinned modules; upstream ships no committed unit tests for them) | enum values and threshold defaults, per-status thresholds, promotion known answers, rendered prompt strings, `sanitize`/`t3_check` known answers over 19 texts × 3 specs, scoring prompt byte-equality, `parse_scores` known answers, hook-contract parity, and the two asserted tightenings (`tests/test_multiagent_text_quality_compatibility.py`) |
 
 The compatibility suite imports the committed source modules and selected committed fixture
 helpers from the pinned checkout. It vendors no product fixture, operational database, project
@@ -78,6 +84,7 @@ graph, provider output, or mutable test artifact.
 | Reach route catalogue, ranking and verified aggregate outcomes | Existing governed channel availability and learning policy | `wema.daily_growth@1` consumes the safe complete projection and emits one advice-only operator preparation recommendation; Wema retains discovery, packaging, approval, execution and measurement. |
 | `apps/api/wema_api/guidance.py` | Safe guidance projected on Today actions | Recommendation explanation mapping. |
 | `packages/model-gateway` | Provider-neutral model access, structured context, schema validation, lint, spend ceiling and fail-closed provider controls | Implements AEOS `ModelGateway`; AEOS contains no provider credentials or duplicate provider client. |
+| Mailbox management (`docs/mailbox-management-spec.md` v5 §6.3–6.4, §8.6; packets 3 and 9) | Support-reply drafting with a human tap before any send: two `Rubric` constants, the voice as a `FormatSpec` plus registered field hooks, the T3 → score → single-repair loop, and the founder's tap as the T1 calibration signal | Named production consumer of `aeos_kernel.rubric`, `text_gate`, `scoring` and `field_hooks` (0.5.0). Wema renders the scoring prompt, calls its own gateway, and persists parsed reports; AEOS holds no mail, provider or founder data. |
 | Wema worker/domain/outbox/idempotency/kill-switch infrastructure | Authorized operations and operational recovery | Implements effect authorizer/executor and receipts. |
 | Wema analytics/event/market-policy registries | Permitted aggregate observations and suppression/evidence floors | Implements outcome source. AEOS never silently activates collection. |
 | Wema public review checklist and saved-feedback projection | Release-bound closed choices and bounded notes; explicitly advisory rather than approval | `wema.review@1` consumes the minimized projection without reviewer identity or model use and emits at most one operator follow-up. |
@@ -167,6 +174,16 @@ single entailed daily choice, cited alternatives, source-status/highlight bounda
 operator-action mapping. They also prove the output contains no recipient, private message,
 provider credential, approval, spend, publication, or effect request. The Wema consumer remains
 responsible for reconstructing the graph context and performing every later Reach operation.
+
+## Additive evidence at AEOS 0.5.0
+
+The certified MultiAgentCommunication revision advanced to
+`d99002a1903a56b5601d7ec3455e5dfa43028935`; the nine previously pinned files remain
+byte-identical. Four text-quality pipeline modules were extracted (rows above) with 28
+deterministic tests and 6 known-answer compatibility tests; the complete AEOS verification and all
+22 compatibility/parity cases pass against a clean detached checkout at the new revision. The
+upstream working tree's uncommitted edits to two of the four modules were not used as source
+evidence and are recorded in the snapshot row so the next pin advance re-examines them.
 
 ## Additive evidence at AEOS 0.4.1
 

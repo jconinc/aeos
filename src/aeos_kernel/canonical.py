@@ -1,7 +1,7 @@
 """Strict canonical JSON and stable identity helpers.
 
 Derived from MultiAgentCommunication's decision-engine fingerprint contract at
-1b71c35c9f1150930618ef56c8bbdf94ff0caf11. AEOS deliberately tightens the source
+d99002a1903a56b5601d7ec3455e5dfa43028935. AEOS deliberately tightens the source
 helper by rejecting non-JSON values and NaN instead of coercing them with ``str``.
 """
 

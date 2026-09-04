@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 — 2026-09-04
+
+- Extract the WLG text-quality lane: `aeos_kernel.rubric` (rubric contract, status lifecycle,
+  escalation thresholds, calibration promotion), `aeos_kernel.text_gate` (deterministic
+  sanitize and format gate), `aeos_kernel.scoring` (reviewer prompt and verdict parser without a
+  provider) and `aeos_kernel.field_hooks` (instance-owned per-field hook registry that fails
+  closed on a raising hook).
+- Advance the certified MultiAgentCommunication source pin to `d99002a19` after proving the nine
+  decision files byte-identical, and pin the four extracted modules with known-answer
+  compatibility tests run against a clean detached checkout.
+- First named consumer: Wema mailbox management (support-reply rubrics, voice gate and the
+  founder-tap calibration signal).
+
 ## 0.4.1 — 2026-09-03
 
 - Advance the certified MultiAgentCommunication source pin after proving the nine decision and

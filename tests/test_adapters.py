@@ -327,7 +327,7 @@ def test_multiagent_adapter_preserves_project_revision_evidence_and_repair_plan(
             ),
         ),
         canon_bundle_digest="c" * 64,
-        source_head_pins={"coordination_head": "1b71c35c9f1150930618ef56c8bbdf94ff0caf11"},
+        source_head_pins={"coordination_head": "d99002a1903a56b5601d7ec3455e5dfa43028935"},
         allowed_actions=("link",),
         policy=wlg_policy,
         created_at=NOW,

@@ -56,10 +56,31 @@ from aeos_kernel.evidence import (
     build_decision_packet,
     build_evidence_item,
 )
+from aeos_kernel.field_hooks import FieldHook, FieldHookRegistry
 from aeos_kernel.graph import GraphEdge, GraphNode, GraphSnapshot
 from aeos_kernel.graph_builder import build_graph_snapshot
 from aeos_kernel.graph_vocabulary import GraphVocabulary
 from aeos_kernel.lifecycle import DecisionRecord, reopen_record, transition_record
+from aeos_kernel.rubric import (
+    CalibrationState,
+    EscalationRules,
+    ExecutionProfile,
+    FormatSpec,
+    GenerationMode,
+    Rubric,
+    RubricStatus,
+    ScoredExample,
+    Subcriterion,
+)
+from aeos_kernel.scoring import (
+    SCORING_PROMPT,
+    SCORING_SYSTEM_PROMPT,
+    CriterionScore,
+    T2ScoreResult,
+    build_scoring_prompt,
+    parse_scores,
+)
+from aeos_kernel.text_gate import T3Result, sanitize, t3_check
 from aeos_kernel.vocabulary import (
     AuthorityLevel,
     DecisionIntensity,
@@ -68,11 +89,13 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 
 __all__ = [
     "EVIDENCE_RANK",
     "PLACEHOLDER_TARGET_IDS",
+    "SCORING_PROMPT",
+    "SCORING_SYSTEM_PROMPT",
     "AuthorityLayer",
     "AuthorityLevel",
     "AuthorityPolicy",
@@ -82,8 +105,10 @@ __all__ = [
     "AuthorityStatus",
     "AuthorizationContext",
     "AuthorizedEffect",
+    "CalibrationState",
     "Candidate",
     "ContractError",
+    "CriterionScore",
     "DecisionEngine",
     "DecisionIntensity",
     "DecisionPacket",
@@ -96,7 +121,13 @@ __all__ = [
     "EffectStatus",
     "EffectTemplate",
     "EntailmentProof",
+    "EscalationRules",
     "EvidenceItem",
+    "ExecutionProfile",
+    "FieldHook",
+    "FieldHookRegistry",
+    "FormatSpec",
+    "GenerationMode",
     "GraphEdge",
     "GraphNode",
     "GraphSnapshot",
@@ -114,24 +145,34 @@ __all__ = [
     "RegisteredOperation",
     "ResolutionResult",
     "ResolvedCandidate",
+    "Rubric",
+    "RubricStatus",
     "ScopeSelector",
+    "ScoredExample",
     "SelectorType",
     "SourceRef",
+    "Subcriterion",
+    "T2ScoreResult",
+    "T3Result",
     "authorize_effect",
     "build_decision_packet",
     "build_evidence_item",
     "build_graph_snapshot",
     "build_outcome_evidence",
+    "build_scoring_prompt",
     "candidate_set_digest",
     "canonical_json",
     "classify_drift",
     "content_digest",
+    "parse_scores",
     "reopen_record",
     "resolve_authority",
     "resolve_unique",
+    "sanitize",
     "selector_matches",
     "selector_specificity",
     "stable_fingerprint",
+    "t3_check",
     "transition_record",
     "verify_effect_receipt",
 ]

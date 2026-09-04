@@ -1,7 +1,7 @@
 # MultiAgentCommunication compatibility contract
 
 **Adapter:** `multiagent.wlg@3`
-**Pinned source:** `1b71c35c9f1150930618ef56c8bbdf94ff0caf11`
+**Pinned source:** `d99002a1903a56b5601d7ec3455e5dfa43028935`
 
 The adapter is additive. It does not move graph storage, task claims, pipeline scheduling,
 static patch gates, mutation lowering, transactions, or graph receipts into AEOS.
@@ -48,6 +48,17 @@ The committed PostgreSQL pipeline, lifecycle/replay, graph receipt and receipt-b
 fixture identities are pinned in `docs/multiagent-shadow-parity-v2.json`. Their generic invariants
 run in AEOS; their graph, database, task claim and transaction machinery deliberately remains in
 MultiAgentCommunication and is not imported or simulated here.
+
+## Text-quality modules (0.5.0)
+
+`rubrics.py`, `t3.py`, `t2_scorer.py` and `validator_hooks.py` are pinned alongside the decision
+files. The compatibility suite imports the pinned committed modules and compares enum values,
+threshold defaults, per-status thresholds, promotion known answers, rendered prompt strings,
+`sanitize`/`t3_check` known answers, scoring-prompt byte equality, `parse_scores` known answers
+and hook-contract parity. Two tightenings are asserted as divergences: an unrecognized or
+malformed scoring verdict abstains in AEOS (upstream keeps the string or raises), and a raising
+field hook is a finding in AEOS (upstream swallows it). WLG's own field hooks, its rubric
+registry, its generation jobs, provider tiers and budget ledger remain upstream.
 
 ## Adoption sequence
 
