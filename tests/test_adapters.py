@@ -44,7 +44,7 @@ from aeos_kernel.adapters.wema_reviews import (
     review_follow_up_candidate,
     to_review_owned_action_values,
 )
-from tests.factories import NOW, AcceptingVerifier, FixedClock, policy
+from tests.factories import NOW, AcceptingVerifier, FixedClock, ScriptedModel, policy
 
 
 def article() -> WemaArticleProjection:
@@ -300,6 +300,86 @@ def test_wema_growth_adapter_selects_one_ranked_route_and_retains_alternatives()
     serialized = str(packet.as_dict()).lower()
     for prohibited in ("email", "password", "patient", "caregiver_name", "raw_reply"):
         assert prohibited not in serialized
+
+
+def test_wema_growth_adapter_supports_one_graph_bounded_model_choice() -> None:
+    projection = WemaGrowthProjection(
+        analysis_day=NOW.date(),
+        route_catalog_version="routes@1",
+        ranking_policy_version="ranking@1",
+        routes=(
+            _growth_route("ranked_first", 1),
+            _growth_route("ranked_second", 2),
+            _growth_route("outside_graph_pool", 3),
+        ),
+        source_statuses=(
+            WemaGrowthSourceStatus("gsc", "current", 1, "a" * 64),
+        ),
+        graph_snapshot_digest="d" * 64,
+        graph_generation=4,
+    )
+    model_policy = policy(
+        model=True,
+        human=False,
+        intensity=DecisionIntensity.ADVISORY,
+    )
+    packet = build_wema_growth_packet(
+        tenant_id="wema",
+        projection=projection,
+        authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_release": "1" * 40},
+        policy=model_policy,
+        observed_at=NOW,
+    )
+    candidates = growth_route_candidates(
+        projection,
+        candidate_route_ids=("ranked_first", "ranked_second"),
+        claim_ranked_first=False,
+    )
+    model = ScriptedModel(
+        ["prepare:ranked_second", "prepare:ranked_second"],
+        citations=(
+            "growth_selection_policy",
+            "reach_route_portfolio",
+            "growth_source_statuses",
+            "growth_graph_snapshot",
+        ),
+    )
+
+    recommendation = DecisionEngine(
+        verifier=AcceptingVerifier(revision=projection.digest),
+        clock=FixedClock(),
+        model_gateway=model,
+    ).decide(packet, candidates)
+
+    assert packet.subject.allowed_uses == ("decision", "model")
+    assert all(item.allowed_uses == ("decision", "model") for item in packet.evidence)
+    assert [candidate.proof.claimed_entailed for candidate in candidates] == [False, False]
+    assert recommendation.selection_mode == "model_eligible"
+    assert recommendation.selected_candidate_id == "prepare:ranked_second"
+    assert [request.candidate_order for request in model.requests] == [
+        ("prepare:ranked_first", "prepare:ranked_second"),
+        ("prepare:ranked_second", "prepare:ranked_first"),
+    ]
+
+
+def test_wema_growth_model_pool_rejects_unknown_duplicate_or_empty_route_ids() -> None:
+    projection = WemaGrowthProjection(
+        analysis_day=NOW.date(),
+        route_catalog_version="routes@1",
+        ranking_policy_version="ranking@1",
+        routes=(_growth_route("first", 1),),
+        source_statuses=(WemaGrowthSourceStatus("gsc", "current", 1, "a" * 64),),
+        graph_snapshot_digest="d" * 64,
+        graph_generation=1,
+    )
+    for route_ids in ((), ("first", "first"), ("unknown",)):
+        with pytest.raises(ValueError, match="growth candidate route IDs"):
+            growth_route_candidates(
+                projection,
+                candidate_route_ids=route_ids,
+                claim_ranked_first=False,
+            )
 
 
 def test_multiagent_adapter_preserves_project_revision_evidence_and_repair_plan() -> None:

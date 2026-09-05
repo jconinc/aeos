@@ -33,7 +33,7 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
 
-The current package line is `0.4.x` with v2 decision interchange schemas and the v1 immutable
+The current package line is `0.7.x` with v2 decision interchange schemas and the v1 immutable
 graph-snapshot contract. Historical v1 decision resources remain readable, but hosts must
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
@@ -51,9 +51,11 @@ no AEOS public service; consuming workers remain the only graph clients.
 
 `infra/local/` is the active cost-minimizing profile: one loopback-only system service, operating
 system user, credential, grow-as-used data directory and backup stream per project. Optional AI
-assistance runs through operator-initiated local subscription sessions; the kernel and graph make
-no paid model call. The AWS profile stays available for a later measured capacity or revenue
-trigger, but is not required for Wema's first use.
+assistance runs through operator-initiated local subscription sessions. For Wema's daily growth
+choice, deterministic code still fixes eligibility and the candidate set while the local CLI
+supplies a reverse-order-consensus choice; the kernel and graph make no paid model API call. The
+AWS profile stays available for a later measured capacity or revenue trigger, but is not required
+for Wema's first use.
 
 ## Development
 

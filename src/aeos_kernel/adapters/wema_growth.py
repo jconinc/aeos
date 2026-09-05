@@ -25,7 +25,7 @@ from aeos_kernel.evidence import (
 )
 
 GROWTH_ADAPTER_ID = "wema.daily_growth"
-GROWTH_ADAPTER_VERSION = "1"
+GROWTH_ADAPTER_VERSION = "2"
 GROWTH_ACTION = "prepare_reach_route"
 GROWTH_SOURCE_REF_TYPE = "reach_route"
 GROWTH_DECISION_KIND = "research_reach_route"
@@ -165,14 +165,18 @@ def build_wema_growth_packet(
             "ranking_policy_version": projection.ranking_policy_version,
         },
         source_refs=(source_ref,),
-        allowed_uses=("decision",),
+        allowed_uses=("decision", "model") if policy.permits_model_choice else ("decision",),
     )
     evidence_payloads = (
         (
             "growth_selection_policy",
             "product_policy",
             {
-                "selection": "lowest priority_rank among test_now routes without active work",
+                "selection": (
+                    "bounded model choice among graph-returned ranked routes"
+                    if policy.permits_model_choice
+                    else "lowest priority_rank among test_now routes without active work"
+                ),
                 "maximum_recommendations": 1,
                 "route_catalog_version": projection.route_catalog_version,
                 "ranking_policy_version": projection.ranking_policy_version,
@@ -235,7 +239,7 @@ def build_wema_growth_packet(
             payload=payload,
             source_ref=ref,
             observed_at=observed_at,
-            allowed_uses=("decision",),
+            allowed_uses=("decision", "model") if policy.permits_model_choice else ("decision",),
         )
         for evidence_id, source_tier, payload, ref in evidence_payloads
     )
@@ -253,12 +257,29 @@ def build_wema_growth_packet(
     )
 
 
-def growth_route_candidates(projection: WemaGrowthProjection) -> tuple[Candidate, ...]:
-    """Map every currently eligible route; only the ranked first route is entailed."""
+def growth_route_candidates(
+    projection: WemaGrowthProjection,
+    *,
+    candidate_route_ids: tuple[str, ...] | None = None,
+    claim_ranked_first: bool = True,
+) -> tuple[Candidate, ...]:
+    """Map a closed eligible route set for deterministic or model-bound selection.
+
+    The original deterministic host contract remains the default. A host that has explicit
+    ``agent_judgment`` authority may turn off the ranked-first entailment and pass the exact
+    graph-returned route IDs that form its bounded model pool.
+    """
 
     eligible = projection.eligible_routes
     if not eligible:
         return ()
+    if candidate_route_ids is not None:
+        if not candidate_route_ids or len(set(candidate_route_ids)) != len(candidate_route_ids):
+            raise ValueError("growth candidate route IDs must be nonempty and unique")
+        by_id = {route.route_id: route for route in eligible}
+        if any(route_id not in by_id for route_id in candidate_route_ids):
+            raise ValueError("growth candidate route IDs must name currently eligible routes")
+        eligible = tuple(by_id[route_id] for route_id in candidate_route_ids)
     selected_id = eligible[0].route_id
     current_highlights = tuple(
         source.highlight
@@ -300,10 +321,13 @@ def growth_route_candidates(projection: WemaGrowthProjection) -> tuple[Candidate
                     "growth_graph_snapshot",
                 ),
                 reason=(
-                    "The governed route ranking and availability prerequisites select this "
-                    "single unblocked route."
+                    "The governed route ranking and availability prerequisites admit this "
+                    "unblocked route to the bounded choice."
+                    if not claim_ranked_first
+                    else "The governed route ranking and availability prerequisites select "
+                    "this single unblocked route."
                 ),
-                claimed_entailed=route.route_id == selected_id,
+                claimed_entailed=claim_ranked_first and route.route_id == selected_id,
             ),
             effect=None,
         )

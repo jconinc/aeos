@@ -479,9 +479,16 @@ declare that distribution, clicks, or time spent prove usefulness or revenue.
 The second Wema advisory slice consumes the complete versioned Reach route catalogue, the
 catalogue's deterministic rank and availability prerequisite, independently verified cumulative
 route outcomes, current safe state of each named research source, and one exact project-local
-graph snapshot. It maps every eligible route to an advice-only candidate, while the governed first
-rank is the sole entailed candidate. The recommendation retains alternatives for John's detail
-view and creates or updates at most one operator-owned preparation action in Wema's existing queue.
+graph snapshot. It maps the graph-returned ranked route set to advice-only candidates. Wema's
+current policy permits a subscription-backed Codex CLI on the operator workstation to choose
+within that closed set; the kernel requires the same choice after reversing candidate order and
+retains both structured outputs. The recommendation retains alternatives for John's detail view
+and creates or updates at most one operator-owned preparation action in Wema's existing queue.
+
+No model runs on Wema's production host. Wema reconstructs the complete current projection and
+replays the submitted structured calls through the kernel before it accepts the recommendation.
+The replay must produce the same packet, candidate-set and recommendation digests. A missing CLI,
+invalid output, disagreement, stale input, changed policy, or replay mismatch writes no task.
 
 This slice never imports a prospect identity, address, reply, private community content, follower
 list, caregiver story, or provider credential. It cannot contact, post, spend, approve, or select
@@ -627,7 +634,9 @@ For the first vertical, that host is the operator's local workstation. This is i
 advisory graph and subscription-backed agent work stay local, while Wema production remains
 graph-independent. A local outage pauses new recommendations and nothing else. Remote graph or
 metered model infrastructure is introduced only after measured workload, availability or revenue
-shows that its recurring cost can create more value than it consumes.
+shows that its recurring cost can create more value than it consumes. Subscription-backed model
+judgment is invoked by the local project runner through a host-owned `ModelGateway`; it is not a
+graph service responsibility and does not give the CLI production credentials.
 
 Every project, snapshot, entity and relationship is also stamped with `project_id`, `vertical_id`
 and `tenant_id` as defense in depth. The store is bound to those values at construction and rejects

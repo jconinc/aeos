@@ -160,13 +160,16 @@ is reconciled against the current article/version and idempotency identity befor
 ## Daily growth advisory
 
 Wema's authenticated local runner may pull the closed Reach route projection and independent
-research-source states, publish their safe relationship projection to Wema's isolated local
-Memgraph store, and return the exact snapshot context. Wema reconstructs the route ranking,
-active-opportunity set, source receipts, and graph digest before accepting it. The
-`wema.daily_growth` adapter records one advice-only recommendation for the highest-ranked eligible
-route and retains cited alternatives.
+research-source states and publish their safe relationship projection to Wema's isolated local
+Memgraph store. The graph returns one ranked candidate set. A locally authenticated Codex CLI
+chooses within only that set through AEOS's `ModelGateway`; AEOS requires the same answer from the
+forward and reversed presentations and retains both structured calls. Wema then reconstructs the
+route ranking, active-opportunity set, source receipts and graph digest and replays those calls
+through the kernel before accepting the packet. The `wema.daily_growth@2` adapter records one
+advice-only recommendation and its cited alternatives.
 
 The recommendation is operator preparation, not founder approval. It appears in Reach as the best
 next step and is routed to John until an exact package exists. The later package alone may enter the
 founder's five-card Today frontier. No Desk password, MFA code, session cookie, graph credential,
-provider credential, or raw source export is retained by either handoff.
+provider credential, or raw source export is retained by either handoff. The Codex process never
+receives Wema or Memgraph credentials, and no model runs on the production host.

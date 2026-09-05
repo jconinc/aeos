@@ -18,7 +18,7 @@ from typing import Any
 from aeos_kernel.errors import ContractError
 
 
-class RubricStatus(str, Enum):
+class RubricStatus(str, Enum):  # noqa: UP042 -- source-compatible string representation
     DRAFT = "draft"  # shadow mode: generate and score, discard the output
     CALIBRATING = "calibrating"  # output kept, elevated spot-check (20%)
     FROZEN = "frozen"  # trusted, spot-check at baseline (5%)
@@ -26,12 +26,12 @@ class RubricStatus(str, Enum):
     RETIRED = "retired"  # replaced by a newer version
 
 
-class GenerationMode(str, Enum):
+class GenerationMode(str, Enum):  # noqa: UP042 -- source-compatible string representation
     ARTIFACT_LOCAL = "artifact_local"  # one subject, one prompt, one output
     GROUP = "group"  # all siblings under one parent, one prompt, N outputs
 
 
-class ExecutionProfile(str, Enum):
+class ExecutionProfile(str, Enum):  # noqa: UP042 -- source-compatible string representation
     BACKFILL = "backfill"  # T0 → T3 → generate → ratchet → sample T1
     CALIBRATION = "calibration"  # T0 → T3 → generate → T2 score → repair → ratchet → T1
     JUDGMENT = "judgment"  # route to T1

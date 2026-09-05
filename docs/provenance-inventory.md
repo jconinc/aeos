@@ -1,6 +1,6 @@
 # AEOS provenance and extraction inventory
 
-**Inventory version:** 5
+**Inventory version:** 6
 **Recorded:** 4 September 2026
 
 ## Source snapshots
@@ -193,3 +193,19 @@ The certified MultiAgentCommunication revision advanced to
 mutation-plan, and known-answer fixture files remain byte-identical to the prior pin. The complete
 AEOS verification and all 16 compatibility/parity cases pass against a clean detached checkout at
 the new revision; unrelated upstream working-tree changes were not used as source evidence.
+
+## Additive evidence at AEOS 0.7.0
+
+The Wema growth adapter now supports both authority modes explicitly. Its compatible default still
+claims the governed ranked-first route as the sole deterministic entailment. Under a host's
+versioned `agent_judgment` policy, the host instead supplies the exact nonempty, unique,
+currently-eligible graph route IDs and asks the adapter to leave every candidate unentailed. The
+ordinary engine then enforces bounded model selection, proof citations, provider/model identity,
+cost, confidence and reverse-order consensus. Packet subjects and evidence become model-eligible
+only when that policy permits model choice. Adapter tests cover both modes and reject empty,
+duplicate, unknown and currently-ineligible model pools.
+
+The CLI process boundary remains host code, not kernel code. Its noninteractive invocation shape
+was adapted from the working `codex_cli` provider in the pinned MultiAgentCommunication system;
+AEOS retains only the provider-neutral `ModelGateway` port and validates the resulting structured
+decision exactly as it validates any other gateway.
