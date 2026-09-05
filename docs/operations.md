@@ -7,12 +7,14 @@ From the repository root:
 ```bash
 make verify
 make wheel
-python3.12 -m zipfile -l dist/aeos_kernel-0.4.1-py3-none-any.whl
+python3.12 -m zipfile -l dist/aeos_kernel-0.7.1-py3-none-any.whl
 ```
 
 `make verify` runs Ruff, strict mypy, the complete coverage-gated suite, and the pinned
 MultiAgent source-compatibility suite. The wheel inspection must show `py.typed`, the schema
-bundle and every named v1 entry schema.
+bundle, every named historical v1/current v2 entry schema, and the packaged changelog,
+specification and provenance inventory under `aeos_kernel/release/`. Record line and branch
+coverage independently; a combined percentage alone does not satisfy the consumer's floors.
 
 When the live MultiAgent checkout has advanced beyond the provenance pin, verify against a
 detached worktree at the pinned commit by setting `AEOS_MULTIAGENT_SOURCE_ROOT`. Never move or
@@ -31,7 +33,7 @@ rewind the live checkout merely to satisfy the compatibility test.
 9. Enable one internal test subject, verify its decision, attestation, effect and receipt.
 10. Enable the bounded production cohort and monitor typed failures/restarts.
 
-No AEOS public network listener or DNS record is part of the 0.4 release line. Its active
+No AEOS public network listener or DNS record is part of the 0.7 release line. Its active
 Memgraph dependency is a project-isolated, loopback-only workstation service used by the local
 operator runner; Wema's hosted API and worker do not receive graph credentials.
 

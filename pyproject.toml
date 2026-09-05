@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aeos-kernel"
-version = "0.7.0"
+version = "0.7.1"
 description = "Evidence- and authority-bound operating decision kernel"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -47,8 +47,13 @@ compatibility = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/aeos_kernel"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"CHANGELOG.md" = "aeos_kernel/release/CHANGELOG.md"
+"docs/provenance-inventory.md" = "aeos_kernel/release/provenance-inventory.md"
+"docs/aeos-specification.md" = "aeos_kernel/release/aeos-specification.md"
+
 [tool.hatch.build.targets.sdist]
-include = ["src/aeos_kernel", "tests", "docs", "README.md", "LICENSE", "pyproject.toml"]
+include = ["src/aeos_kernel", "tests", "docs", "README.md", "CHANGELOG.md", "LICENSE", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

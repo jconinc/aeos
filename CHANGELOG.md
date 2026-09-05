@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.1 — candidate, 2026-09-05
+
+- Retain validated model-call identities and safe structured outputs on refusal, including
+  reverse-order disagreement and an invalid later choice. Refusal never becomes consensus or
+  effect authority; Wema owns durable journaling and recovery.
+- Add boundary witnesses for immutable retained state, malformed graph/review identities,
+  current source and permission checks, incomplete model authority and unsupported receipts.
+- Include the changelog, authoritative specification and provenance inventory in the wheel as
+  well as source distributions. Preserve all historical v1 and current v2 schema resources.
+- Keep the upstream compatibility pin and all outward-effect policies unchanged. Candidate
+  packaging is not a Wema deployment or approval record.
+
+## 0.7.0 — 2026-09-04
+
+- Support bounded host-model choice within Wema's exact current graph candidate pool while
+  retaining the compatible deterministic ranked-first adapter mode. The kernel enforces
+  evidence citations, provider identity, cost and reverse-order consensus; the CLI remains
+  host-owned and effects remain separately authorized.
+
 ## 0.6.0 — 2026-09-04
 
 - Add the Wema mailbox-triage adapter `wema.mail_triage@1`: closed projections of a mailbox's
