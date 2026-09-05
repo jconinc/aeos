@@ -209,3 +209,22 @@ The CLI process boundary remains host code, not kernel code. Its noninteractive 
 was adapted from the working `codex_cli` provider in the pinned MultiAgentCommunication system;
 AEOS retains only the provider-neutral `ModelGateway` port and validates the resulting structured
 decision exactly as it validates any other gateway.
+
+## Operational completion — validated work on refusal (AW-04)
+
+Wema's local preparation runner is the named consumer. Inspection at AEOS `511efcb` showed that
+the compiler retained successful model calls on selection but discarded them on reverse-order
+disagreement or rejection of a later call. This is a repair of §9's existing retention contract,
+not extraction of new upstream behavior. `tests/test_refusal_retention.py` began with five failing
+retention cases and one passing invalid-first exclusion. The repair uses the existing v2
+recommendation identity/output fields, leaves all candidate and effect gates unchanged, and
+retains only calls that passed validation. Wema still owns durable local journaling and recovery;
+this kernel repair alone is not evidence that an interrupted host request is recoverable.
+
+The isolated operational source subsequently passes 209 non-live-graph tests, including all 22
+upstream compatibility witnesses at the unchanged clean pin above. The additional retained-state
+boundary tests exercise immutable copies, invalid permissions/source bindings, malformed graph
+and review identities, incomplete model authority, and unsupported completion receipts. Independent
+coverage is 96.87% lines and 90.10% branches; combined coverage is 95.27%. Ruff and strict mypy
+pass. These are source-checkpoint results, not a new released wheel, Wema repin, real provider
+execution or operational completion claim.

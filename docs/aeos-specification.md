@@ -314,6 +314,14 @@ output are recorded. Spend and call-count ceilings are supplied by the host. A m
 invented candidate, invalid citation, low confidence, order-sensitive choice, malformed output,
 or exceeded budget fails closed.
 
+A refusal after successful validation retains the identities and structured outputs of those
+validated calls in the existing recommendation fields. Reverse-order disagreement retains both
+validated attempts but selects no candidate. An invalid second attempt retains the first validated
+attempt only; unvalidated output does not become trusted retained work. Host infrastructure faults
+remain distinguishable exceptions, and the host must journal safe completed calls before making
+another call or sending a recommendation so interruption cannot discard them. Retention is not
+authority to reuse a partial choice as consensus or execute an effect.
+
 ### 9.1 Text-quality lane
 
 A host that lets a model write words (not choose a candidate) gates them with the rubric

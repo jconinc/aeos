@@ -67,6 +67,15 @@ make verify
 make wheel
 ```
 
+The upstream compatibility witness also needs its explicit test-only import dependencies and
+a clean checkout of the revision pinned in the provenance inventory. These are not engine
+runtime dependencies:
+
+```bash
+python3.12 -m pip install -e '.[dev,compatibility]'
+AEOS_MULTIAGENT_SOURCE_ROOT=/absolute/path/to/pinned/checkout make compatibility
+```
+
 The live Memgraph integration suite is opt-in and must target a disposable isolated instance:
 
 ```bash
