@@ -43,10 +43,15 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
 
-The current package line is `0.7.x` with v2 decision interchange schemas and the v1 immutable
+The current package candidate is `0.8.0` with v2 decision interchange schemas and the v1 immutable
 graph-snapshot contract. Historical v1 decision resources remain readable, but hosts must
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
+
+The 0.8.0 candidate contains the reusable business control plane and its Wema consumer contracts.
+It is integrated in source and built locally; Wema's locked dependency still names the published
+0.7.2 wheel until a reviewed 0.8.0 artifact is published and installed through the normal lock
+process.
 
 AEOS 0.4 uses that private graph foundation for relationships among safe content, questions,
 audiences, routes, source states, playbooks and aggregate outcomes. Wema's daily-growth adapter

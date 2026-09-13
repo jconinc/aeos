@@ -6,21 +6,25 @@ the work; they do not postpone applicable business capabilities to an unspecifie
 
 ## Current integration evidence
 
-The reusable kernel at `99840c24` joins actor/tool enforcement and the new core boundary
-controls. Native unit proof: 528 passes, 23 deselected, 5.084 seconds; locked lint/types pass.
-Line coverage is 4566/4828 and branch coverage is 1361/1594 (85.383%). The combined threshold
-passes; the independent branch floor remains unmet. No new artifact or Wema pin is published.
-The previous 22 exact-pin compatibility passes remain bound to `9aa15777`, and real Memgraph
-integration is unproved. Readiness evidence still needs the maintained native validation and
-source/artifact connection completed before its Wema join.
+The integrated AEOS source is `656b113bc83806d792d98b888040a324d93f20e2` in
+`/home/john/code/aeos`. Its focused native suite passes **528 cases with 23 deselected** in
+5.36 seconds, and Ruff plus strict mypy pass. Combined coverage is **92.29%**
+(4,566/4,828 statements and 1,361/1,594 branches); the independent branch floor is **85.383%**
+and remains an open requirement. The pinned MultiAgent compatibility cases and live Memgraph
+case remain separately unproved for this integrated source.
 
-Wema's native shared budget/Marketing worker at `6f061a74` passes a focused 350-case union
-with 110 executed and 240 reused cases, plus 68 prerequisites. Two private PostgreSQL clones
-are used and removed. This covers real worker/fictional HTTP, caps, currentness, uncertain
-usage, migration refusal, the actual offline-provider exception and native consumers. The
-broader selection, group coverage, remaining support/Desk work and delivery remain open.
-The original source-specific failure and acceptance records are preserved. Commercial and
-security lanes have active native source; their claims are not integrated acceptance.
+The source is versioned as a local **0.8.0 candidate**. The bounded wheel build produced
+`dist/aeos_kernel-0.8.0-py3-none-any.whl` with SHA-256
+`8fcdc37bceeff6a12d560520c09480c397a3d1db3529357b4bca09955ee43988`. Wema's normal
+dependency process still points at the published 0.7.2 wheel;
+publication, lock refresh, private installed-consumer proof and delivery are explicit release
+gates. No unpublished or local path is silently substituted for that lock.
+
+Wema's private integrated source is `208416a73c46328054fe166f9e486fd85c5eb2f0`, with schema
+head `0133_terms_digest` and a clean 139-table, three-seed target profile. Focused product,
+admission, operations and commercial controls pass under the retained packet; its original
+five selector failures remain recorded. This is source and private-runtime evidence, not a
+complete support, Desk, human-usability, package or production release acceptance.
 
 ## Master completion checklist
 

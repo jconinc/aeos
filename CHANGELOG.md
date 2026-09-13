@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0 — candidate, 2026-09-13
+
+- Add the reusable business control plane: product and module registration, bounded moves and
+  approvals, gates and stop rules, scheduled admission, release-readiness evidence, operational
+  rails, and privacy-bound improvement records.
+- Bind those contracts to a named Wema product projection and worker entry point while keeping
+  Wema's native Desk, persistence, model gateway and effect authority in charge of product facts
+  and outward actions.
+- Keep incomplete coverage, missing validation, unregistered modules, absent rails and pending
+  human decisions visible as blocking gaps. This candidate has local integrated proof only; it is
+  not a publication, Wema dependency-pin update or production activation.
+
 ## 0.7.2 — candidate, 2026-09-13
 
 - Give Wema access resend its own human-attested compound operation, bound to the exact
