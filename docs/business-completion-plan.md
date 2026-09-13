@@ -6,7 +6,7 @@ the work; they do not postpone applicable business capabilities to an unspecifie
 
 ## Current integration evidence
 
-The integrated AEOS source is `b6a04e8` in
+The integrated AEOS source is `0c3b326c` in
 `/home/john/code/aeos`. The focused native suite was run at code checkpoint `c17e066` and
 passed **528 cases with 23 deselected** in 5.36 seconds, with Ruff plus strict mypy passing.
 The added contract-edge controls bring the integrated suite to **536 cases with 23 deselected**
