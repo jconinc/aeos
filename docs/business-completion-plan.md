@@ -6,10 +6,11 @@ the work; they do not postpone applicable business capabilities to an unspecifie
 
 ## Current integration evidence
 
-The integrated AEOS source is `c17e066` in
-`/home/john/code/aeos`. Its focused native suite passes **528 cases with 23 deselected** in
-5.36 seconds, and Ruff plus strict mypy pass. The added contract-edge controls bring the
-integrated suite to **536 cases with 23 deselected** in 4.31 seconds. Combined coverage is
+The integrated AEOS source is `8c04bf12` in
+`/home/john/code/aeos`. The focused native suite was run at code checkpoint `c17e066` and
+passed **528 cases with 23 deselected** in 5.36 seconds, with Ruff plus strict mypy passing.
+The added contract-edge controls bring the integrated suite to **536 cases with 23 deselected**
+in 4.31 seconds. Combined coverage is
 **94.16%** (4,628/4,828 statements and 1,435/1,594 branches); the independent branch floor is
 now **90.0%**. The 22 pinned MultiAgent compatibility cases pass against the detached
 `d99002a1903a56b5601d7ec3455e5dfa43028935` source (3.20 seconds); the live Memgraph case

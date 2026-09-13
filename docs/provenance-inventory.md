@@ -261,7 +261,7 @@ Named production consumer: Wema, as a `consumer_app` product instance whose prof
 manifest are projected from Wema's own canonical records. No kernel module reads a Wema name,
 table, route or credential.
 
-Evidence at this checkpoint: the integrated source at `9ab5f94` has 103 original control-plane
+Evidence at this checkpoint: the integrated source at `8c04bf12` has 103 original control-plane
 tests plus eight focused refusal-edge tests in `tests/test_business_contract_edges.py`, with
 fictional two-product fixtures in `tests/factories_control_plane.py`. The native unit suite
 passes 536 cases with 23 deselected; Ruff and strict mypy are clean. Statement coverage is
