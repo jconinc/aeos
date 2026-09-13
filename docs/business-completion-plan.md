@@ -306,3 +306,28 @@ those requirements and compatible installed verification before calling the incr
 released. Actual approved provider/help material and human usability evidence remain separate
 from implementation proof. Continue the full requirement map and other business workflows;
 REQ-SUP-029 stays source_partial and no requirement is marked accepted complete.
+
+## Current private integration — 13 September, 19:10 UTC
+
+The preceding chronological source checkpoints remain attributed to their original commits.
+Current implementation is broader: private Wema `4be1e3dd` includes reply outcomes, ordinary
+reply follow-through, support observations, first-response monitoring and shared model/setup
+admission. Setup admission advances queued to running with its first durable reservation and
+retains unresolved exposure; its worker transaction split remains explicitly incomplete. The
+14 new scoped-admission controls are authored, unexecuted; lint/types/native lock/diff pass.
+
+Private kernel `26b1bd9` joins claude-0's exact `ce19620` rule/finite-capacity source and
+claude-3's `79912bb` operational evidence helper, preserving the completion map and earlier
+source fixes. Three affected kernel contract files pass 80 cases in 0.643 seconds wall time;
+whole-tree lint and strict kernel types pass. This is bounded kernel proof, without a full
+coverage, pinned-upstream, real graph, Wema-runtime or release claim. No version, published
+artifact, installed Wema dependency or shared/host tip changed.
+
+Next joined dependencies: claude-0's native control-plane/rail readers, claude-3's exact
+`c487ef5e` native monitoring consumers and the normal combined AEOS artifact/pin. Global
+registrations, provisional migrations/schema profile and generated contracts must agree before
+Wema runtime verification. P1-P6 is now reported through `14b6fcf6` and remains an ordered
+commercial migration block; preserve its original partial-gate results. Commercial's broader
+assignment is still dispatched, not silently counted complete. Complete all applicable
+remaining workflows and acceptance evidence through these named owners; none is deferred to
+an unspecified later project.
