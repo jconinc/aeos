@@ -236,3 +236,14 @@ and review identities, incomplete model authority, and unsupported completion re
 coverage is 96.87% lines and 90.10% branches; combined coverage is 95.27%. Ruff and strict mypy
 pass. These are source-checkpoint results, not a new released wheel, Wema repin, real provider
 execution or operational completion claim.
+
+
+## Native operational measurement adapter — prepared, unverified
+
+| Source and pin | Adaptation | Named consumer | Authored controls | Proof status |
+| --- | --- | --- | --- | --- |
+| Wema `c1616a9a8d9c66c5efedd821a387b18437f80d0d`, `apps/worker/wema_worker/outbox.py`, `handlers/retention_janitor.py`; broader AEOS `29a3652e85cf091beff3c7651b61fd4718d7c145`, PROD_OPS RT-012 and SEC-055/060 | New small freshness/threshold validator in `operational_evidence.py`; reuses the native distinction between observed recovery, held work and missing evidence. This is new adapter behavior, not a claim that these exact functions were extracted and already proved. | Wema `wema_db.operational_checks.current_health`/`persist_check` and `wema_api.operational_health.health_projection` | `tests/test_operational_evidence.py`: exact window/threshold, missing/incomplete/future/cross-scope/source and empty coverage | Written, runtime-unexecuted. Cheap syntax/lint/type evidence is recorded in the operations author lane; package/version/pin and joined runtime verification remain integration-owned. |
+
+No upstream engine or graph was copied. No private message, identity, secret, approval or effect
+record is accepted by this helper. Its digest comparisons do not authenticate an entire audit
+log and do not close SEC-058.

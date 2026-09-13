@@ -736,3 +736,19 @@ idempotent replay, changed-generation, concurrent-writer, crash/rollback and una
 cases are proven; Wema's first safe projection and real decision read are measured end to end;
 monitoring, backup, restore and credential rotation are rehearsed; and the host remains able to
 run with graph decision refresh disabled.
+
+
+## 20. Native operational observations
+
+The product-neutral `operational_evidence` helper evaluates one host-supplied measurement
+against an exact scope, source digest, observation time, completeness declaration, freshness
+window and ceiling. Missing, stale, future, incomplete or differently bound observations are
+unknown; measured zero is distinct from missing data. An empty coverage set cannot imply health.
+The helper makes no provider call, schedules nothing and grants no corrective authority.
+
+Wema is the named first consumer: its native worker records aggregate PostgreSQL observations,
+its existing incident workflow requires fresh matching evidence to clear a monitored incident,
+and its existing Desk/CLI read exposes both coverage and missing results. These source changes
+are authored for the joined AEOS business candidate; runtime controls have not run in this lane.
+This is not a substitute for the broader per-move security policy, append-only audit chain,
+provider delivery proof, privacy discharge or complete cross-product operational report.
