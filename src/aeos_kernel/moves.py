@@ -288,24 +288,75 @@ class CommitRefusal:
             raise ContractError("commit refusal gaps must be a tuple, not a lazy sequence")
 
 
+def _restriction_refusal(
+    *, move: Move, family: MoveFamily, actor_role: str, tool: str, detected_at: datetime
+) -> CommitRefusal | None:
+    """Enforce what a family declares about who and what may run it.
+
+    A family that restricts actors or tools and is then handed an unattributed move is
+    refused too: an empty actor against a restricted family is not "unrestricted", it is a
+    move nobody will answer for. An unrestricted family is unaffected, which is why adding
+    this check breaks no caller that was not already relying on a declaration nothing read.
+    """
+
+    for kind, value, permitted, declared in (
+        ("actor role", actor_role, family.permits_actor(actor_role), family.allowed_actor_roles),
+        ("tool", tool, family.permits_tool(tool), family.allowed_tools),
+    ):
+        if permitted:
+            continue
+        named = repr(value) if value else "no " + kind
+        return CommitRefusal(
+            f"{move.move_type} permits {kind}s {', '.join(sorted(declared))}; got {named}",
+            (
+                GapRow(
+                    gap_type="move_actor_not_permitted",
+                    severity=GapSeverity.ERROR,
+                    product_slug=move.product_slug,
+                    subject_ref=move.move_type,
+                    reason=(
+                        f"{move.move_type} declares an allow-list of {kind}s and this move "
+                        f"reached the commit boundary with {named}"
+                    ),
+                    detected_at=detected_at,
+                    move_id=move.move_id,
+                    rulepack_version=move.rulepack_version,
+                    data_snapshot_ref=move.data_snapshot_refs[0],
+                ),
+            ),
+        )
+    return None
+
+
 def commit_boundary_refusal(
     *,
     move: Move,
     family: MoveFamily,
     resolved_evidence_refs: frozenset[str],
     detected_at: datetime,
+    actor_role: str = "",
+    tool: str = "",
 ) -> CommitRefusal | None:
     """The one structural check every shipped move passes, whoever produced it.
 
     ``resolved_evidence_refs`` are the evidence identities the host proved resolve into the
     target product's own records. Prose about a product is not evidence; a pointer into its
     graph is.
+
+    ``actor_role`` and ``tool`` are checked against what the family declares. They default to
+    empty because most families restrict neither; a family that does restrict refuses an
+    empty one, so the default cannot be used to skip the check.
     """
 
     if move.move_type != family.move_type:
         return CommitRefusal(
             f"move type {move.move_type!r} was committed against family {family.move_type!r}"
         )
+    restricted = _restriction_refusal(
+        move=move, family=family, actor_role=actor_role, tool=tool, detected_at=detected_at
+    )
+    if restricted is not None:
+        return restricted
     if family.human_override and move.decision is MoveDecision.SHIP:
         return CommitRefusal(
             f"{move.move_type} always parks for an operator before it executes",

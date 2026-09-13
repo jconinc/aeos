@@ -21,7 +21,7 @@ from aeos_kernel.approvals import (
 )
 from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.errors import ContractError
-from aeos_kernel.modules import PriorityClass
+from aeos_kernel.modules import MoveFamily, PriorityClass
 from aeos_kernel.moves import (
     Disposition,
     ExecStatus,
@@ -784,3 +784,75 @@ def test_the_idempotency_key_is_stable_across_equal_inputs_in_any_order() -> Non
         rulepack_version="r@1",
     )
     assert first == second
+
+
+def restricted_family(
+    *, roles: tuple[str, ...] = (), tools: tuple[str, ...] = ()
+) -> MoveFamily:
+    return MoveFamily(
+        move_type="capture_coverage",
+        module_key="pipeline",
+        priority_class=PriorityClass.BACKGROUND,
+        owner_role="fictional.owner",
+        approval_policy="fictional.owner_attested",
+        evidence_kinds=("coverage_snapshot",),
+        rails=("pipeline.requires_active_binding",),
+        allowed_actor_roles=roles,
+        allowed_tools=tools,
+    )
+
+
+def capture(**kwargs: object) -> Move:
+    return move(move_type="capture_coverage", **kwargs)  # type: ignore[arg-type]
+
+
+def boundary(family: MoveFamily, **kwargs: str) -> object:
+    item = capture()
+    return commit_boundary_refusal(
+        move=item,
+        family=family,
+        resolved_evidence_refs=frozenset(item.evidence_refs),
+        detected_at=NOW,
+        **kwargs,
+    )
+
+
+def test_a_family_that_restricts_nothing_is_unaffected_by_the_actor_check() -> None:
+    """Control: the default empty actor is not a way to skip the check."""
+
+    assert boundary(restricted_family()) is None
+
+
+def test_a_move_run_by_an_actor_the_family_does_not_permit_is_refused() -> None:
+    refusal = boundary(
+        restricted_family(roles=("system_worker",)), actor_role="marketing_agent"
+    )
+    assert refusal is not None
+    assert "permits actor roles system_worker" in refusal.reason
+    assert [gap.gap_type for gap in refusal.gaps] == ["move_actor_not_permitted"]
+
+
+def test_a_restricted_family_refuses_an_unattributed_move_rather_than_waving_it_through() -> None:
+    """An empty actor against an allow-list is not 'unrestricted', it is nobody answering."""
+
+    refusal = boundary(restricted_family(roles=("system_worker",)))
+    assert refusal is not None
+    assert "got no actor role" in refusal.reason
+
+
+def test_the_permitted_actor_passes_the_same_boundary() -> None:
+    assert boundary(restricted_family(roles=("system_worker",)), actor_role="system_worker") is None
+
+
+def test_a_tool_the_family_does_not_permit_is_refused_the_same_way() -> None:
+    refusal = boundary(
+        restricted_family(tools=("operational_health_check",)), tool="send_mail"
+    )
+    assert refusal is not None
+    assert "permits tools operational_health_check" in refusal.reason
+
+
+def test_the_permitted_tool_passes() -> None:
+    assert boundary(
+        restricted_family(tools=("operational_health_check",)), tool="operational_health_check"
+    ) is None
