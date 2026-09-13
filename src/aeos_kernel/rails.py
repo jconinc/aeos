@@ -22,6 +22,7 @@ from typing import Any
 from aeos_kernel._validation import required
 from aeos_kernel.errors import ContractError
 from aeos_kernel.gaps import GapRow, GapSeverity
+from aeos_kernel.modules import MoveFamily
 from aeos_kernel.moves import MoveDecision
 
 
@@ -222,6 +223,25 @@ def evaluate_rails(
     )
 
 
+def decide_move(
+    *, family: MoveFamily, rails: tuple[Rail, ...], context: RailContext
+) -> MergedRails:
+    """Merge the rails answering for one move, starting from what its family declares.
+
+    A family that always parks starts parked rather than shipping, so no rail has to
+    remember to park it and an empty or all-passing rail set still routes it to a person.
+    Starting at ship and relying on a rail to park would make the safe outcome depend on a
+    rule being present, which is the wrong way round.
+    """
+
+    if context.move_type != family.move_type:
+        raise ContractError(
+            f"rails for {context.move_type!r} cannot decide a {family.move_type!r} move"
+        )
+    default = MoveDecision.PARKED if family.human_override else MoveDecision.SHIP
+    return evaluate_rails(rails, context, default=default)
+
+
 class RailRegistry:
     """The rails available to a rule profile, and which move types they cover."""
 
@@ -261,5 +281,6 @@ __all__ = [
     "RailRegistry",
     "RailResult",
     "RailVerdict",
+    "decide_move",
     "evaluate_rails",
 ]

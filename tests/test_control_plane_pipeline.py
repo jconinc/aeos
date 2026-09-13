@@ -430,6 +430,64 @@ def test_health_is_derived_from_named_thresholds_not_a_free_score() -> None:
     assert pipeline_signals(healthy)["approval_queue_depth"] == 0.0
 
 
+def test_a_product_with_no_build_task_store_reports_unmeasured_not_empty() -> None:
+    """A host whose build system keeps its own queue cannot answer this, and must not guess.
+
+    Raised by the operations lane, which declined to construct this rollup with a zero rather
+    than report a queue nobody had looked at. They were right: the contract had no way to say
+    so, which made zero the only available answer.
+    """
+
+    unmeasured = ProductHealth(
+        product_slug=SLUG,
+        captured_at=NOW,
+        coverage_pct=1.0,
+        open_error_gaps=0,
+        open_warning_gaps=0,
+        ratchet_delta=0,
+        readiness=Readiness.GREEN,
+        open_tasks=None,
+        parked_move_count=0,
+    )
+    # Absent from the rollup entirely: a portfolio that averages an unmeasured queue as empty
+    # reports itself healthier than anybody observed.
+    assert "open_build_tasks" not in pipeline_signals(unmeasured)
+    assert unmeasured.as_dict()["open_tasks"] == "unmeasured"
+
+
+def test_a_measured_empty_queue_is_reported_as_the_zero_it_is() -> None:
+    """Control: unmeasured and measured-zero are different answers, and both are sayable."""
+
+    measured = ProductHealth(
+        product_slug=SLUG,
+        captured_at=NOW,
+        coverage_pct=1.0,
+        open_error_gaps=0,
+        open_warning_gaps=0,
+        ratchet_delta=0,
+        readiness=Readiness.GREEN,
+        open_tasks=0,
+        parked_move_count=0,
+    )
+    assert pipeline_signals(measured)["open_build_tasks"] == 0.0
+    assert measured.as_dict()["open_tasks"] == 0
+
+
+def test_a_negative_build_task_count_is_still_refused() -> None:
+    with pytest.raises(ContractError, match="open_tasks must be nonnegative"):
+        ProductHealth(
+            product_slug=SLUG,
+            captured_at=NOW,
+            coverage_pct=1.0,
+            open_error_gaps=0,
+            open_warning_gaps=0,
+            ratchet_delta=0,
+            readiness=Readiness.GREEN,
+            open_tasks=-1,
+            parked_move_count=0,
+        )
+
+
 def growth_gate() -> Gate:
     return Gate(
         gate_id="fictional-validate-to-scale",
