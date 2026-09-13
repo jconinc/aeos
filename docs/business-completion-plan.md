@@ -100,6 +100,26 @@ runtime test or a claim that later concurrent source has been reviewed.
 
 ## Delivery order and acceptance
 
+The first support component is implemented in Wema `43a2d441` (13 September): the internal
+gateway task/context registry, reply and scoring output/privacy boundaries, cost admission,
+usage retention and the worker callable into the existing bounded loop. Native component
+proof is 150 passing cases in six complete files, six affected prerequisites and two killed
+registered mutations with passing controls; 50.667 seconds, two Python workers with exclusive
+database clones. Original missing-task witnesses and the first changed-registry expectation
+failure remain retained. No external provider, message, human decision or host operation ran.
+
+This does **not** complete REQ-SUP-029. Durable worker registration, current message/rule/order
+binding, persisted prompt and source provenance, concurrent spend accounting, a reviewed real
+provider route, and Desk readback are the next work in this same support packet. The native
+source selection currently reaches 416 Python files; the six-file component run is not its
+completion or a release verdict. The original broad selection caused by Coord's untracked
+task metadata also remains recorded, and the metadata stays at its original path. No selector
+rule was changed. Existing operations-mail delivery `daa25904` is terminal in its own record
+and must be preserved before this packet is delivered.
+
+Retained component packet:
+`~/wema-coord/evidence/aeos-complete-business-2026-09-13/43a2d441e4d13936bb16cfe5515b36b65a95b921/author/support-foundation-01/`.
+
 1. **Reconcile requirements and existing work.** Preserve the exact goal, inspect each existing
    requirement and its native consumers, and add omitted obligations from tables and referenced
    contracts using their source anchors. Record behavior differences requiring amendments. Use
