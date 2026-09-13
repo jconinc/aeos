@@ -158,7 +158,9 @@ class DecisionEngine:
                 request=second_request,
             )
             if rejection is not None:
-                return self._refusal(decision_id, packet, set_digest, rejection)
+                return self._refusal(
+                    decision_id, packet, set_digest, rejection, model_calls=tuple(calls)
+                )
             calls.append(second)
             if second.candidate_id != first.candidate_id:
                 return self._refused(
@@ -167,6 +169,7 @@ class DecisionEngine:
                     set_digest,
                     RefusalCode.MODEL_DISAGREEMENT,
                     "model selection changed when candidate order was reversed",
+                    model_calls=tuple(calls),
                 )
         cost = sum(call.identity.cost_minor_units for call in calls)
         if cost > packet.policy.max_model_cost_minor_units:
@@ -176,6 +179,7 @@ class DecisionEngine:
                 set_digest,
                 RefusalCode.MODEL_BUDGET_EXCEEDED,
                 "validated model calls exceeded the declared cost ceiling",
+                model_calls=tuple(calls),
             )
         chosen = next(item for item in eligible if item.candidate_id == first.candidate_id)
         return self._selected(
@@ -305,8 +309,16 @@ class DecisionEngine:
         reason: str,
         *,
         status: DecisionStatus = DecisionStatus.REFUSED,
+        model_calls: tuple[ModelDecision, ...] = (),
     ) -> Recommendation:
-        return cls._refusal(decision_id, packet, set_digest, Refusal(code, reason), status=status)
+        return cls._refusal(
+            decision_id,
+            packet,
+            set_digest,
+            Refusal(code, reason),
+            status=status,
+            model_calls=model_calls,
+        )
 
     @staticmethod
     def _refusal(
@@ -316,6 +328,7 @@ class DecisionEngine:
         refusal: Refusal,
         *,
         status: DecisionStatus = DecisionStatus.REFUSED,
+        model_calls: tuple[ModelDecision, ...] = (),
     ) -> Recommendation:
         return Recommendation(
             decision_id=decision_id,
@@ -324,4 +337,6 @@ class DecisionEngine:
             packet_digest=packet.packet_digest,
             candidate_set_digest=set_digest,
             refusal=refusal,
+            model_calls=tuple(call.identity for call in model_calls),
+            model_outputs=tuple(dict(call.retained_output) for call in model_calls),
         )

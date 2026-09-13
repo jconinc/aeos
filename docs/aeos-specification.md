@@ -1,7 +1,7 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.6.0
-**Date:** 4 September 2026
+**Version:** 0.7.1
+**Date:** 5 September 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
 **Proven source:** MultiAgentCommunication decision machinery at
@@ -313,6 +313,14 @@ prompt digest, generation-parameter digest, attempt number, token usage, and ret
 output are recorded. Spend and call-count ceilings are supplied by the host. A missing identity,
 invented candidate, invalid citation, low confidence, order-sensitive choice, malformed output,
 or exceeded budget fails closed.
+
+A refusal after successful validation retains the identities and structured outputs of those
+validated calls in the existing recommendation fields. Reverse-order disagreement retains both
+validated attempts but selects no candidate. An invalid second attempt retains the first validated
+attempt only; unvalidated output does not become trusted retained work. Host infrastructure faults
+remain distinguishable exceptions, and the host must journal safe completed calls before making
+another call or sending a recommendation so interruption cannot discard them. Retention is not
+authority to reuse a partial choice as consensus or execute an effect.
 
 ### 9.1 Text-quality lane
 
