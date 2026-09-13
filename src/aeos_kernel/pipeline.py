@@ -448,77 +448,68 @@ def evaluate_release_readiness(
     utc(now, "now")
     reasons: list[str] = []
     parked = False
+    max_errors = int(manifest.release_rule("max_open_error_gaps", 0) or 0)
+
+    # Every input is evaluated on its own. Stopping at the first absent one would report a
+    # missing snapshot and stay silent about blockers already sitting in the inputs that did
+    # arrive, which reads as one small problem instead of the several that exist.
     if coverage is None:
         reasons.append("no coverage snapshot has been captured")
+    else:
+        thresholds = dict(family_coverage_thresholds)
+        thresholds.update(manifest.release_rule("coverage_thresholds", {}) or {})
+        minimum = thresholds.pop("min_overall", None)
+        if (
+            isinstance(minimum, int | float)
+            and not isinstance(minimum, bool)
+            and coverage.coverage_pct < float(minimum)
+        ):
+            reasons.append(
+                f"coverage is {coverage.coverage_pct:.0%}; at least {float(minimum):.0%} "
+                f"required ({coverage.covered_requirements} of "
+                f"{coverage.total_requirements} requirements)"
+            )
+        reasons.extend(coverage.kind_shortfalls(thresholds))
+        coverage_errors = [gap for gap in coverage.gaps() if gap.severity is GapSeverity.ERROR]
+        if len(coverage_errors) > max_errors:
+            reasons.append(
+                f"{len(coverage_errors)} coverage error gap(s); at most {max_errors} permitted"
+            )
+
     if validation is None:
         reasons.append("no validation snapshot has been captured")
+    else:
+        staleness = float(manifest.wlg_sync_policy.get("staleness_threshold_hours", 0) or 0)
+        if validation.is_stale(now=now, threshold_hours=staleness):
+            parked = True
+            reasons.append(
+                f"the validation snapshot is older than {staleness:g}h; a stale reading cannot "
+                "green-light a launch"
+            )
+        if validation.ratchet_delta > 0:
+            reasons.append(
+                f"warning gaps rose by {validation.ratchet_delta} since the previous snapshot"
+            )
+        if not validation.triple_gate_pass:
+            failed = sorted(
+                name for name, value in validation.triple_gate_status.items() if not value
+            )
+            reasons.append(f"build gate did not pass: {', '.join(failed)}")
+        block_on = tuple(manifest.release_rule("block_on_error_rules", ()) or ())
+        reasons.extend(validation.failing_rules(block_on))
+        if validation.error_gap_count > max_errors:
+            reasons.append(
+                f"{validation.error_gap_count} build error gap(s); at most {max_errors} permitted"
+            )
+
     if gate_manifest is None:
         reasons.append("no_product_gate_manifest: the product's own launch bars are not compiled")
     else:
-        # The product's own bars do not depend on the snapshots, so report them even when a
-        # snapshot is missing. An operator asking why a launch is blocked wants everything
-        # that blocks it, not only the first thing that stopped the evaluation.
         reasons.extend(gate_manifest.liability_gate_set_valid(manifest.liability_class))
         for entry in gate_manifest.open_blocking(regime_id=regime_id):
             scope = f" ({entry.regime_id})" if entry.regime_id else ""
             reasons.append(f"launch bar {entry.gate_id}{scope} is open: {entry.description}")
-    if coverage is None or validation is None or gate_manifest is None:
-        return ReleaseReadiness(
-            product_slug=manifest.product_slug,
-            readiness=Readiness.BLOCKED,
-            blocking_reasons=tuple(reasons),
-            evaluated_at=now,
-            coverage_snapshot_id=coverage.snapshot_id if coverage else "",
-            validation_snapshot_id=validation.snapshot_id if validation else "",
-            gate_manifest_id=gate_manifest.manifest_id if gate_manifest else "",
-            regime_id=regime_id,
-        )
-    staleness = float(manifest.wlg_sync_policy.get("staleness_threshold_hours", 0) or 0)
-    if validation.is_stale(now=now, threshold_hours=staleness):
-        parked = True
-        reasons.append(
-            f"the validation snapshot is older than {staleness:g}h; a stale reading cannot "
-            "green-light a launch"
-        )
-    if validation.ratchet_delta > 0:
-        reasons.append(
-            f"warning gaps rose by {validation.ratchet_delta} since the previous snapshot"
-        )
-    if not validation.triple_gate_pass:
-        failed = sorted(
-            name for name, value in validation.triple_gate_status.items() if not value
-        )
-        reasons.append(f"build gate did not pass: {', '.join(failed)}")
-    block_on = tuple(manifest.release_rule("block_on_error_rules", ()) or ())
-    reasons.extend(validation.failing_rules(block_on))
-    max_errors = int(manifest.release_rule("max_open_error_gaps", 0) or 0)
-    if validation.error_gap_count > max_errors:
-        reasons.append(
-            f"{validation.error_gap_count} build error gap(s); at most {max_errors} permitted"
-        )
-    coverage_errors = [
-        gap for gap in coverage.gaps() if gap.severity is GapSeverity.ERROR
-    ]
-    if len(coverage_errors) > max_errors:
-        reasons.append(
-            f"{len(coverage_errors)} coverage error gap(s); at most {max_errors} permitted"
-        )
-    thresholds = dict(family_coverage_thresholds)
-    thresholds.update(manifest.release_rule("coverage_thresholds", {}) or {})
-    minimum = thresholds.pop("min_overall", None)
-    if (
-        isinstance(minimum, int | float)
-        and not isinstance(minimum, bool)
-        and coverage.coverage_pct < float(minimum)
-    ):
-        reasons.append(
-            f"coverage is {coverage.coverage_pct:.0%}; at least {float(minimum):.0%} required"
-        )
-    reasons.extend(coverage.kind_shortfalls(thresholds))
-    reasons.extend(gate_manifest.liability_gate_set_valid(manifest.liability_class))
-    for entry in gate_manifest.open_blocking(regime_id=regime_id):
-        scope = f" ({entry.regime_id})" if entry.regime_id else ""
-        reasons.append(f"launch bar {entry.gate_id}{scope} is open: {entry.description}")
+
     if not reasons:
         readiness = Readiness.GREEN
     elif parked:
@@ -530,9 +521,9 @@ def evaluate_release_readiness(
         readiness=readiness,
         blocking_reasons=tuple(reasons),
         evaluated_at=now,
-        coverage_snapshot_id=coverage.snapshot_id,
-        validation_snapshot_id=validation.snapshot_id,
-        gate_manifest_id=gate_manifest.manifest_id,
+        coverage_snapshot_id=coverage.snapshot_id if coverage else "",
+        validation_snapshot_id=validation.snapshot_id if validation else "",
+        gate_manifest_id=gate_manifest.manifest_id if gate_manifest else "",
         regime_id=regime_id,
     )
 

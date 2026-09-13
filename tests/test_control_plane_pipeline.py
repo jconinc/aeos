@@ -1159,3 +1159,34 @@ def test_an_observation_carries_what_its_reading_covered_and_the_digest_of_it() 
             window_ended_at=NOW,
             source_digest="not-a-digest",
         )
+
+
+def test_every_input_that_arrived_is_evaluated_even_when_another_is_missing() -> None:
+    """Stopping at the first absent input hides blockers sitting in the inputs that did come.
+
+    A coverage snapshot showing 80% is a blocker whether or not a validation snapshot exists,
+    and an operator asking why a launch is blocked needs both sentences, not the first one.
+    """
+
+    result = readiness_now(
+        coverage=coverage(total=10, covered=8, uncovered=("REQ-A", "REQ-B")),
+        validation=None,
+    )
+    assert result.readiness is Readiness.BLOCKED
+    joined = " ".join(result.blocking_reasons)
+    assert "no validation snapshot has been captured" in joined
+    assert "coverage is 80%" in joined
+    assert "8 of 10 requirements" in joined
+    assert "2 coverage error gap(s)" in joined
+
+
+def test_the_same_holds_when_the_coverage_snapshot_is_the_missing_one() -> None:
+    """Control: the pairing works in both directions, not just the one that was tested."""
+
+    result = readiness_now(
+        coverage=None,
+        validation=validation(warnings=17, prior_warnings=5),
+    )
+    joined = " ".join(result.blocking_reasons)
+    assert "no coverage snapshot has been captured" in joined
+    assert "warning gaps rose by 12" in joined
