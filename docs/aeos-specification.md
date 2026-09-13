@@ -894,8 +894,21 @@ quoted passage, and says of itself that it is a backstop against an obvious mist
 than a certificate: it recognizes four shapes, so text it accepts has only been found free
 of those. What makes a summary safe is the producer's own source and retention rules.
 
-`assess_resolution` decides what may be claimed. A raised request is work in progress. A
-shipped and verified change is shipped-unverified until an observation window closes. A
-missing before or after measurement is unknown, not success. Only a measured fall in
-occurrences reads as resolved, and `plan_follow_up` refuses a customer message until then,
-because telling someone it is fixed would claim more than has been observed.
+`distinct_customer_count` may be `None`. A producer whose records keep no sender identity
+cannot answer it, and retaining one purely to fill the field would be a worse outcome than
+the honest unknown; `RecurrenceThreshold.by_occurrences(n)` is the threshold such a producer
+can meet. A threshold that does name a distinct-customer minimum is never satisfied by an
+unknown count — unknown is not low and it is not high.
+
+`assess_resolution` binds its identities before it decides anything: an improvement raised
+for another difficulty, or a release shipped against another improvement, is refused rather
+than quietly producing a verdict about work that was never connected to this trouble.
+
+Then it decides what may be claimed. A raised request is work in progress. A shipped and
+verified change is shipped-unverified until an observation window closes. A missing before or
+after measurement is unknown, not success. A material fall in occurrences is
+**improved-not-resolved** — a real result about the population, and not the claim that any
+particular person's problem went away. Only a measured zero across a complete window reads as
+resolved. `plan_follow_up` refuses a customer message until then, and refuses a mismatched
+assessment and observation outright, because the observation's references decide who hears
+from us and a mismatched pair would write to people who reported something else.

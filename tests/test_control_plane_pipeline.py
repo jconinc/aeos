@@ -716,7 +716,9 @@ def test_a_shipped_and_verified_change_still_does_not_claim_the_customer_is_bett
 
 
 def test_the_difficulty_is_resolved_only_once_an_observation_says_it_stopped() -> None:
-    assessment = assess_resolution(
+    """A near-miss is still a miss: 1.5 a week down to 0.2 is people still hitting it."""
+
+    nearly = assess_resolution(
         cluster_key="export-step-unclear",
         request=raised(),
         shipped=shipped(),
@@ -724,9 +726,19 @@ def test_the_difficulty_is_resolved_only_once_an_observation_says_it_stopped() -
         after_rate_per_week=0.2,
         observation_window_complete=True,
     )
-    assert assessment.state is ResolutionState.VERIFIED_RESOLVED
+    assert nearly.state is ResolutionState.IMPROVED_NOT_RESOLVED
+    assert not plan_follow_up(assessment=nearly, observation=observation()).permitted
+    stopped = assess_resolution(
+        cluster_key="export-step-unclear",
+        request=raised(),
+        shipped=shipped(),
+        before_rate_per_week=1.5,
+        after_rate_per_week=0.0,
+        observation_window_complete=True,
+    )
+    assert stopped.state is ResolutionState.VERIFIED_RESOLVED
     plan = plan_follow_up(
-        assessment=assessment,
+        assessment=stopped,
         observation=observation(),
         help_content_ref="fictional://help/export",
     )
@@ -885,3 +897,196 @@ def test_the_reason_code_and_counts_stand_alone_with_no_summary_at_all() -> None
     )
     assert observed.operator_summary == ""
     assert observed.as_dict()["summary_authority"] == "absent"
+
+
+def test_a_producer_that_cannot_count_customers_says_so_rather_than_inventing_one() -> None:
+    """A mailbox that keeps no sender identity cannot answer this, and should not have to.
+
+    Retaining an identity purely to fill the field would be a worse outcome than the honest
+    unknown, so the unknown is representable.
+    """
+
+    uncounted = DifficultyObservation(
+        cluster_key="export-step-unclear",
+        product_slug=SLUG,
+        difficulty_kind=DifficultyKind.UNCLEAR_INSTRUCTION,
+        surface="export screen",
+        occurrence_count=6,
+        distinct_customer_count=None,
+        window_started_at=NOW - dt.timedelta(days=28),
+        window_ended_at=NOW,
+    )
+    assert uncounted.distinct_customer_count is None
+
+
+def test_an_unknown_customer_count_never_satisfies_a_distinct_customer_threshold() -> None:
+    """Unknown is not low and it is not high, so a threshold that needs it stays unmet."""
+
+    uncounted = DifficultyObservation(
+        cluster_key="export-step-unclear",
+        product_slug=SLUG,
+        difficulty_kind=DifficultyKind.UNCLEAR_INSTRUCTION,
+        surface="export screen",
+        occurrence_count=50,
+        distinct_customer_count=None,
+        window_started_at=NOW - dt.timedelta(days=28),
+        window_ended_at=NOW,
+    )
+    assert not RecurrenceThreshold().met_by(uncounted)
+    assert "cannot count that" in RecurrenceThreshold().unmet_reason(uncounted)
+    # An occurrences-only threshold is the one such a producer can actually meet.
+    assert RecurrenceThreshold.by_occurrences(3).met_by(uncounted)
+
+
+def test_an_occurrences_only_threshold_still_refuses_a_single_report() -> None:
+    """Control: dropping the customer requirement does not drop the recurrence requirement."""
+
+    once = DifficultyObservation(
+        cluster_key="export-step-unclear",
+        product_slug=SLUG,
+        difficulty_kind=DifficultyKind.UNCLEAR_INSTRUCTION,
+        surface="export screen",
+        occurrence_count=1,
+        distinct_customer_count=None,
+        window_started_at=NOW - dt.timedelta(days=1),
+        window_ended_at=NOW,
+    )
+    assert not RecurrenceThreshold.by_occurrences(3).met_by(once)
+
+
+def test_a_release_shipped_for_another_improvement_says_nothing_about_this_difficulty() -> None:
+    unrelated = ShippedChange(
+        request_id="improvement_for_something_else",
+        release_ref="fictional-release-99",
+        verification_ref="fictional-verification-99",
+        shipped_at=NOW,
+    )
+    with pytest.raises(ContractError) as error:
+        assess_resolution(
+            cluster_key="export-step-unclear",
+            request=raised(),
+            shipped=unrelated,
+            before_rate_per_week=2.0,
+            after_rate_per_week=0.0,
+            observation_window_complete=True,
+        )
+    assert "says nothing about this difficulty" in str(error.value)
+
+
+def test_an_improvement_raised_for_another_difficulty_cannot_be_borrowed() -> None:
+    with pytest.raises(ContractError) as error:
+        assess_resolution(
+            cluster_key="a-completely-different-cluster",
+            request=raised(),
+            shipped=shipped(),
+            before_rate_per_week=2.0,
+            after_rate_per_week=0.0,
+            observation_window_complete=True,
+        )
+    assert "cannot borrow another difficulty's work" in str(error.value)
+
+
+def test_a_shipped_change_with_no_improvement_behind_it_is_refused() -> None:
+    with pytest.raises(ContractError):
+        assess_resolution(
+            cluster_key="export-step-unclear",
+            request=None,
+            shipped=shipped(),
+            before_rate_per_week=2.0,
+            after_rate_per_week=0.0,
+            observation_window_complete=True,
+        )
+
+
+def test_a_halving_is_reported_as_a_real_result_and_still_tells_nobody_it_is_fixed() -> None:
+    """Fewer people hitting a problem is a measurement about the population.
+
+    It is not the claim "yours is fixed", and reading it as one would tell customers who are
+    still hitting the difficulty that it went away.
+    """
+
+    assessment = assess_resolution(
+        cluster_key="export-step-unclear",
+        request=raised(),
+        shipped=shipped(),
+        before_rate_per_week=2.0,
+        after_rate_per_week=1.0,
+        observation_window_complete=True,
+    )
+    assert assessment.state is ResolutionState.IMPROVED_NOT_RESOLVED
+    assert "it still happens" in assessment.reason
+    assert not assessment.customer_follow_up_permitted
+    plan = plan_follow_up(assessment=assessment, observation=observation())
+    assert not plan.permitted
+    assert plan.notify_support_refs == ()
+
+
+def test_resolution_means_a_measured_zero_across_a_complete_window() -> None:
+    assessment = assess_resolution(
+        cluster_key="export-step-unclear",
+        request=raised(),
+        shipped=shipped(),
+        before_rate_per_week=2.0,
+        after_rate_per_week=0.0,
+        observation_window_complete=True,
+    )
+    assert assessment.state is ResolutionState.VERIFIED_RESOLVED
+    assert "reached zero across a complete window" in assessment.reason
+
+
+def test_an_absent_measurement_is_never_read_as_the_zero_that_would_resolve_it() -> None:
+    """The distinction the whole path rests on: no data is unknown, measured zero is zero."""
+
+    for after in (None,):
+        assessment = assess_resolution(
+            cluster_key="export-step-unclear",
+            request=raised(),
+            shipped=shipped(),
+            before_rate_per_week=2.0,
+            after_rate_per_week=after,
+            observation_window_complete=True,
+        )
+        assert assessment.state is ResolutionState.UNKNOWN
+    # And an open window is not a complete one, whatever the numbers say.
+    still_open = assess_resolution(
+        cluster_key="export-step-unclear",
+        request=raised(),
+        shipped=shipped(),
+        before_rate_per_week=2.0,
+        after_rate_per_week=0.0,
+        observation_window_complete=False,
+    )
+    assert still_open.state is ResolutionState.SHIPPED_UNVERIFIED
+
+
+def test_a_follow_up_cannot_reach_the_people_who_reported_something_else() -> None:
+    """The observation decides who hears from us, so a mismatched pair would write to them.
+
+    Before this was bound, an assessment of one difficulty paired with another's observation
+    returned permitted, carrying the wrong cluster's support references.
+    """
+
+    resolved = assess_resolution(
+        cluster_key="export-step-unclear",
+        request=raised(),
+        shipped=shipped(),
+        before_rate_per_week=2.0,
+        after_rate_per_week=0.0,
+        observation_window_complete=True,
+    )
+    other = DifficultyObservation(
+        cluster_key="a-different-difficulty",
+        product_slug=SLUG,
+        difficulty_kind=DifficultyKind.BILLING_OR_ORDER,
+        surface="checkout",
+        occurrence_count=3,
+        distinct_customer_count=3,
+        window_started_at=NOW - dt.timedelta(days=7),
+        window_ended_at=NOW,
+        support_refs=("support-ref-for-a-different-problem",),
+    )
+    with pytest.raises(ContractError) as error:
+        plan_follow_up(assessment=resolved, observation=other)
+    assert "reported something else" in str(error.value)
+    # The matching pair is still permitted, so the binding is the mismatch and not a blanket no.
+    assert plan_follow_up(assessment=resolved, observation=observation()).permitted

@@ -74,6 +74,10 @@ class ResolutionState(StrEnum):
     OPEN = "open"
     WORK_IN_PROGRESS = "work_in_progress"
     SHIPPED_UNVERIFIED = "shipped_unverified"
+    #: Occurrences fell materially and people are still hitting it. This is a measurement
+    #: about the population, and it is not grounds for telling anyone their problem is fixed.
+    IMPROVED_NOT_RESOLVED = "improved_not_resolved"
+    #: Occurrences reached zero across a complete measured window.
     VERIFIED_RESOLVED = "verified_resolved"
     UNKNOWN = "unknown"
 
@@ -151,7 +155,10 @@ class DifficultyObservation:
     difficulty_kind: DifficultyKind
     surface: str
     occurrence_count: int
-    distinct_customer_count: int
+    #: ``None`` where the producer's records cannot distinguish customers. That is the honest
+    #: answer for a mailbox that keeps no sender identity, and retaining one to fill this
+    #: field would be a worse outcome than leaving it unknown.
+    distinct_customer_count: int | None
     window_started_at: datetime
     window_ended_at: datetime
     support_refs: tuple[str, ...] = ()
@@ -164,10 +171,15 @@ class DifficultyObservation:
             required(str(getattr(self, name)), name)
         if not isinstance(self.difficulty_kind, DifficultyKind):
             raise ContractError("difficulty kind is not recognized")
-        if self.occurrence_count <= 0 or self.distinct_customer_count <= 0:
-            raise ContractError("an observation counts at least one occurrence and one customer")
-        if self.distinct_customer_count > self.occurrence_count:
-            raise ContractError("distinct customers cannot exceed occurrences")
+        if self.occurrence_count <= 0:
+            raise ContractError("an observation counts at least one occurrence")
+        if self.distinct_customer_count is not None:
+            if self.distinct_customer_count <= 0:
+                raise ContractError(
+                    "a known distinct-customer count is at least one; use None for unknown"
+                )
+            if self.distinct_customer_count > self.occurrence_count:
+                raise ContractError("distinct customers cannot exceed occurrences")
         utc(self.window_started_at, "window_started_at")
         utc(self.window_ended_at, "window_ended_at")
         if self.window_ended_at < self.window_started_at:
@@ -205,20 +217,57 @@ class DifficultyObservation:
 
 @dataclass(frozen=True, slots=True)
 class RecurrenceThreshold:
-    """When a difficulty is worth changing the product over."""
+    """When a difficulty is worth changing the product over.
+
+    ``minimum_distinct_customers`` may be ``None``, which means this threshold asks only how
+    often the trouble happened. Set it to a number and an observation that cannot count
+    customers never satisfies it: an unknown count is not a low one, and it is not a high one
+    either, so a threshold that depends on it stays unmet rather than guessing in either
+    direction.
+    """
 
     minimum_occurrences: int = 3
-    minimum_distinct_customers: int = 2
+    minimum_distinct_customers: int | None = 2
 
     def __post_init__(self) -> None:
-        if self.minimum_occurrences <= 0 or self.minimum_distinct_customers <= 0:
-            raise ContractError("recurrence thresholds must be positive")
+        if self.minimum_occurrences <= 0:
+            raise ContractError("a recurrence threshold counts at least one occurrence")
+        if self.minimum_distinct_customers is not None and self.minimum_distinct_customers <= 0:
+            raise ContractError(
+                "a distinct-customer threshold is at least one; use None to ask only about "
+                "how often the trouble happened"
+            )
+
+    @classmethod
+    def by_occurrences(cls, minimum_occurrences: int = 3) -> RecurrenceThreshold:
+        """A threshold for a producer whose records cannot distinguish customers."""
+
+        return cls(minimum_occurrences=minimum_occurrences, minimum_distinct_customers=None)
+
+    def unmet_reason(self, observation: DifficultyObservation) -> str:
+        """Why this observation does not meet the threshold, or ``""`` when it does."""
+
+        if observation.occurrence_count < self.minimum_occurrences:
+            return (
+                f"{observation.occurrence_count} occurrence(s); "
+                f"{self.minimum_occurrences} are needed before this is a pattern"
+            )
+        if self.minimum_distinct_customers is None:
+            return ""
+        if observation.distinct_customer_count is None:
+            return (
+                "this threshold asks how many distinct customers hit it, and the producer "
+                "cannot count that without retaining an identity it does not keep"
+            )
+        if observation.distinct_customer_count < self.minimum_distinct_customers:
+            return (
+                f"{observation.distinct_customer_count} distinct customer(s); "
+                f"{self.minimum_distinct_customers} are needed"
+            )
+        return ""
 
     def met_by(self, observation: DifficultyObservation) -> bool:
-        return (
-            observation.occurrence_count >= self.minimum_occurrences
-            and observation.distinct_customer_count >= self.minimum_distinct_customers
-        )
+        return not self.unmet_reason(observation)
 
 
 @dataclass(frozen=True, slots=True)
@@ -365,10 +414,36 @@ def assess_resolution(
     observation_window_complete: bool,
     improvement_ratio: float = 0.5,
 ) -> ResolutionAssessment:
-    """Decide what may be claimed. A shipped change alone claims nothing about the customer."""
+    """Decide what may be claimed. A shipped change alone claims nothing about the customer.
 
+    The identities are bound rather than trusted: a request for another difficulty, or a
+    release raised against a different request, is refused instead of quietly producing an
+    assessment about work that was never connected to this trouble.
+
+    Resolution means a measured zero across a complete window. A halving is a real result
+    about the population and is reported as one, but people are still hitting the problem, so
+    it is not grounds for telling any of them theirs is fixed.
+    """
+
+    required(cluster_key, "cluster_key")
     if not 0 < improvement_ratio <= 1:
         raise ContractError("improvement ratio must fall in (0, 1]")
+    if request is not None and request.cluster_key != cluster_key:
+        raise ContractError(
+            f"improvement {request.request_id} was raised for {request.cluster_key!r}, not "
+            f"{cluster_key!r}; an assessment cannot borrow another difficulty's work"
+        )
+    if shipped is not None:
+        if request is None:
+            raise ContractError(
+                "a shipped change cannot be assessed without the improvement it was raised "
+                "against"
+            )
+        if shipped.request_id != request.request_id:
+            raise ContractError(
+                f"release {shipped.release_ref} was shipped for {shipped.request_id}, not "
+                f"{request.request_id}; it says nothing about this difficulty"
+            )
     if request is None:
         return ResolutionAssessment(
             cluster_key=cluster_key,
@@ -417,13 +492,26 @@ def assess_resolution(
             after_rate_per_week=after_rate_per_week,
             observation_window_complete=True,
         )
-    if after_rate_per_week <= before_rate_per_week * improvement_ratio:
+    if after_rate_per_week == 0:
         return ResolutionAssessment(
             cluster_key=cluster_key,
             state=ResolutionState.VERIFIED_RESOLVED,
             reason=(
+                f"occurrences reached zero across a complete window after "
+                f"{shipped.release_ref}, from {before_rate_per_week:.1f} a week before"
+            ),
+            before_rate_per_week=before_rate_per_week,
+            after_rate_per_week=after_rate_per_week,
+            observation_window_complete=True,
+        )
+    if after_rate_per_week <= before_rate_per_week * improvement_ratio:
+        return ResolutionAssessment(
+            cluster_key=cluster_key,
+            state=ResolutionState.IMPROVED_NOT_RESOLVED,
+            reason=(
                 f"occurrences fell from {before_rate_per_week:.1f} to {after_rate_per_week:.1f} "
-                f"a week after {shipped.release_ref}"
+                f"a week after {shipped.release_ref}. Fewer people hit this; it still happens, "
+                "so nobody can be told theirs is fixed"
             ),
             before_rate_per_week=before_rate_per_week,
             after_rate_per_week=after_rate_per_week,
@@ -479,8 +567,19 @@ def plan_follow_up(
     observation: DifficultyObservation,
     help_content_ref: str = "",
 ) -> FollowUpPlan:
-    """Prepare the follow-up the evidence actually supports."""
+    """Prepare the follow-up the evidence actually supports, for the right people.
 
+    The observation's references decide who hears from us, so an assessment of one
+    difficulty paired with another's observation would write to people who never reported
+    this trouble. The two are bound rather than assumed to match.
+    """
+
+    if assessment.cluster_key != observation.cluster_key:
+        raise ContractError(
+            f"assessment is about {assessment.cluster_key!r} and the observation about "
+            f"{observation.cluster_key!r}; a follow-up would reach people who reported "
+            "something else"
+        )
     if assessment.customer_follow_up_permitted:
         return FollowUpPlan(
             cluster_key=assessment.cluster_key,
