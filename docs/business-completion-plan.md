@@ -78,6 +78,26 @@ source identities. They are evidence to reuse, not proof of all business require
 
 ## Architecture to preserve
 
+### Parallel implementation and test cadence — John, 13 September
+
+The full 553-ID map is divided without omissions or duplicate ownership: claude-2 owns
+marketing/commercial/earned distribution/portfolio (195 IDs); claude-3 owns operational runtime,
+monitoring/recovery/security/rules/legal boundaries (155); claude-0 owns reusable control-plane,
+product/module/lifecycle/WLG interfaces (119); claude-4 owns support/model integration and the
+combined private candidate (84). Shared-tip and host delivery remain coordinated with claude-3.
+The exact assignments, defining sources, owned worktrees, interfaces and handoff requirements
+are in `~/wema-coord/active/aeos-complete-business-2026-09-13/delegation/`.
+
+Authors implement coherent slices and write acceptance controls, with cheap local syntax/lint/
+type checks. John directs runtime suites to run after integration. Existing active frozen runs
+may finish; retained accepted proof is reused on its actual inputs. Do not start three parallel
+full chains or call deferred controls passing. The combined candidate uses the maintained
+selector, cheap prerequisites and receipt reuse, then multiple native workers for independent
+suites with one private PostgreSQL clone per worker and controlled resources. Test design must
+avoid repeated migrations/setup, shared mutable fixtures, duplicated scenarios and clock sleeps.
+Record worker count, setup/runtime, executed/reused evidence and diagnose overruns. Required
+coverage, refusal/recovery controls and delivery checks remain unchanged.
+
 | Responsibility | Implementation home |
 | --- | --- |
 | Reusable decision, evidence, quality, lifecycle and authority primitives | `aeos_kernel`, with a named host consumer for every addition |
