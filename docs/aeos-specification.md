@@ -820,9 +820,12 @@ because silence is neither consent nor refusal. `drain_partially` separates the 
 from the rest so one unresolvable item never stops a run.
 
 `project_approval_load` sizes operator load by arithmetic before a module is enabled: a
-family that always parks contributes its whole scheduled volume, and a family with no
-observed park rate contributes nothing, because an unobserved rate is unknown rather than
-assumed. `seed_batch` presents a product's onboarding parks for one sitting while each item
+family that always parks contributes its whole scheduled volume, and a family with scheduled
+work but no measured park rate is **named** rather than counted as zero. While any such
+family exists the projection is a floor, `is_complete` is false, and `within_headroom` is
+false whatever the arithmetic says — an unknown rate must not certify capacity nobody has
+observed. A family with nothing scheduled needs no rate: it adds nothing, and that much is
+known without measuring it. `seed_batch` presents a product's onboarding parks for one sitting while each item
 stays individually approvable.
 
 ### 20.5 Signals, gates and gaps
