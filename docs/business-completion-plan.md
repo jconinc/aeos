@@ -4,9 +4,27 @@ Owner-directed scope, 13 September 2026. Implementation is active; completion is
 The [full goal](business-completion-goal.md) is the acceptance target. Delivery packets order
 the work; they do not postpone applicable business capabilities to an unspecified later release.
 
+## Current integration evidence
+
+The reusable kernel at `99840c24` joins actor/tool enforcement and the new core boundary
+controls. Native unit proof: 528 passes, 23 deselected, 5.084 seconds; locked lint/types pass.
+Line coverage is 4566/4828 and branch coverage is 1361/1594 (85.383%). The combined threshold
+passes; the independent branch floor remains unmet. No new artifact or Wema pin is published.
+The previous 22 exact-pin compatibility passes remain bound to `9aa15777`, and real Memgraph
+integration is unproved. Readiness evidence still needs the maintained native validation and
+source/artifact connection completed before its Wema join.
+
+Wema's native shared budget/Marketing worker at `6f061a74` passes a focused 350-case union
+with 110 executed and 240 reused cases, plus 68 prerequisites. Two private PostgreSQL clones
+are used and removed. This covers real worker/fictional HTTP, caps, currentness, uncertain
+usage, migration refusal, the actual offline-provider exception and native consumers. The
+broader selection, group coverage, remaining support/Desk work and delivery remain open.
+The original source-specific failure and acceptance records are preserved. Commercial and
+security lanes have active native source; their claims are not integrated acceptance.
+
 ## Master completion checklist
 
-The requirement map currently contains **553 indexed IDs: 540 unassessed, seven with partial
+The original master reconciliation, awaiting the joined author dispositions, contains **553 indexed IDs: 540 unassessed, seven with partial
 source implementation and six with unverified workflows; none is accepted complete**. This
 is the state of this reconciliation, not a claim that 540 features are missing. Existing
 functionality and accepted evidence must be reused after their applicability is established.
