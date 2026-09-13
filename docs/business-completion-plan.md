@@ -120,6 +120,24 @@ and must be preserved before this packet is delivered.
 Retained component packet:
 `~/wema-coord/evidence/aeos-complete-business-2026-09-13/43a2d441e4d13936bb16cfe5515b36b65a95b921/author/support-foundation-01/`.
 
+The next component is Wema `b443e32f`, with test-only successor `53b2b0eb`. It preserves
+operations-mail source `5c6b1225` through merge `fc493196`. The real support HTTP adapter,
+fixed native rubric prompts and expiring route-review binding are implemented; the route
+remains disabled and no approval or credential is supplied. Unknown response usage retains
+an explicit conservative cost bound, and attempt values now carry prompt identity and that
+cost distinction in memory. Their durable persistence remains required.
+
+Native component evidence is 200 Python cases across seven complete files: the final pass
+executes 48 cases and reuses the other 152 on six authenticated receipts. The prior source
+pass executed 181 and reused ten; these are overlapping unions, not additive totals. The
+25 registry controls and selected gateway mutation pass. Native filtered coverage proves
+all 180 statements and 38 branches of the three new provider/prompt/review modules; the
+worker callable is 39/39 and 2/2. The last test-only pass takes 27.064 seconds. Original
+registry assertion failures and the offline-fake selection refusal witness are retained.
+The full source selection now reaches 418 Python files and remains incomplete. No full
+application/package coverage, release acceptance, real provider call or automatic reply is
+inferred. Packet: `~/wema-coord/evidence/aeos-complete-business-2026-09-13/53b2b0eb199044c0d17bf018eb7599cd702501c9/author/support-http-01/`.
+
 1. **Reconcile requirements and existing work.** Preserve the exact goal, inspect each existing
    requirement and its native consumers, and add omitted obligations from tables and referenced
    contracts using their source anchors. Record behavior differences requiring amendments. Use
