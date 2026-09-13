@@ -43,6 +43,27 @@ class DifficultyKind(StrEnum):
     PERFORMANCE_OR_ERROR = "performance_or_error"
 
 
+class ObservationCoverage(StrEnum):
+    """How much of the window the producer actually read.
+
+    This is what separates two identical zeros. A zero from a reading that covered the whole
+    window means the trouble stopped. A zero from a reading that covered only what an index
+    held, or a bounded subset of it, means nothing was found where the producer looked — and
+    the difference decides whether anyone may be told their problem is fixed.
+    """
+
+    #: Every record in the window was read.
+    COMPLETE = "complete"
+    #: Only what the index holds was read; unindexed records were not consulted.
+    INDEXED_ONLY = "indexed_only"
+    #: A bounded subset was read, by limit, sampling or time.
+    PARTIAL = "partial"
+
+    @property
+    def is_complete(self) -> bool:
+        return self is ObservationCoverage.COMPLETE
+
+
 class SummaryAuthority(StrEnum):
     """Who wrote the one-line summary, which decides how far it may be trusted.
 
@@ -165,6 +186,11 @@ class DifficultyObservation:
     operator_summary: str = ""
     summary_authority: SummaryAuthority = SummaryAuthority.ABSENT
     registered_phrases: tuple[str, ...] = ()
+    #: How much of the window this reading covered. A producer reading an index that does not
+    #: hold every record says so here rather than letting a count stand as the whole truth.
+    coverage: ObservationCoverage = ObservationCoverage.COMPLETE
+    #: The producer's own digest of what it read, so the same window can be recognized again.
+    source_digest: str = ""
 
     def __post_init__(self) -> None:
         for name in ("cluster_key", "product_slug", "surface"):
@@ -191,6 +217,10 @@ class DifficultyObservation:
             assert_shareable(reference, "support reference")
         if not isinstance(self.summary_authority, SummaryAuthority):
             raise ContractError("summary authority is not recognized")
+        if not isinstance(self.coverage, ObservationCoverage):
+            raise ContractError("observation coverage is not recognized")
+        if self.source_digest:
+            digest(self.source_digest, "source_digest")
         if len(set(self.registered_phrases)) != len(self.registered_phrases):
             raise ContractError("registered phrases must be unique")
         assert_summary_admissible(
@@ -212,6 +242,8 @@ class DifficultyObservation:
             "support_refs": list(self.support_refs),
             "operator_summary": self.operator_summary,
             "summary_authority": self.summary_authority.value,
+            "coverage": self.coverage.value,
+            "source_digest": self.source_digest,
         }
 
 
@@ -412,6 +444,7 @@ def assess_resolution(
     before_rate_per_week: float | None,
     after_rate_per_week: float | None,
     observation_window_complete: bool,
+    after_coverage: ObservationCoverage = ObservationCoverage.COMPLETE,
     improvement_ratio: float = 0.5,
 ) -> ResolutionAssessment:
     """Decide what may be claimed. A shipped change alone claims nothing about the customer.
@@ -420,12 +453,16 @@ def assess_resolution(
     release raised against a different request, is refused instead of quietly producing an
     assessment about work that was never connected to this trouble.
 
-    Resolution means a measured zero across a complete window. A halving is a real result
-    about the population and is reported as one, but people are still hitting the problem, so
-    it is not grounds for telling any of them theirs is fixed.
+    Resolution means a measured zero across a complete window, read by a reading that
+    covered that window. A zero from an index that does not hold every record is "nothing was
+    found where we looked", which is not the same sentence. A halving is a real result about
+    the population and is reported as one, but people are still hitting the problem, so it is
+    not grounds for telling any of them theirs is fixed.
     """
 
     required(cluster_key, "cluster_key")
+    if not isinstance(after_coverage, ObservationCoverage):
+        raise ContractError("observation coverage is not recognized")
     if not 0 < improvement_ratio <= 1:
         raise ContractError("improvement ratio must fall in (0, 1]")
     if request is not None and request.cluster_key != cluster_key:
@@ -488,6 +525,19 @@ def assess_resolution(
             cluster_key=cluster_key,
             state=ResolutionState.UNKNOWN,
             reason="the difficulty was not occurring before the change, so nothing can be shown",
+            before_rate_per_week=before_rate_per_week,
+            after_rate_per_week=after_rate_per_week,
+            observation_window_complete=True,
+        )
+    if after_rate_per_week == 0 and not after_coverage.is_complete:
+        return ResolutionAssessment(
+            cluster_key=cluster_key,
+            state=ResolutionState.UNKNOWN,
+            reason=(
+                f"no occurrences were found, but the reading covered {after_coverage.value} "
+                "records rather than the whole window. Nothing was found where we looked, "
+                "which is not the same as the trouble having stopped"
+            ),
             before_rate_per_week=before_rate_per_week,
             after_rate_per_week=after_rate_per_week,
             observation_window_complete=True,
@@ -608,6 +658,7 @@ __all__ = [
     "FollowUpPlan",
     "ImprovementKind",
     "ImprovementRequest",
+    "ObservationCoverage",
     "RecurrenceThreshold",
     "ResolutionAssessment",
     "ResolutionState",

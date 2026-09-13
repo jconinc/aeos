@@ -27,6 +27,7 @@ from aeos_kernel.improvement import (
     DifficultyKind,
     DifficultyObservation,
     ImprovementKind,
+    ObservationCoverage,
     RecurrenceThreshold,
     ResolutionState,
     ShippedChange,
@@ -1090,3 +1091,71 @@ def test_a_follow_up_cannot_reach_the_people_who_reported_something_else() -> No
     assert "reported something else" in str(error.value)
     # The matching pair is still permitted, so the binding is the mismatch and not a blanket no.
     assert plan_follow_up(assessment=resolved, observation=observation()).permitted
+
+
+def test_a_zero_from_a_reading_that_did_not_cover_the_window_is_not_a_measured_zero() -> None:
+    """Two identical zeros mean different things, and only the coverage separates them.
+
+    A producer reading an index that does not hold every record found nothing where it
+    looked. Reading that as "the trouble stopped" would tell customers a problem went away on
+    the strength of records nobody consulted.
+    """
+
+    for coverage in (ObservationCoverage.INDEXED_ONLY, ObservationCoverage.PARTIAL):
+        assessment = assess_resolution(
+            cluster_key="export-step-unclear",
+            request=raised(),
+            shipped=shipped(),
+            before_rate_per_week=2.0,
+            after_rate_per_week=0.0,
+            observation_window_complete=True,
+            after_coverage=coverage,
+        )
+        assert assessment.state is ResolutionState.UNKNOWN, coverage
+        assert "not the same as the trouble having stopped" in assessment.reason
+        assert not assessment.customer_follow_up_permitted
+
+
+def test_the_same_zero_resolves_once_the_reading_covered_the_whole_window() -> None:
+    """Control: the refusal above is the coverage, not a refusal to ever resolve."""
+
+    assessment = assess_resolution(
+        cluster_key="export-step-unclear",
+        request=raised(),
+        shipped=shipped(),
+        before_rate_per_week=2.0,
+        after_rate_per_week=0.0,
+        observation_window_complete=True,
+        after_coverage=ObservationCoverage.COMPLETE,
+    )
+    assert assessment.state is ResolutionState.VERIFIED_RESOLVED
+
+
+def test_an_observation_carries_what_its_reading_covered_and_the_digest_of_it() -> None:
+    limited = DifficultyObservation(
+        cluster_key="export-step-unclear",
+        product_slug=SLUG,
+        difficulty_kind=DifficultyKind.UNCLEAR_INSTRUCTION,
+        surface="export screen",
+        occurrence_count=4,
+        distinct_customer_count=None,
+        window_started_at=NOW - dt.timedelta(days=28),
+        window_ended_at=NOW,
+        coverage=ObservationCoverage.INDEXED_ONLY,
+        source_digest="b" * 64,
+    )
+    assert limited.as_dict()["coverage"] == "indexed_only"
+    assert limited.as_dict()["source_digest"] == "b" * 64
+    # A malformed digest is refused rather than stored as a label.
+    with pytest.raises(ContractError):
+        DifficultyObservation(
+            cluster_key="export-step-unclear",
+            product_slug=SLUG,
+            difficulty_kind=DifficultyKind.UNCLEAR_INSTRUCTION,
+            surface="export screen",
+            occurrence_count=4,
+            distinct_customer_count=None,
+            window_started_at=NOW - dt.timedelta(days=28),
+            window_ended_at=NOW,
+            source_digest="not-a-digest",
+        )

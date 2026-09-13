@@ -894,6 +894,13 @@ quoted passage, and says of itself that it is a backstop against an obvious mist
 than a certificate: it recognizes four shapes, so text it accepts has only been found free
 of those. What makes a summary safe is the producer's own source and retention rules.
 
+An observation declares `coverage` — `complete`, `indexed_only` or `partial` — because it
+is what separates two identical zeros. A zero from a reading that covered the whole window
+means the trouble stopped; a zero from a reading that consulted only an index means nothing
+was found where the producer looked. `assess_resolution` takes the after-window coverage and
+returns `unknown` for a zero that came from an incomplete reading, so nobody is told a
+problem went away on the strength of records nobody consulted.
+
 `distinct_customer_count` may be `None`. A producer whose records keep no sender identity
 cannot answer it, and retaining one purely to fill the field would be a worse outcome than
 the honest unknown; `RecurrenceThreshold.by_occurrences(n)` is the threshold such a producer
