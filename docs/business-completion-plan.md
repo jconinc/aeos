@@ -11,8 +11,9 @@ The integrated AEOS source is `c17e066` in
 5.36 seconds, and Ruff plus strict mypy pass. The added contract-edge controls bring the
 integrated suite to **536 cases with 23 deselected** in 4.31 seconds. Combined coverage is
 **94.16%** (4,628/4,828 statements and 1,435/1,594 branches); the independent branch floor is
-now **90.0%**. The pinned MultiAgent compatibility cases and live Memgraph case remain
-separately unproved for this integrated source.
+now **90.0%**. The 22 pinned MultiAgent compatibility cases pass against the detached
+`d99002a1903a56b5601d7ec3455e5dfa43028935` source (3.20 seconds); the live Memgraph case
+remains separately unproved for this integrated source.
 
 The source is versioned as a local **0.8.0 candidate**. The bounded wheel build produced
 `dist/aeos_kernel-0.8.0-py3-none-any.whl` with SHA-256
