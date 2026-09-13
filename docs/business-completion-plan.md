@@ -216,3 +216,31 @@ engine. Provider enablement is a separate deployment/configuration step with its
 
 The complete goal remains active throughout this packet. Finishing it will not establish
 completion of monitoring, other business workflows or the requirement map.
+
+
+## 13 September support consumer — partial local proof
+
+Wema `01af4cc15a8392fc6df9dff6794d16cb80492306` connects mailbox indexing to the real
+registered preparation worker, approved native template/order context, bounded gateway,
+durable budget and reports, and the existing Desk review/send consumers. The source checks
+survive replay; edited words lose the original model scores. Retention preserves current
+spending and recoverable work. Provisional 0108 follows this lane's 0107 unchanged; integration
+owns final numbering and the independently prepared migration chains.
+
+Ten focused native files account for 255 passes: 131 executed and 124 reused in 58.7 seconds
+with two private PostgreSQL workers. All ten receipts and coverage objects authenticate.
+Original collection/fingerprint/edited-score failures remain, including a test-only shared
+suppression interference corrected by isolating sender fixtures. No real model, message,
+credential, approval or host action was used. Earlier HTTP and budget seals keep their source
+identities; the counts are not added across overlapping runs.
+
+This is not full support or business acceptance. Remaining immediate work: recovery/example
+and migration refusal controls and coverage, clear Desk stale-draft handling and refresh,
+source checks before compound effects, the missing access-delivery consumer behind the
+existing resend-and-reply action, and maintained operator/provider configuration. The native
+selector requests all Python suites because of the worker environment input, plus its 66
+prerequisites and remaining consumers; no waiver is inferred from the focused proof. Finish
+those requirements and compatible installed verification before calling the increment
+released. Actual approved provider/help material and human usability evidence remain separate
+from implementation proof. Continue the full requirement map and other business workflows;
+REQ-SUP-029 stays source_partial and no requirement is marked accepted complete.
