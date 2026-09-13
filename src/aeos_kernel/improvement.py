@@ -43,6 +43,25 @@ class DifficultyKind(StrEnum):
     PERFORMANCE_OR_ERROR = "performance_or_error"
 
 
+class SummaryAuthority(StrEnum):
+    """Who wrote the one-line summary, which decides how far it may be trusted.
+
+    There is no value for customer-authored text. A customer's words are not summarized into
+    a shared record at all; the record carries a count, a reason code and a reference back to
+    where those words already live under their own rules.
+    """
+
+    #: No summary. The reason code and counts stand alone, which is always sufficient.
+    ABSENT = "absent"
+    #: One phrase the producer chose from a registered set. Nothing was composed, so nothing
+    #: can have leaked into it.
+    CLOSED_VOCABULARY = "closed_vocabulary"
+    #: An agent composed it from aggregate facts. The identifier check is a backstop against
+    #: an obvious mistake, never a certificate that the text is safe: the producer's own
+    #: source and retention rules are what make that true.
+    AGENT_AUTHORED = "agent_authored"
+
+
 class ImprovementKind(StrEnum):
     HELP_CONTENT = "help_content"
     PRODUCT_FIX = "product_fix"
@@ -66,7 +85,13 @@ def privacy_violations(text: str) -> tuple[str, ...]:
 
 
 def assert_shareable(text: str, field_name: str) -> str:
-    """Refuse text that carries a customer's identity or their own words."""
+    """Refuse text carrying an obvious identifier or a quoted passage.
+
+    This is a backstop, not a certification. It recognizes four shapes; text it accepts has
+    only been found free of those, which is why a summary must also declare who wrote it
+    (:class:`SummaryAuthority`). Nothing here makes customer-authored text safe to share,
+    and no value of that enum admits any.
+    """
 
     found = privacy_violations(text)
     if found:
@@ -75,6 +100,42 @@ def assert_shareable(text: str, field_name: str) -> str:
             "reason codes and opaque references, never customer content"
         )
     return text
+
+
+def assert_summary_admissible(
+    *,
+    summary: str,
+    authority: SummaryAuthority,
+    registered_phrases: frozenset[str] = frozenset(),
+    max_length: int = 200,
+) -> str:
+    """Admit a summary on the strength of who wrote it, not on a pattern search.
+
+    A closed-vocabulary summary must be one of the producer's registered phrases; composition
+    is what creates the risk, so a record that composes nothing carries none. An
+    agent-authored summary is bounded and passes the backstop check, and the caller remains
+    responsible for it under its own source rules.
+    """
+
+    if authority is SummaryAuthority.ABSENT:
+        if summary:
+            raise ContractError("a summary marked absent must be empty")
+        return ""
+    required(summary, "operator_summary")
+    if len(summary) > max_length:
+        raise ContractError(
+            f"operator_summary is {len(summary)} characters; at most {max_length} are "
+            "admissible, because a line long enough to quote somebody is long enough to "
+            "carry what they said"
+        )
+    if authority is SummaryAuthority.CLOSED_VOCABULARY:
+        if summary not in registered_phrases:
+            raise ContractError(
+                "a closed-vocabulary summary must be one of the producer's registered "
+                "phrases; free text cannot enter through this value"
+            )
+        return summary
+    return assert_shareable(summary, "operator_summary")
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +156,8 @@ class DifficultyObservation:
     window_ended_at: datetime
     support_refs: tuple[str, ...] = ()
     operator_summary: str = ""
+    summary_authority: SummaryAuthority = SummaryAuthority.ABSENT
+    registered_phrases: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         for name in ("cluster_key", "product_slug", "surface"):
@@ -114,9 +177,15 @@ class DifficultyObservation:
         for reference in self.support_refs:
             required(reference, "support reference")
             assert_shareable(reference, "support reference")
-        if self.operator_summary:
-            required(self.operator_summary, "operator_summary")
-            assert_shareable(self.operator_summary, "operator_summary")
+        if not isinstance(self.summary_authority, SummaryAuthority):
+            raise ContractError("summary authority is not recognized")
+        if len(set(self.registered_phrases)) != len(self.registered_phrases):
+            raise ContractError("registered phrases must be unique")
+        assert_summary_admissible(
+            summary=self.operator_summary,
+            authority=self.summary_authority,
+            registered_phrases=frozenset(self.registered_phrases),
+        )
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -130,6 +199,7 @@ class DifficultyObservation:
             "window_ended_at": self.window_ended_at.isoformat(),
             "support_refs": list(self.support_refs),
             "operator_summary": self.operator_summary,
+            "summary_authority": self.summary_authority.value,
         }
 
 
@@ -443,7 +513,9 @@ __all__ = [
     "ResolutionAssessment",
     "ResolutionState",
     "ShippedChange",
+    "SummaryAuthority",
     "assert_shareable",
+    "assert_summary_admissible",
     "assess_resolution",
     "plan_follow_up",
     "privacy_violations",

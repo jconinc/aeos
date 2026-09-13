@@ -881,10 +881,18 @@ throughput is never read as convergence — that is measured from a fresh snapsh
 ### 20.8 Customer difficulty to verified improvement
 
 `DifficultyObservation` aggregates the same trouble over a window: a reason code, counts and
-opaque support references. `assert_shareable` refuses an email address, telephone number,
-long digit run or quoted passage, so a customer's own words cannot reach a shared task
-description or graph. `raise_improvement` declines below the recurrence threshold — one
+opaque support references. `raise_improvement` declines below the recurrence threshold — one
 report is a report, not yet a pattern.
+
+A summary is admitted on the strength of who wrote it, never on a pattern search.
+`summary_authority` is `absent` (the default, which must be empty — the reason code and
+counts always suffice), `closed_vocabulary` (one of the producer's registered phrases, so
+nothing was composed and nothing can have leaked into it), or `agent_authored` (bounded at
+200 characters and passing `assert_shareable`). There is no value for customer-authored
+text. `assert_shareable` refuses an email address, telephone number, long digit run or
+quoted passage, and says of itself that it is a backstop against an obvious mistake rather
+than a certificate: it recognizes four shapes, so text it accepts has only been found free
+of those. What makes a summary safe is the producer's own source and retention rules.
 
 `assess_resolution` decides what may be claimed. A raised request is work in progress. A
 shipped and verified change is shipped-unverified until an observation window closes. A

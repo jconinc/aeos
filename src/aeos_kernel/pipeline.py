@@ -454,6 +454,14 @@ def evaluate_release_readiness(
         reasons.append("no validation snapshot has been captured")
     if gate_manifest is None:
         reasons.append("no_product_gate_manifest: the product's own launch bars are not compiled")
+    else:
+        # The product's own bars do not depend on the snapshots, so report them even when a
+        # snapshot is missing. An operator asking why a launch is blocked wants everything
+        # that blocks it, not only the first thing that stopped the evaluation.
+        reasons.extend(gate_manifest.liability_gate_set_valid(manifest.liability_class))
+        for entry in gate_manifest.open_blocking(regime_id=regime_id):
+            scope = f" ({entry.regime_id})" if entry.regime_id else ""
+            reasons.append(f"launch bar {entry.gate_id}{scope} is open: {entry.description}")
     if coverage is None or validation is None or gate_manifest is None:
         return ReleaseReadiness(
             product_slug=manifest.product_slug,

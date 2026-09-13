@@ -30,7 +30,9 @@ from aeos_kernel.improvement import (
     RecurrenceThreshold,
     ResolutionState,
     ShippedChange,
+    SummaryAuthority,
     assert_shareable,
+    assert_summary_admissible,
     assess_resolution,
     plan_follow_up,
     raise_improvement,
@@ -623,6 +625,7 @@ def observation(*, occurrences: int = 6, customers: int = 4) -> DifficultyObserv
         window_ended_at=NOW,
         support_refs=("support-ref-1", "support-ref-2"),
         operator_summary="People cannot tell which of the two export buttons keeps their notes.",
+        summary_authority=SummaryAuthority.AGENT_AUTHORED,
     )
 
 
@@ -768,3 +771,117 @@ def test_a_desk_family_threshold_still_reads_through_the_same_readiness_query() 
     )
     assert result.readiness is Readiness.BLOCKED
     assert any("coverage is 80%" in reason for reason in result.blocking_reasons)
+
+
+def test_an_absent_snapshot_does_not_hide_the_launch_bars_that_are_already_known() -> None:
+    """An operator asking why a launch is blocked wants everything that blocks it.
+
+    Stopping at the first missing input would report a snapshot and stay silent about four
+    launch bars nobody has met, which reads as one small problem instead of five.
+    """
+
+    entries = (
+        GateManifestEntry(
+            gate_id="PGM-06-not-activated",
+            description="The purchase surface is switched on",
+            predicate_kind=PredicateKind.CUSTOM,
+            status=GateStatus.OPEN,
+            launch_blocking=True,
+        ),
+    )
+    result = readiness_now(coverage=None, gate_manifest=gate_manifest(entries=entries))
+    assert result.readiness is Readiness.BLOCKED
+    assert any("no coverage snapshot" in reason for reason in result.blocking_reasons)
+    assert any("PGM-06-not-activated is open" in reason for reason in result.blocking_reasons)
+
+
+def test_an_absent_gate_manifest_still_says_only_what_it_can() -> None:
+    """Control: with no bars compiled there is nothing to add, and it does not invent any."""
+
+    result = readiness_now(coverage=None, gate_manifest=None)
+    assert sorted(result.blocking_reasons) == [
+        "no coverage snapshot has been captured",
+        "no_product_gate_manifest: the product's own launch bars are not compiled",
+    ]
+
+
+def test_a_summary_must_say_who_wrote_it_before_it_can_be_shared() -> None:
+    """A pattern search cannot certify text as safe; the authority behind it is what can.
+
+    Without this, any string that happened to contain no email address would ride into a
+    shared record on the strength of a regex finding nothing.
+    """
+
+    with pytest.raises(ContractError) as error:
+        DifficultyObservation(
+            cluster_key="export-step-unclear",
+            product_slug=SLUG,
+            difficulty_kind=DifficultyKind.UNCLEAR_INSTRUCTION,
+            surface="export screen",
+            occurrence_count=4,
+            distinct_customer_count=3,
+            window_started_at=NOW - dt.timedelta(days=7),
+            window_ended_at=NOW,
+            operator_summary="some words nobody has claimed",
+        )
+    assert "marked absent must be empty" in str(error.value)
+
+
+def test_a_closed_vocabulary_summary_must_be_one_of_the_producer_s_registered_phrases() -> None:
+    phrases = ("the export step is unclear", "the export step loses work")
+    admitted = DifficultyObservation(
+        cluster_key="export-step-unclear",
+        product_slug=SLUG,
+        difficulty_kind=DifficultyKind.UNCLEAR_INSTRUCTION,
+        surface="export screen",
+        occurrence_count=4,
+        distinct_customer_count=3,
+        window_started_at=NOW - dt.timedelta(days=7),
+        window_ended_at=NOW,
+        operator_summary="the export step is unclear",
+        summary_authority=SummaryAuthority.CLOSED_VOCABULARY,
+        registered_phrases=phrases,
+    )
+    assert admitted.operator_summary == "the export step is unclear"
+    with pytest.raises(ContractError) as error:
+        DifficultyObservation(
+            cluster_key="export-step-unclear",
+            product_slug=SLUG,
+            difficulty_kind=DifficultyKind.UNCLEAR_INSTRUCTION,
+            surface="export screen",
+            occurrence_count=4,
+            distinct_customer_count=3,
+            window_started_at=NOW - dt.timedelta(days=7),
+            window_ended_at=NOW,
+            operator_summary="something a person typed that is not in the set",
+            summary_authority=SummaryAuthority.CLOSED_VOCABULARY,
+            registered_phrases=phrases,
+        )
+    assert "registered phrases" in str(error.value)
+
+
+def test_an_agent_authored_summary_long_enough_to_quote_somebody_is_refused() -> None:
+    """Length is the second fence: a line that can hold a message can carry one."""
+
+    with pytest.raises(ContractError) as error:
+        assert_summary_admissible(
+            summary="x" * 201, authority=SummaryAuthority.AGENT_AUTHORED
+        )
+    assert "at most 200" in str(error.value)
+
+
+def test_the_reason_code_and_counts_stand_alone_with_no_summary_at_all() -> None:
+    """Control: a record with no summary is complete, so nothing forces free text."""
+
+    observed = DifficultyObservation(
+        cluster_key="export-step-unclear",
+        product_slug=SLUG,
+        difficulty_kind=DifficultyKind.UNCLEAR_INSTRUCTION,
+        surface="export screen",
+        occurrence_count=4,
+        distinct_customer_count=3,
+        window_started_at=NOW - dt.timedelta(days=7),
+        window_ended_at=NOW,
+    )
+    assert observed.operator_summary == ""
+    assert observed.as_dict()["summary_authority"] == "absent"
