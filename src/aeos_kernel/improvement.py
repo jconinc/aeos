@@ -1,0 +1,451 @@
+"""From a repeated customer difficulty to a verified fix, without carrying the customer along.
+
+What travels into the build pipeline is a count and a reason code, plus opaque references
+back to the records that stay where they are. The customer's own words never do: a support
+message belongs in the support system, not in a task description or a shared graph.
+
+The other rule here is what counts as solved. A created task, a merged change or a model
+saying so proves the work happened, not that the difficulty went away. The issue stays open
+until a fresh observation in the same scope says the problem stopped recurring.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import StrEnum
+from typing import Any
+
+from aeos_kernel._validation import digest, immutable_json_object, required, thaw_json, utc
+from aeos_kernel.canonical import stable_fingerprint
+from aeos_kernel.errors import ContractError
+
+# Shapes that should never reach a shared task description. Each is a thing a person is,
+# not a thing a product does.
+_IDENTIFIER_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("an email address", re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")),
+    ("a telephone number", re.compile(r"(?:\+\d[\d\s().-]{7,}\d)")),
+    ("a long digit sequence", re.compile(r"\b\d{9,}\b")),
+    ("a quoted message", re.compile(r"[\"“][^\"”]{40,}[\"”]")),
+)
+
+
+class DifficultyKind(StrEnum):
+    """What kind of trouble the customer hit. A closed set, so it can be counted."""
+
+    CANNOT_COMPLETE_TASK = "cannot_complete_task"
+    WRONG_RESULT = "wrong_result"
+    UNCLEAR_INSTRUCTION = "unclear_instruction"
+    MISSING_CAPABILITY = "missing_capability"
+    ACCESS_OR_ACCOUNT = "access_or_account"
+    BILLING_OR_ORDER = "billing_or_order"
+    PERFORMANCE_OR_ERROR = "performance_or_error"
+
+
+class ImprovementKind(StrEnum):
+    HELP_CONTENT = "help_content"
+    PRODUCT_FIX = "product_fix"
+    PRODUCT_CHANGE = "product_change"
+
+
+class ResolutionState(StrEnum):
+    """Where one difficulty stands. Unknown is a real answer, distinct from resolved."""
+
+    OPEN = "open"
+    WORK_IN_PROGRESS = "work_in_progress"
+    SHIPPED_UNVERIFIED = "shipped_unverified"
+    VERIFIED_RESOLVED = "verified_resolved"
+    UNKNOWN = "unknown"
+
+
+def privacy_violations(text: str) -> tuple[str, ...]:
+    """Identifier shapes found in text bound for a shared surface."""
+
+    return tuple(label for label, pattern in _IDENTIFIER_PATTERNS if pattern.search(text))
+
+
+def assert_shareable(text: str, field_name: str) -> str:
+    """Refuse text that carries a customer's identity or their own words."""
+
+    found = privacy_violations(text)
+    if found:
+        raise ContractError(
+            f"{field_name} contains {found[0]}; a shared improvement record carries counts, "
+            "reason codes and opaque references, never customer content"
+        )
+    return text
+
+
+@dataclass(frozen=True, slots=True)
+class DifficultyObservation:
+    """One aggregate of the same trouble, seen in one window.
+
+    ``support_refs`` are opaque handles the support system can resolve. Nothing here can be
+    read back into a person without that system's own authorization.
+    """
+
+    cluster_key: str
+    product_slug: str
+    difficulty_kind: DifficultyKind
+    surface: str
+    occurrence_count: int
+    distinct_customer_count: int
+    window_started_at: datetime
+    window_ended_at: datetime
+    support_refs: tuple[str, ...] = ()
+    operator_summary: str = ""
+
+    def __post_init__(self) -> None:
+        for name in ("cluster_key", "product_slug", "surface"):
+            required(str(getattr(self, name)), name)
+        if not isinstance(self.difficulty_kind, DifficultyKind):
+            raise ContractError("difficulty kind is not recognized")
+        if self.occurrence_count <= 0 or self.distinct_customer_count <= 0:
+            raise ContractError("an observation counts at least one occurrence and one customer")
+        if self.distinct_customer_count > self.occurrence_count:
+            raise ContractError("distinct customers cannot exceed occurrences")
+        utc(self.window_started_at, "window_started_at")
+        utc(self.window_ended_at, "window_ended_at")
+        if self.window_ended_at < self.window_started_at:
+            raise ContractError("an observation window cannot end before it starts")
+        if len(set(self.support_refs)) != len(self.support_refs):
+            raise ContractError("support references must be unique")
+        for reference in self.support_refs:
+            required(reference, "support reference")
+            assert_shareable(reference, "support reference")
+        if self.operator_summary:
+            required(self.operator_summary, "operator_summary")
+            assert_shareable(self.operator_summary, "operator_summary")
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "cluster_key": self.cluster_key,
+            "product_slug": self.product_slug,
+            "difficulty_kind": self.difficulty_kind.value,
+            "surface": self.surface,
+            "occurrence_count": self.occurrence_count,
+            "distinct_customer_count": self.distinct_customer_count,
+            "window_started_at": self.window_started_at.isoformat(),
+            "window_ended_at": self.window_ended_at.isoformat(),
+            "support_refs": list(self.support_refs),
+            "operator_summary": self.operator_summary,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RecurrenceThreshold:
+    """When a difficulty is worth changing the product over."""
+
+    minimum_occurrences: int = 3
+    minimum_distinct_customers: int = 2
+
+    def __post_init__(self) -> None:
+        if self.minimum_occurrences <= 0 or self.minimum_distinct_customers <= 0:
+            raise ContractError("recurrence thresholds must be positive")
+
+    def met_by(self, observation: DifficultyObservation) -> bool:
+        return (
+            observation.occurrence_count >= self.minimum_occurrences
+            and observation.distinct_customer_count >= self.minimum_distinct_customers
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ImprovementRequest:
+    """The safe hand-off into the existing requirement and task pipeline."""
+
+    request_id: str
+    cluster_key: str
+    product_slug: str
+    improvement_kind: ImprovementKind
+    title: str
+    problem_statement: str
+    requirement_ref: str
+    raised_at: datetime
+    observation_digest: str
+    external_task_ref: str = ""
+    evidence_refs: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for name in (
+            "request_id",
+            "cluster_key",
+            "product_slug",
+            "title",
+            "problem_statement",
+            "requirement_ref",
+        ):
+            required(str(getattr(self, name)), name)
+        if not isinstance(self.improvement_kind, ImprovementKind):
+            raise ContractError("improvement kind is not recognized")
+        utc(self.raised_at, "raised_at")
+        digest(self.observation_digest, "observation_digest")
+        assert_shareable(self.title, "improvement title")
+        assert_shareable(self.problem_statement, "problem_statement")
+        if self.external_task_ref:
+            required(self.external_task_ref, "external_task_ref")
+        if len(set(self.evidence_refs)) != len(self.evidence_refs):
+            raise ContractError("improvement evidence references must be unique")
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "request_id": self.request_id,
+            "cluster_key": self.cluster_key,
+            "product_slug": self.product_slug,
+            "improvement_kind": self.improvement_kind.value,
+            "title": self.title,
+            "problem_statement": self.problem_statement,
+            "requirement_ref": self.requirement_ref,
+            "raised_at": self.raised_at.isoformat(),
+            "observation_digest": self.observation_digest,
+            "external_task_ref": self.external_task_ref,
+            "evidence_refs": list(self.evidence_refs),
+        }
+
+
+def raise_improvement(
+    *,
+    observation: DifficultyObservation,
+    threshold: RecurrenceThreshold,
+    improvement_kind: ImprovementKind,
+    title: str,
+    problem_statement: str,
+    requirement_ref: str,
+    raised_at: datetime,
+) -> ImprovementRequest | None:
+    """Turn a recurring difficulty into a request, or decline because it has not recurred.
+
+    Returns ``None`` when the threshold is not met — one report is a report, not yet a
+    pattern, and the record stays in support where it can still be answered.
+    """
+
+    if not threshold.met_by(observation):
+        return None
+    observation_digest = stable_fingerprint(observation.as_dict())
+    identity = stable_fingerprint(
+        {"cluster": observation.cluster_key, "at": raised_at.isoformat()}
+    )
+    return ImprovementRequest(
+        request_id=f"improvement_{identity[:24]}",
+        cluster_key=observation.cluster_key,
+        product_slug=observation.product_slug,
+        improvement_kind=improvement_kind,
+        title=title,
+        problem_statement=problem_statement,
+        requirement_ref=requirement_ref,
+        raised_at=raised_at,
+        observation_digest=observation_digest,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ShippedChange:
+    """The exact release that carried the improvement."""
+
+    request_id: str
+    release_ref: str
+    verification_ref: str
+    shipped_at: datetime
+    change_refs: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for name in ("request_id", "release_ref", "verification_ref"):
+            required(str(getattr(self, name)), name)
+        utc(self.shipped_at, "shipped_at")
+        if len(set(self.change_refs)) != len(self.change_refs):
+            raise ContractError("change references must be unique")
+
+
+@dataclass(frozen=True, slots=True)
+class ResolutionAssessment:
+    """Whether the difficulty actually stopped, and how that was established."""
+
+    cluster_key: str
+    state: ResolutionState
+    reason: str
+    before_rate_per_week: float | None = None
+    after_rate_per_week: float | None = None
+    observation_window_complete: bool = False
+
+    def __post_init__(self) -> None:
+        required(self.cluster_key, "cluster_key")
+        required(self.reason, "resolution reason")
+        if not isinstance(self.state, ResolutionState):
+            raise ContractError("resolution state is not recognized")
+        for name in ("before_rate_per_week", "after_rate_per_week"):
+            value = getattr(self, name)
+            if value is not None and value < 0:
+                raise ContractError(f"{name} must be nonnegative")
+
+    @property
+    def customer_follow_up_permitted(self) -> bool:
+        """Only tell a customer it is fixed once an observation says it is."""
+
+        return self.state is ResolutionState.VERIFIED_RESOLVED
+
+
+def assess_resolution(
+    *,
+    cluster_key: str,
+    request: ImprovementRequest | None,
+    shipped: ShippedChange | None,
+    before_rate_per_week: float | None,
+    after_rate_per_week: float | None,
+    observation_window_complete: bool,
+    improvement_ratio: float = 0.5,
+) -> ResolutionAssessment:
+    """Decide what may be claimed. A shipped change alone claims nothing about the customer."""
+
+    if not 0 < improvement_ratio <= 1:
+        raise ContractError("improvement ratio must fall in (0, 1]")
+    if request is None:
+        return ResolutionAssessment(
+            cluster_key=cluster_key,
+            state=ResolutionState.OPEN,
+            reason="no improvement has been raised for this difficulty",
+        )
+    if shipped is None:
+        return ResolutionAssessment(
+            cluster_key=cluster_key,
+            state=ResolutionState.WORK_IN_PROGRESS,
+            reason=(
+                f"{request.request_id} is raised against {request.requirement_ref}; nothing has "
+                "shipped yet, so the difficulty is unchanged"
+            ),
+        )
+    if not observation_window_complete:
+        return ResolutionAssessment(
+            cluster_key=cluster_key,
+            state=ResolutionState.SHIPPED_UNVERIFIED,
+            reason=(
+                f"{shipped.release_ref} shipped and passed {shipped.verification_ref}, but the "
+                "observation window has not closed; whether customers stopped hitting this is "
+                "not yet known"
+            ),
+            before_rate_per_week=before_rate_per_week,
+            after_rate_per_week=after_rate_per_week,
+        )
+    if before_rate_per_week is None or after_rate_per_week is None:
+        return ResolutionAssessment(
+            cluster_key=cluster_key,
+            state=ResolutionState.UNKNOWN,
+            reason=(
+                "the before or after rate was not measured; a missing observation is unknown, "
+                "not zero"
+            ),
+            before_rate_per_week=before_rate_per_week,
+            after_rate_per_week=after_rate_per_week,
+            observation_window_complete=True,
+        )
+    if before_rate_per_week == 0:
+        return ResolutionAssessment(
+            cluster_key=cluster_key,
+            state=ResolutionState.UNKNOWN,
+            reason="the difficulty was not occurring before the change, so nothing can be shown",
+            before_rate_per_week=before_rate_per_week,
+            after_rate_per_week=after_rate_per_week,
+            observation_window_complete=True,
+        )
+    if after_rate_per_week <= before_rate_per_week * improvement_ratio:
+        return ResolutionAssessment(
+            cluster_key=cluster_key,
+            state=ResolutionState.VERIFIED_RESOLVED,
+            reason=(
+                f"occurrences fell from {before_rate_per_week:.1f} to {after_rate_per_week:.1f} "
+                f"a week after {shipped.release_ref}"
+            ),
+            before_rate_per_week=before_rate_per_week,
+            after_rate_per_week=after_rate_per_week,
+            observation_window_complete=True,
+        )
+    return ResolutionAssessment(
+        cluster_key=cluster_key,
+        state=ResolutionState.SHIPPED_UNVERIFIED,
+        reason=(
+            f"{shipped.release_ref} shipped but occurrences are still "
+            f"{after_rate_per_week:.1f} a week against {before_rate_per_week:.1f} before; the "
+            "difficulty has not been shown to be resolved"
+        ),
+        before_rate_per_week=before_rate_per_week,
+        after_rate_per_week=after_rate_per_week,
+        observation_window_complete=True,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class FollowUpPlan:
+    """What to tell people, and where. Never a claim the evidence does not support."""
+
+    cluster_key: str
+    notify_support_refs: tuple[str, ...]
+    help_content_ref: str
+    message_kind: str
+    permitted: bool
+    reason: str
+    details: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        required(self.cluster_key, "cluster_key")
+        required(self.message_kind, "message_kind")
+        required(self.reason, "follow-up reason")
+        object.__setattr__(self, "details", immutable_json_object(self.details, "details"))
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "cluster_key": self.cluster_key,
+            "notify_support_refs": list(self.notify_support_refs),
+            "help_content_ref": self.help_content_ref,
+            "message_kind": self.message_kind,
+            "permitted": self.permitted,
+            "reason": self.reason,
+            "details": thaw_json(self.details),
+        }
+
+
+def plan_follow_up(
+    *,
+    assessment: ResolutionAssessment,
+    observation: DifficultyObservation,
+    help_content_ref: str = "",
+) -> FollowUpPlan:
+    """Prepare the follow-up the evidence actually supports."""
+
+    if assessment.customer_follow_up_permitted:
+        return FollowUpPlan(
+            cluster_key=assessment.cluster_key,
+            notify_support_refs=observation.support_refs,
+            help_content_ref=help_content_ref,
+            message_kind="resolved_follow_up",
+            permitted=True,
+            reason=assessment.reason,
+        )
+    return FollowUpPlan(
+        cluster_key=assessment.cluster_key,
+        notify_support_refs=(),
+        help_content_ref=help_content_ref,
+        message_kind="no_customer_message",
+        permitted=False,
+        reason=(
+            f"the difficulty is {assessment.state.value}: {assessment.reason}. Telling a "
+            "customer it is fixed would claim more than has been observed."
+        ),
+    )
+
+
+__all__ = [
+    "DifficultyKind",
+    "DifficultyObservation",
+    "FollowUpPlan",
+    "ImprovementKind",
+    "ImprovementRequest",
+    "RecurrenceThreshold",
+    "ResolutionAssessment",
+    "ResolutionState",
+    "ShippedChange",
+    "assert_shareable",
+    "assess_resolution",
+    "plan_follow_up",
+    "privacy_violations",
+    "raise_improvement",
+]
