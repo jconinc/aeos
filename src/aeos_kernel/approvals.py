@@ -301,7 +301,9 @@ class ApprovalLoadProjection:
     module_key: str
     projected_parks_per_week: float
     headroom_parks_per_week: float
-    within_headroom: bool
+    #: Families with scheduled work whose park rate nobody has measured. While this is
+    #: non-empty the projection is a floor, not a number, and it certifies nothing.
+    unmeasured_move_types: tuple[str, ...] = ()
     by_move_type: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -309,12 +311,39 @@ class ApprovalLoadProjection:
         required(self.module_key, "module_key")
         if self.projected_parks_per_week < 0 or self.headroom_parks_per_week < 0:
             raise ContractError("projected and available approval load must be nonnegative")
+        if len(set(self.unmeasured_move_types)) != len(self.unmeasured_move_types):
+            raise ContractError("unmeasured move types must be unique")
         object.__setattr__(
             self, "by_move_type", immutable_json_object(self.by_move_type, "by_move_type")
         )
 
     @property
+    def is_complete(self) -> bool:
+        """Whether every family with scheduled work has a measured rate behind it."""
+
+        return not self.unmeasured_move_types
+
+    @property
+    def within_headroom(self) -> bool:
+        """Whether this fits, which an incomplete projection can never say.
+
+        An unmeasured rate is unknown. Reading it as zero would let a family scheduled five
+        hundred times a week certify that it fits inside a headroom of one, which is the
+        opposite of what not knowing means.
+        """
+
+        return self.is_complete and self.projected_parks_per_week <= self.headroom_parks_per_week
+
+    @property
     def reason(self) -> str:
+        if not self.is_complete:
+            missing = ", ".join(sorted(self.unmeasured_move_types))
+            return (
+                f"enabling {self.module_key} on {self.product_slug} cannot be sized yet: "
+                f"{missing} has scheduled work and no measured park rate, so the projection "
+                f"of at least {self.projected_parks_per_week:.1f} approvals a week is a floor "
+                "rather than an answer"
+            )
         verb = "fits" if self.within_headroom else "exceeds"
         return (
             f"enabling {self.module_key} on {self.product_slug} projects "
@@ -329,7 +358,7 @@ def project_approval_load(
     module_key: str,
     families: tuple[MoveFamily, ...],
     scheduled_moves_per_week: dict[str, float],
-    observed_park_rate: dict[str, float],
+    observed_park_rate: dict[str, float | None],
     headroom_parks_per_week: float,
 ) -> ApprovalLoadProjection:
     """Size the operator's load by arithmetic before enabling a module, not by backlog.
@@ -340,22 +369,34 @@ def project_approval_load(
     """
 
     per_type: dict[str, float] = {}
+    unmeasured: list[str] = []
     for family in families:
         volume = float(scheduled_moves_per_week.get(family.move_type, 0.0))
         if volume < 0:
             raise ContractError("scheduled move volume must be nonnegative")
-        observed = float(observed_park_rate.get(family.move_type, 0.0))
-        rate = 1.0 if family.human_override else observed
-        if not 0 <= rate <= 1:
+        observed = observed_park_rate.get(family.move_type)
+        if observed is not None and not 0 <= float(observed) <= 1:
             raise ContractError("an observed park rate must fall between zero and one")
+        if family.human_override:
+            # It parks every time by declaration, so no measurement is owed.
+            rate = 1.0
+        elif observed is not None:
+            rate = float(observed)
+        elif volume == 0:
+            # Nothing is scheduled, so no rate is needed to know it adds nothing.
+            rate = 0.0
+        else:
+            # Scheduled work with no measured rate. Counting it as zero would let it
+            # certify capacity nobody has observed, so it is named instead.
+            unmeasured.append(family.move_type)
+            rate = 0.0
         per_type[family.move_type] = volume * rate
-    total = sum(per_type.values())
     return ApprovalLoadProjection(
         product_slug=product_slug,
         module_key=module_key,
-        projected_parks_per_week=total,
+        projected_parks_per_week=sum(per_type.values()),
         headroom_parks_per_week=headroom_parks_per_week,
-        within_headroom=total <= headroom_parks_per_week,
+        unmeasured_move_types=tuple(unmeasured),
         by_move_type=per_type,
     )
 

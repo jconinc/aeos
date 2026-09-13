@@ -416,19 +416,56 @@ def test_operator_load_is_sized_by_arithmetic_before_a_module_is_enabled() -> No
     assert "exceeds the declared headroom" in projection.reason
 
 
-def test_an_unobserved_park_rate_is_treated_as_unmeasured_rather_than_high() -> None:
-    families = pipeline_module().move_families
+def test_a_family_with_scheduled_work_and_no_measured_rate_sizes_nothing() -> None:
+    """An unknown rate read as zero lets heavy work certify a headroom nobody observed.
+
+    Seventy captures a week whose park rate nobody has measured would have projected zero
+    parks and reported that it fits — the opposite of what not knowing means.
+    """
+
     projection = project_approval_load(
         product_slug="fictional-app",
         module_key="pipeline",
-        families=families,
+        families=pipeline_module().move_families,
         scheduled_moves_per_week={"capture_coverage": 70.0, "launch_product": 1.0},
         observed_park_rate={},
         headroom_parks_per_week=10.0,
     )
-    # capture_coverage does not park and has no observed rate, so it contributes nothing;
-    # launch_product always parks, so it contributes its one scheduled move.
+    assert projection.unmeasured_move_types == ("capture_coverage",)
+    assert not projection.is_complete
+    assert not projection.within_headroom
+    assert "has scheduled work and no measured park rate" in projection.reason
+
+
+def test_a_family_nobody_scheduled_needs_no_rate_to_be_sized() -> None:
+    """Nothing scheduled adds nothing, and that much is known without measuring it."""
+
+    projection = project_approval_load(
+        product_slug="fictional-app",
+        module_key="pipeline",
+        families=pipeline_module().move_families,
+        scheduled_moves_per_week={"launch_product": 1.0},
+        observed_park_rate={},
+        headroom_parks_per_week=10.0,
+    )
+    assert projection.is_complete
     assert projection.projected_parks_per_week == 1.0
+    assert projection.within_headroom
+
+
+def test_a_measured_rate_sizes_the_work_it_was_measured_for() -> None:
+    """Control: supplying the rate is what turns the floor into an answer."""
+
+    projection = project_approval_load(
+        product_slug="fictional-app",
+        module_key="pipeline",
+        families=pipeline_module().move_families,
+        scheduled_moves_per_week={"capture_coverage": 70.0, "launch_product": 1.0},
+        observed_park_rate={"capture_coverage": 0.1},
+        headroom_parks_per_week=10.0,
+    )
+    assert projection.is_complete
+    assert projection.projected_parks_per_week == 8.0
     assert projection.within_headroom
 
 
