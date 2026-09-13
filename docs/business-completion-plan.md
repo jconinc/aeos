@@ -307,27 +307,38 @@ released. Actual approved provider/help material and human usability evidence re
 from implementation proof. Continue the full requirement map and other business workflows;
 REQ-SUP-029 stays source_partial and no requirement is marked accepted complete.
 
-## Current private integration — 13 September, 19:10 UTC
+## Current private integration — 13 September
 
-The preceding chronological source checkpoints remain attributed to their original commits.
-Current implementation is broader: private Wema `4be1e3dd` includes reply outcomes, ordinary
-reply follow-through, support observations, first-response monitoring and shared model/setup
-admission. Setup admission advances queued to running with its first durable reservation and
-retains unresolved exposure; its worker transaction split remains explicitly incomplete. The
-14 new scoped-admission controls are authored, unexecuted; lint/types/native lock/diff pass.
+The earlier source checkpoints retain their original commits and evidence. Wema
+`60d1036a4cf099970c7057c974600c8885259aec` now connects the registered Marketing assistance
+worker to the shared reservation. Preparation commits before gateway execution; each attempt
+rechecks its exact native source, lease and switches. Provider calls hold no Session. The
+existing outcome/currentness tail is shared and AST-equivalent after input-reference renaming.
+Eighteen native worker/fictional-HTTP and two gateway controls are authored, unexecuted.
+All six static checks pass in 61.70 seconds, with two original refusals and the small
+workspace-typecheck overrun retained. No live provider route is selected or enabled.
 
-Private kernel `26b1bd9` joins claude-0's exact `ce19620` rule/finite-capacity source and
-claude-3's `79912bb` operational evidence helper, preserving the completion map and earlier
-source fixes. Three affected kernel contract files pass 80 cases in 0.643 seconds wall time;
-whole-tree lint and strict kernel types pass. This is bounded kernel proof, without a full
-coverage, pinned-upstream, real graph, Wema-runtime or release claim. No version, published
-artifact, installed Wema dependency or shared/host tip changed.
+Kernel `9aa15777cf5cac1717273b0abefbd839135afc6e` preserves the exact core `7d70796`,
+operations `79912bb`, previous integration and full completion map. Its maintained package
+checks pass 438 unit cases and 22 compatibility cases at the unchanged upstream pin
+`d99002a1903a56b5601d7ec3455e5dfa43028935`, using an isolated pinned checkout. This resolves
+the earlier launch-environment failures without changing the pin. One real-Memgraph case
+remains unexecuted. The combined coverage gate passes at 90.04%, but independent branch
+coverage is 81.55% (1,295/1,588); line coverage is 92.84% (4,473/4,818). Package acceptance
+remains incomplete under the consumer's independent floors. No new version, wheel, published
+artifact, Wema dependency, shared tip or host result is claimed.
 
-Next joined dependencies: claude-0's native control-plane/rail readers, claude-3's exact
-`c487ef5e` native monitoring consumers and the normal combined AEOS artifact/pin. Global
-registrations, provisional migrations/schema profile and generated contracts must agree before
-Wema runtime verification. P1-P6 is now reported through `14b6fcf6` and remains an ordered
-commercial migration block; preserve its original partial-gate results. Commercial's broader
-assignment is still dispatched, not silently counted complete. Complete all applicable
-remaining workflows and acceptance evidence through these named owners; none is deferred to
-an unspecified later project.
+Core Wema `3a405e1d` is not joined: its readiness reader currently interprets loose JSON status
+without native authentication/applicability, picks the newest shared-store revision, omits
+expected-subject completeness and refreshes observation age on polling. These are exact source
+inspection findings, not a reproduced runtime exploit. Claude-0 owns the bounded native reader
+correction and relevant efficient branch controls; root owns integrated execution. The existing
+verifier remains authoritative; no new release engine or founder approval is requested.
+
+The exact `c487ef5e` monitoring consumers, corrected core readers and normal combined AEOS
+artifact/pin are the next dependencies. Register their actual modules/rails and reconcile the
+provisional migrations, schema profile and generated contracts before Wema runtime selection.
+P1–P6 is reported through `14b6fcf6` and remains one ordered commercial migration block with its
+original partial gates retained. Commercial's broader assignment remains dispatched, not
+silently counted complete. Complete every applicable remaining workflow through the named
+owners; support and kernel checks alone do not complete the business goal.
