@@ -9,6 +9,7 @@ One unresolvable item never parks a whole run: the rest drains.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -309,6 +310,16 @@ class ApprovalLoadProjection:
     def __post_init__(self) -> None:
         required(self.product_slug, "product_slug")
         required(self.module_key, "module_key")
+        for label, value in (
+            ("projected", self.projected_parks_per_week),
+            ("available", self.headroom_parks_per_week),
+        ):
+            # Finite before nonnegative, because the sign test passes everything the finite
+            # test catches. `nan < 0` is False, so a NaN load reads as valid and then makes
+            # every comparison after it False; `inf` headroom reads as valid and certifies
+            # any load at all. A capacity nobody can exceed is not a measured capacity.
+            if not math.isfinite(value):
+                raise ContractError(f"{label} approval load must be a finite number of moves")
         if self.projected_parks_per_week < 0 or self.headroom_parks_per_week < 0:
             raise ContractError("projected and available approval load must be nonnegative")
         if len(set(self.unmeasured_move_types)) != len(self.unmeasured_move_types):
@@ -372,10 +383,16 @@ def project_approval_load(
     unmeasured: list[str] = []
     for family in families:
         volume = float(scheduled_moves_per_week.get(family.move_type, 0.0))
+        if not math.isfinite(volume):
+            raise ContractError(
+                f"scheduled volume for {family.move_type!r} must be a finite number of moves"
+            )
         if volume < 0:
             raise ContractError("scheduled move volume must be nonnegative")
         observed = observed_park_rate.get(family.move_type)
         if observed is not None and not 0 <= float(observed) <= 1:
+            # A NaN rate lands here too: every comparison against it is False, so the
+            # bounds test fails and the rate is refused rather than silently propagated.
             raise ContractError("an observed park rate must fall between zero and one")
         if family.human_override:
             # It parks every time by declaration, so no measurement is owed.
