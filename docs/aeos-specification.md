@@ -931,3 +931,33 @@ particular person's problem went away. Only a measured zero across a complete wi
 resolved. `plan_follow_up` refuses a customer message until then, and refuses a mismatched
 assessment and observation outright, because the observation's references decide who hears
 from us and a mismatched pair would write to people who reported something else.
+
+### 20.11 Named rules for a move
+
+`rails` registers one callable per named rule and the move types it evaluates. Each result
+contains its registered name, a closed verdict, a reason and materialized gaps. A mismatched
+result name refuses. Enforcing rules contribute a decision; observing rules retain findings
+without changing that decision. The host selects the mode in its governed registration, not
+from model output. Park takes precedence over decline, and decline over hold. A family's
+human-override declaration supplies the parked default when no stronger rule decides.
+
+Wema's `wema_commercial_guidance.aeos_rails` supplies its native facts and callable registry;
+`aeos_operations.OPS_RAILS` extends the same registry. Neither a passing rule nor an observing
+mode grants an effect: existing host authorization and the commit boundary remain mandatory.
+`tests/test_control_plane_rails.py` contains the contract controls. This private source join
+does not establish runtime coverage, host installation or a second production product.
+
+## 21. Native operational observations
+
+The product-neutral `operational_evidence` helper evaluates one host-supplied measurement
+against an exact scope, source digest, observation time, completeness declaration, freshness
+window and ceiling. Missing, stale, future, incomplete or differently bound observations are
+unknown; measured zero is distinct from missing data. An empty coverage set cannot imply health.
+The helper makes no provider call, schedules nothing and grants no corrective authority.
+
+Wema is the named first consumer: its native worker records aggregate PostgreSQL observations,
+its existing incident workflow requires fresh matching evidence to clear a monitored incident,
+and its existing Desk/CLI read exposes both coverage and missing results. These source changes
+are authored for the joined AEOS business candidate; runtime controls have not run in this lane.
+This is not a substitute for the broader per-move security policy, append-only audit chain,
+provider delivery proof, privacy discharge or complete cross-product operational report.

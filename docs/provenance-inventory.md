@@ -275,3 +275,22 @@ would have let an aggregate hide a regime that was not live.
 Not established by this checkpoint: no runtime, database, browser or provider test has run; no
 package was published and no Wema pin changed; and no requirement in the map is marked
 accepted complete.
+
+The subsequent `rails` module is new code from author commit
+`a3d6ed984eb20178dd4b399281081f26364be62c`, against the same pinned specification.
+Its named consumers are Wema's `wema_commercial_guidance.aeos_rails`, `aeos_operations`,
+and the native product/operations worker commit paths. `tests/test_control_plane_rails.py`
+covers its decisions and refusals. Finite approval-load guards from
+`ce19620e650fa2503e136ad168d917a699a8c865` extend `tests/test_control_plane_moves.py`;
+these source additions do not supply observed founder capacity. Private join evidence
+stays separate from the earlier author's unit runs and from pending published-consumer proof.
+
+## Native operational measurement adapter — prepared, unverified
+
+| Source and pin | Adaptation | Named consumer | Authored controls | Proof status |
+| --- | --- | --- | --- | --- |
+| Wema `c1616a9a8d9c66c5efedd821a387b18437f80d0d`, `apps/worker/wema_worker/outbox.py`, `handlers/retention_janitor.py`; broader AEOS `29a3652e85cf091beff3c7651b61fd4718d7c145`, PROD_OPS RT-012 and SEC-055/060 | New small freshness/threshold validator in `operational_evidence.py`; reuses the native distinction between observed recovery, held work and missing evidence. This is new adapter behavior, not a claim that these exact functions were extracted and already proved. | Wema `wema_db.operational_checks.current_health`/`persist_check` and `wema_api.operational_health.health_projection` | `tests/test_operational_evidence.py`: exact window/threshold, missing/incomplete/future/cross-scope/source and empty coverage | Written, runtime-unexecuted. Cheap syntax/lint/type evidence is recorded in the operations author lane; package/version/pin and joined runtime verification remain integration-owned. |
+
+No upstream engine or graph was copied. No private message, identity, secret, approval or effect
+record is accepted by this helper. Its digest comparisons do not authenticate an entire audit
+log and do not close SEC-058.
