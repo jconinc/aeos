@@ -24,6 +24,48 @@ owner time either. Keep measured workload, unmeasured assumptions and conditiona
 scenarios separate. An approval step may take owner time even when the system does all the
 investigation and preparation; it does not imply a human must solve the whole ticket.
 
+## Prevent the need for support
+
+The customer's first path is a clear, complete product workflow. Apply the existing
+[Product Design Canon](../../MultiAgentCommunication/docs/agent_context/product_design_canon_charter.md)
+and its [engagement policy](../../MultiAgentCommunication/docs/agent_context/product_engagement_policy.md):
+people should understand, complete, recover and undo without routine human rescue. Agents
+should resolve design questions from existing evidence and the canon before asking the owner.
+This applies existing guidance; it does not amend the canon or supersede product authority.
+
+The PFV factory specs make the mechanisms concrete:
+
+- [Presentation Help](../../PetFoodVerify-Context/specs/presentation_help.txt): explain the
+  screen and unfamiliar fields in context; give actionable recovery; bind onboarding to a
+  real completion action. An explanation or empty help field is not proof of understanding.
+- [Presentation Psychology](../../PetFoodVerify-Context/specs/presentation_psychology.txt)
+  and [Habit and Ease of Use](../../PetFoodVerify-Context/specs/habit.txt): control visible
+  choices and steps, progressively reveal complexity, preserve input and provide appropriate
+  progress feedback and recovery. Their structural budgets are not measured usability results.
+- [Organic Growth](../../PetFoodVerify-Context/specs/organic_growth_ammendments.txt): enable
+  useful, source-verifiable sharing after genuine value, with privacy and crisis suppression.
+  This is not an additional viral multiplier on top of the same marketing playbook mechanism.
+- [Instrumentation](../../PetFoodVerify-Context/specs/instrumentation.txt): observe funnel
+  completion, contextual feedback, trustworthy comparisons and data readiness so repeated
+  confusion can become a product improvement rather than permanent support labor.
+
+Provide the shortest sufficient explanation at the point of need. A brief optional video or
+walkthrough can demonstrate a task; keep a usable text alternative and avoid requiring a call,
+video or lengthy help search before users can proceed or ask for help. Video production is
+explicitly outside Presentation Help's scope: the spec does not establish that videos exist.
+AEOS can assist where the interface and contextual help are insufficient; current authority
+still governs its operations. The aim is successful customer progress, not maximizing bot use
+or keeping support contact counts artificially low.
+
+Model two separate effects: fewer users need assistance, and fewer assisted cases need owner
+handling. Do not count the same avoided work once as better UX and again as AI deflection.
+Measure task completion and abandonment as well as help use: no ticket can also mean the user
+gave up. Keep time to first value, paid conversion, renewal and referrals as separate outcomes.
+The Habit spec explicitly says its rules enforce product-hypothesis structure, not discovery
+truth. Until behavior is observed, revenue improvements are sensitivities, not established
+returns from having a canon or passing structural gates. Historical example copy does not
+override current PFV requirements, particularly its records-not-advice restrictions.
+
 ## Implementation evidence at this review
 
 Source inspection covered AEOS `9785300dd904ada1e7b6a1a59bc58b2e484c7247`, Wema
