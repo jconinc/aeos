@@ -17,7 +17,7 @@ remains separately unproved for this integrated source.
 
 The source is versioned as a local **0.8.0 candidate**. The bounded wheel build produced
 `dist/aeos_kernel-0.8.0-py3-none-any.whl` with SHA-256
-`8fcdc37bceeff6a12d560520c09480c397a3d1db3529357b4bca09955ee43988`. Wema's normal
+`95ed8851a9e0b2af73bae0ddbf0b2d0d44db8e06134985e0323facbf8c321879`. Wema's normal
 dependency process still points at the published 0.7.2 wheel;
 publication, lock refresh, private installed-consumer proof and delivery are explicit release
 gates. No unpublished or local path is silently substituted for that lock.

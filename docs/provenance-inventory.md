@@ -1,7 +1,7 @@
 # AEOS provenance and extraction inventory
 
-**Inventory version:** 6
-**Recorded:** 4 September 2026
+**Inventory version:** 7
+**Recorded:** 13 September 2026
 
 ## Source snapshots
 
@@ -261,23 +261,24 @@ Named production consumer: Wema, as a `consumer_app` product instance whose prof
 manifest are projected from Wema's own canonical records. No kernel module reads a Wema name,
 table, route or credential.
 
-Evidence at this checkpoint: 99 new contract tests in
-`tests/test_control_plane_{registry,moves,pipeline}.py` with fictional two-product fixtures in
-`tests/factories_control_plane.py`; ruff and strict mypy clean on the nine modules. The repo
-suite moves from 251 passed / 22 failed to 350 passed / 22 failed: the same 22 upstream
-compatibility witnesses fail before and after this change, because the upstream
-MultiAgentCommunication checkout has advanced past the recorded pin
-(`d99002a1903a…` expected, `1c3f5dd0ec32…` observed). That is a pin-refresh item for the
-compatibility lane and is retained here unchanged, not repaired by this work.
+Evidence at this checkpoint: the integrated source at `bab32d3` has 103 original control-plane
+tests plus eight focused refusal-edge tests in `tests/test_business_contract_edges.py`, with
+fictional two-product fixtures in `tests/factories_control_plane.py`. The native unit suite
+passes 536 cases with 23 deselected; Ruff and strict mypy are clean. Statement coverage is
+4,628/4,828 and branch coverage is 1,435/1,594 (90.0%); the combined report is 94.16%.
+The 22 pinned MultiAgent compatibility cases also pass against the detached
+`d99002a1903a56b5601d7ec3455e5dfa43028935` source. The live Memgraph case remains unexecuted.
 
 Two defects were found by these tests and fixed in the source they cover: a commit refusal
 built its gap set as a lazy generator rather than a tuple (both refusal contracts now reject a
 non-tuple), and a product-level readiness read skipped every regime-scoped launch bar, which
 would have let an aggregate hide a regime that was not live.
 
-Not established by this checkpoint: no runtime, database, browser or provider test has run; no
-package was published and no Wema pin changed; and no requirement in the map is marked
-accepted complete.
+Not established by this checkpoint: no Wema database/browser/provider or host test has run from
+the AEOS repository; no package was published and Wema's normal lock still names the published
+0.7.2 wheel; and no requirement in the map is marked accepted complete. A local 0.8.0 candidate
+wheel was built from the integrated source and remains a release artifact until its publication,
+lock refresh and installed-consumer proof are reviewed.
 
 The subsequent `rails` module is new code from author commit
 `a3d6ed984eb20178dd4b399281081f26364be62c`, against the same pinned specification.
