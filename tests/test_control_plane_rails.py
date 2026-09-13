@@ -10,14 +10,17 @@ from aeos_kernel import (
     ContractError,
     GapRow,
     MoveDecision,
+    MoveFamily,
     Rail,
     RailContext,
     RailMode,
     RailRegistry,
     RailResult,
     RailVerdict,
+    decide_move,
     evaluate_rails,
 )
+from tests.factories_control_plane import pipeline_module
 
 NOW = dt.datetime(2026, 9, 13, 12, 0, tzinfo=dt.UTC)
 
@@ -226,3 +229,63 @@ def test_a_malformed_rail_is_refused_where_it_is_built(
 ) -> None:
     with pytest.raises(ContractError, match=refusal):
         malformed()  # type: ignore[operator]
+
+
+def family(move_type: str) -> MoveFamily:
+    found = next(
+        item for item in pipeline_module().move_families if item.move_type == move_type
+    )
+    return found
+
+
+def test_a_family_that_always_parks_starts_parked_rather_than_shipping() -> None:
+    """The safe outcome must not depend on a rail being present to produce it.
+
+    launch_product declares human_override, so an empty or all-passing rail set still routes
+    it to a person. Starting at ship and relying on a rail to park would mean a deleted rail
+    silently promotes an owner decision into an unattended one.
+    """
+
+    merged = decide_move(
+        family=family("launch_product"), rails=(), context=context("launch_product")
+    )
+    assert merged.decision is MoveDecision.PARKED
+
+
+def test_a_family_that_does_not_always_park_ships_when_every_rail_passes() -> None:
+    passing = Rail(
+        name="a.pass",
+        move_types=("capture_coverage",),
+        check=lambda name, _ctx: RailResult(name, RailVerdict.PASS),
+    )
+    merged = decide_move(
+        family=family("capture_coverage"),
+        rails=(passing,),
+        context=context("capture_coverage"),
+    )
+    assert merged.decision is MoveDecision.SHIP
+
+
+def test_a_rail_can_still_refuse_a_family_that_would_otherwise_park() -> None:
+    """Control: the family sets the floor, it does not outrank what a rail found."""
+
+    refusing = Rail(
+        name="a.refuse",
+        move_types=("launch_product",),
+        check=lambda name, _ctx: RailResult(
+            name, RailVerdict.DECLINE, reason="readiness is not green"
+        ),
+    )
+    merged = decide_move(
+        family=family("launch_product"),
+        rails=(refusing,),
+        context=context("launch_product"),
+    )
+    assert merged.decision is MoveDecision.DECLINE
+
+
+def test_rails_for_one_move_cannot_decide_another_move() -> None:
+    with pytest.raises(ContractError, match="cannot decide"):
+        decide_move(
+            family=family("launch_product"), rails=(), context=context("capture_coverage")
+        )

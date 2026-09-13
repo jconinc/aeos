@@ -211,6 +211,17 @@ class ModuleRegistry:
     def keys(self) -> tuple[str, ...]:
         return tuple(sorted(self._modules))
 
+    @property
+    def modules(self) -> tuple[Module, ...]:
+        """Every registered module, so one registry can be composed from another.
+
+        Integration joins several lanes' modules into one registry. Without a way to read
+        what is already registered, a lane either re-lists the others' modules — which then
+        drifts — or reaches into this object's internals.
+        """
+
+        return tuple(self._modules[key] for key in sorted(self._modules))
+
     def family(self, move_type: str) -> MoveFamily | None:
         for module in self._modules.values():
             found = module.family(move_type)

@@ -180,6 +180,7 @@ from aeos_kernel.rails import (
     RailRegistry,
     RailResult,
     RailVerdict,
+    decide_move,
     evaluate_rails,
 )
 from aeos_kernel.registry import (
@@ -442,6 +443,7 @@ __all__ = [
     "classify_drift",
     "commit_boundary_refusal",
     "content_digest",
+    "decide_move",
     "drain_order",
     "drain_partially",
     "duplicate_of",
