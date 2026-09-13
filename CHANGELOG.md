@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.2 — candidate, 2026-09-13
 
 - Give Wema access resend its own human-attested compound operation, bound to the exact
   message, fulfilled order and host-computed current access source. Generic reply authority
