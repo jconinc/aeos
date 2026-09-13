@@ -236,3 +236,42 @@ and review identities, incomplete model authority, and unsupported completion re
 coverage is 96.87% lines and 90.10% branches; combined coverage is 95.27%. Ruff and strict mypy
 pass. These are source-checkpoint results, not a new released wheel, Wema repin, real provider
 execution or operational completion claim.
+
+## Product control plane — 13 September 2026
+
+Nine modules (`gaps`, `registry`, `modules`, `moves`, `approvals`, `gates`, `scheduling`,
+`pipeline`, `improvement`) specified in §20. Classification: **New**. They are not an
+extraction: no upstream module carries a product registry, a move ledger, a release-readiness
+gate or a difficulty-to-improvement path, and the behavior was written against the
+requirement set at `future_projects/aeos` commit
+`29a3652e85cf091beff3c7651b61fd4718d7c145` (REQ-REF, REQ-CTRL, REQ-MOVE, REQ-GATE, REQ-SRG,
+REQ-APPR, REQ-ARCH, REQ-MVP in `AEOS_REQUIREMENTS.md`; REQ-PROD and REQ-WLG in
+`business/PROD_WLG.md`).
+
+Two disciplines are carried over from behavior already proven in this repository rather than
+reinvented: the strict contract style of `evidence.py`/`effects.py` (frozen slots dataclasses
+validating in `__post_init__`, `stable_fingerprint` identity, `ContractError` refusals), and
+the append-only lifecycle discipline of `lifecycle.py`, which `MoveLedgerEntry` and
+`assert_unmutated` extend from decisions to moves.
+
+Named production consumer: Wema, as a `consumer_app` product instance whose profile and
+manifest are projected from Wema's own canonical records. No kernel module reads a Wema name,
+table, route or credential.
+
+Evidence at this checkpoint: 99 new contract tests in
+`tests/test_control_plane_{registry,moves,pipeline}.py` with fictional two-product fixtures in
+`tests/factories_control_plane.py`; ruff and strict mypy clean on the nine modules. The repo
+suite moves from 251 passed / 22 failed to 350 passed / 22 failed: the same 22 upstream
+compatibility witnesses fail before and after this change, because the upstream
+MultiAgentCommunication checkout has advanced past the recorded pin
+(`d99002a1903a…` expected, `1c3f5dd0ec32…` observed). That is a pin-refresh item for the
+compatibility lane and is retained here unchanged, not repaired by this work.
+
+Two defects were found by these tests and fixed in the source they cover: a commit refusal
+built its gap set as a lazy generator rather than a tuple (both refusal contracts now reject a
+non-tuple), and a product-level readiness read skipped every regime-scoped launch bar, which
+would have let an aggregate hide a regime that was not live.
+
+Not established by this checkpoint: no runtime, database, browser or provider test has run; no
+package was published and no Wema pin changed; and no requirement in the map is marked
+accepted complete.

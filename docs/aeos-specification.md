@@ -736,3 +736,195 @@ idempotent replay, changed-generation, concurrent-writer, crash/rollback and una
 cases are proven; Wema's first safe projection and real decision read are measured end to end;
 monitoring, backup, restore and credential rotation are rehearsed; and the host remains able to
 run with graph decision refresh disabled.
+
+## 20. Product control plane
+
+The kernel decides about one subject at a time. The control plane is what tells it which
+products exist, what each is allowed to do, what may run now, and whether a product is
+finished enough to launch. It is product-neutral: no module in it names a product, and a new
+product arrives by supplying a family profile and a manifest rather than by a condition
+inside the core.
+
+### 20.1 Product registry
+
+A managed product is a `ProductInstance` bound to a `ProductFamily`. The instance carries
+only what is true of every product — slug, family, display name, lifecycle status, owner
+role, business model, and its family profile. Everything family-specific lives in a
+`FamilyProfile` whose required fields the family declares and the validator enforces at
+creation. A product whose family is unregistered, whose profile is incomplete, or whose
+profile carries a field the family never declared fails typed creation rather than running
+with an assumption.
+
+`ProductManifest` extends the manifest contract with release, sync and task-generation
+policy, an approval-policy reference and a liability class. It is the only place
+product-specific policy enters the control plane; rails read it through
+`permits(channel, move_type)`, `budget_cap(name)` and `release_rule(name, fallback)` and
+never hard-code a threshold. `liability_class` must agree between profile and manifest, and
+it selects which launch bars the product's gate manifest must carry.
+
+`SharedAssetBinding` represents a physical asset several products share, with exactly one
+owner. Onboarding declares what a product consumes; consuming an undeclared asset, or
+declaring one with no active binding, refuses with a gap. Retiring the owner of a live shared
+asset blocks outright while consumers exist — it does not park, because a consumer would lose
+its spine while an approval waited.
+
+`lifecycle_status` and `release_state` are distinct. Lifecycle is draft, active, paused or
+retired; release state is onboarding, building, release candidate or launched. `launched` is
+never a lifecycle status.
+
+### 20.2 Modules
+
+A `Module` registers a rule profile, shape extensions and a set of `MoveFamily` records. A
+move type belongs to exactly one module; the registry refuses a second claim on it. Each
+family declares its owner role, approval policy, evidence kinds, rails, priority class and
+its reserved-decision flags: `human_override`, `never_graduates`, `dual_control`,
+`requires_audit_record`, plus optional actor-role and tool allow-lists and an escalation
+role. A family declaring no rail cannot be registered.
+
+`load_modules` activates a manifest's modules for one product and refuses the rest
+individually. A missing module dependency, an ungranted credential scope, or a rail no
+enabled profile provides each produce a `GapRow` and refuse that module; a module whose
+dependency was refused is dropped too. The product's other modules keep running.
+
+### 20.3 Moves and the commit boundary
+
+A `MoveRequest` asks for one decision about one product as of one date. The resulting `Move`
+carries a decision total over `ship`, `hold`, `decline` and `parked`, and an `exec_status`
+over `queued`, `in_flight`, `awaiting_external` and `settled` that is orthogonal to it: what
+was decided and how far it has run are different questions. A shipped move must cite
+evidence; a declined move must say why in words an operator can read.
+
+`move_idempotency_key` covers product, move type, as-of date, argument digest, sorted
+snapshot references and rulepack version. Re-issuing a logically identical move dedups
+against the ledger; re-running under a new snapshot is a new move rather than a collision.
+
+`commit_boundary_refusal` is the single structural check every shipped move passes, whoever
+produced it. It refuses a move whose evidence does not resolve into the target product's own
+records, and refuses a parking family that reached the boundary in ship state without an
+approval. `record_outcome` writes the `MoveLedgerEntry`, after which `assert_unmutated`
+refuses any move whose content changed. A long-running move settles through
+`settle_external`, which writes a follow-up record observing the outcome and never mutates
+the original.
+
+`graduation_state` decides whether a parking family has earned unattended execution on a
+product: never for a family marked `never_graduates`, revoked by the first reversal, and
+otherwise only after the threshold count of approvals.
+
+### 20.4 Parks and approvals
+
+`park_move` routes one move to a person with the exact payload that will execute, a bounded
+choice set that always includes declining, and a reason short enough to read in an inbox.
+`resume_from_approval` runs precisely that preview — a payload whose digest no longer matches
+is refused — declines with the person's own reason on rejection, and **holds** on expiry,
+because silence is neither consent nor refusal. `drain_partially` separates the parked items
+from the rest so one unresolvable item never stops a run.
+
+`project_approval_load` sizes operator load by arithmetic before a module is enabled: a
+family that always parks contributes its whole scheduled volume, and a family with no
+observed park rate contributes nothing, because an unobserved rate is unknown rather than
+assumed. `seed_batch` presents a product's onboarding parks for one sitting while each item
+stays individually approvable.
+
+### 20.5 Signals, gates and gaps
+
+A `Signal` is an append-only measurement scoped to one product. An `ExitSet` states a stage
+transition's condition as named signal predicates plus a bounded count of open error gaps in
+its exact scope. `evaluate_gate` reads that exit set, and `stage_is_complete` reads the same
+one — the gate and the "are we done" check are one definition with two readers, so they
+cannot disagree. `StopRule`s are evaluated first and outrank healthy growth numbers.
+
+A metric with no measurement reports "has not been measured". It is never read as zero or as
+healthy. `re_measure_after_repair` re-measures in the gate's exact scope after a fix, so a
+repair that closes one gap and trips a different rule is reported as not converged rather
+than absorbed.
+
+All unmet obligations take one shape, `GapRow`, whose identity is the move, rulepack version
+and snapshot it was found under, so a re-run under the same three dedups and a re-run under
+fresh data does not.
+
+### 20.6 Scheduling
+
+`admit_move` decides whether one move may run, reading only that move's own subject. A
+`ProductFault` halts one product — optionally only named modules on it — and never another.
+The single exception is a `Channel`: a sending domain in cooldown or revoked halts outbound
+on that channel for every product sharing it, and the refusal says so, because the fault unit
+for deliverability is the domain. Everything else on those products keeps draining.
+
+`drain_order` runs urgent work first and oldest first within a class; `preemptions` sets
+aside background work for urgent work on the same product only. `ValidationScope` requires
+named subjects, and `run_scoped_validation` raises if a validator returned a result outside
+its scope — the check exists because a widened validator passes unnoticed until the ledger
+makes it slow, and by then its results are already trusted. `SweepPlan` carries the
+cross-product cadence; nothing on the per-move path waits for it.
+
+### 20.7 Pipeline and release readiness
+
+The control plane does not own the build graph. `CoverageSnapshot` and `ValidationSnapshot`
+capture it at an instant with a replay anchor, and the build system's own gate conjunction is
+read verbatim rather than re-derived into something softer.
+
+`ValidationSnapshot.gate_status` carries whatever named components that build system reports,
+and the pass is their conjunction — including any component this code has never heard of. The
+names are not fixed in the kernel because they belong to the build system: a WLG-built product
+supplies `WLG_GATE_COMPONENTS`, and a product built another way supplies its own. Requiring
+the WLG four everywhere would leave every other product with one honest option and one
+dishonest one — no snapshot at all, or four borrowed labels over checks that are not those
+checks. A snapshot naming no component is refused, because an empty conjunction is true and
+that is a gate which could never be red. `ProductGateManifest` carries the
+product's own launch bars — pilot counts, precision fixtures, canary windows, statute pins,
+insurance in force, counsel sign-off — as gate inputs rather than prose, each flipping to
+green only with an evidence reference.
+
+`evaluate_release_readiness` is one query. Absent coverage, validation or gate manifest is
+blocked, never green. A stale validation snapshot parks for a refresh. A warning-ratchet
+regression, a failing named rule, an open launch-blocking bar or a missing class-selected bar
+each block and name themselves. Evaluated at a regime, product-wide bars plus that regime's
+apply, so a slow regime does not block its live siblings; evaluated at product level, every
+regime's bars apply, so an aggregate cannot hide a regime that is not live. `launch_refusal`
+turns a non-green readiness into a refusal whoever requested the launch.
+
+`reconcile_tasks` compares the task mirror against observed build state and surfaces
+divergence; a task the build system stopped reporting is unknown, not complete. Task
+throughput is never read as convergence — that is measured from a fresh snapshot.
+
+### 20.8 Customer difficulty to verified improvement
+
+`DifficultyObservation` aggregates the same trouble over a window: a reason code, counts and
+opaque support references. `raise_improvement` declines below the recurrence threshold — one
+report is a report, not yet a pattern.
+
+A summary is admitted on the strength of who wrote it, never on a pattern search.
+`summary_authority` is `absent` (the default, which must be empty — the reason code and
+counts always suffice), `closed_vocabulary` (one of the producer's registered phrases, so
+nothing was composed and nothing can have leaked into it), or `agent_authored` (bounded at
+200 characters and passing `assert_shareable`). There is no value for customer-authored
+text. `assert_shareable` refuses an email address, telephone number, long digit run or
+quoted passage, and says of itself that it is a backstop against an obvious mistake rather
+than a certificate: it recognizes four shapes, so text it accepts has only been found free
+of those. What makes a summary safe is the producer's own source and retention rules.
+
+An observation declares `coverage` — `complete`, `indexed_only` or `partial` — because it
+is what separates two identical zeros. A zero from a reading that covered the whole window
+means the trouble stopped; a zero from a reading that consulted only an index means nothing
+was found where the producer looked. `assess_resolution` takes the after-window coverage and
+returns `unknown` for a zero that came from an incomplete reading, so nobody is told a
+problem went away on the strength of records nobody consulted.
+
+`distinct_customer_count` may be `None`. A producer whose records keep no sender identity
+cannot answer it, and retaining one purely to fill the field would be a worse outcome than
+the honest unknown; `RecurrenceThreshold.by_occurrences(n)` is the threshold such a producer
+can meet. A threshold that does name a distinct-customer minimum is never satisfied by an
+unknown count — unknown is not low and it is not high.
+
+`assess_resolution` binds its identities before it decides anything: an improvement raised
+for another difficulty, or a release shipped against another improvement, is refused rather
+than quietly producing a verdict about work that was never connected to this trouble.
+
+Then it decides what may be claimed. A raised request is work in progress. A shipped and
+verified change is shipped-unverified until an observation window closes. A missing before or
+after measurement is unknown, not success. A material fall in occurrences is
+**improved-not-resolved** — a real result about the population, and not the claim that any
+particular person's problem went away. Only a measured zero across a complete window reads as
+resolved. `plan_follow_up` refuses a customer message until then, and refuses a mismatched
+assessment and observation outright, because the observation's references decide who hears
+from us and a mismatched pair would write to people who reported something else.
