@@ -22,6 +22,11 @@ The governing documents are:
   compatibility and adoption contract.
 - [`docs/operations.md`](docs/operations.md) — package, deployment, migration and rollback.
 
+The owner-directed [complete business operating goal](docs/business-completion-goal.md) and
+[implementation plan](docs/business-completion-plan.md) extend delivery beyond the initial Wema
+slices to the full applicable business capabilities. The linked requirement map records actual
+implementation and acceptance evidence; an unassessed requirement is not complete.
+
 For staffing, workload or revenue estimates, also read
 [`docs/operating-capacity.md`](docs/operating-capacity.md). It distinguishes implemented
 automation, host integration, reserved decisions and measured owner time. It is planning
