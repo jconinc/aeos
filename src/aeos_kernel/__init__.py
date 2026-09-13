@@ -144,6 +144,7 @@ from aeos_kernel.moves import (
     settle_external,
 )
 from aeos_kernel.pipeline import (
+    WLG_GATE_COMPONENTS,
     BindingStatus,
     ClaimState,
     CoverageSnapshot,
@@ -250,6 +251,7 @@ __all__ = [
     "PLACEHOLDER_TARGET_IDS",
     "SCORING_PROMPT",
     "SCORING_SYSTEM_PROMPT",
+    "WLG_GATE_COMPONENTS",
     "AdmissionRefusal",
     "Approval",
     "ApprovalLoadProjection",

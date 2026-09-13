@@ -117,7 +117,7 @@ def validation(
         error_gap_count=errors,
         warning_gap_count=warnings,
         prior_warning_gap_count=prior_warnings,
-        triple_gate_status=triple
+        gate_status=triple
         or {
             "spec_satisfied": True,
             "closure_valid": True,
@@ -1190,3 +1190,79 @@ def test_the_same_holds_when_the_coverage_snapshot_is_the_missing_one() -> None:
     joined = " ".join(result.blocking_reasons)
     assert "no coverage snapshot has been captured" in joined
     assert "warning gaps rose by 12" in joined
+
+
+def test_a_product_built_some_other_way_names_its_own_gate_components() -> None:
+    """Requiring the WLG four everywhere leaves every other product two options, one of
+    which is dishonest: no snapshot at all, or four borrowed labels over checks that are not
+    those checks. The names belong to the build system that reported them.
+    """
+
+    snapshot = ValidationSnapshot(
+        snapshot_id="v",
+        binding_id="b",
+        product_slug=SLUG,
+        snapshot_ref="s",
+        captured_at=NOW,
+        error_gap_count=0,
+        warning_gap_count=3,
+        prior_warning_gap_count=4,
+        gate_status={"suites_passed": True, "architecture_check": True, "records_check": True},
+    )
+    assert snapshot.triple_gate_pass is True
+    assert snapshot.failed_components == ()
+
+
+def test_an_unrecognized_component_still_has_to_be_true() -> None:
+    """Reading verbatim means a component this code has never heard of still counts."""
+
+    snapshot = ValidationSnapshot(
+        snapshot_id="v",
+        binding_id="b",
+        product_slug=SLUG,
+        snapshot_ref="s",
+        captured_at=NOW,
+        error_gap_count=0,
+        warning_gap_count=0,
+        prior_warning_gap_count=0,
+        gate_status={"suites_passed": True, "some_future_check": False},
+    )
+    assert snapshot.triple_gate_pass is False
+    assert snapshot.failed_components == ("some_future_check",)
+
+
+def test_a_gate_reporting_no_components_is_refused_rather_than_passing_vacuously() -> None:
+    """An empty conjunction is true, which would be a gate that could never be red."""
+
+    with pytest.raises(ContractError, match="at least one gate component"):
+        ValidationSnapshot(
+            snapshot_id="v",
+            binding_id="b",
+            product_slug=SLUG,
+            snapshot_ref="s",
+            captured_at=NOW,
+            error_gap_count=0,
+            warning_gap_count=0,
+            prior_warning_gap_count=0,
+            gate_status={},
+        )
+
+
+def test_a_wlg_built_product_still_supplies_exactly_its_four() -> None:
+    """Control: relaxing the names did not stop a WLG product reporting the WLG gate."""
+
+    from aeos_kernel import WLG_GATE_COMPONENTS
+
+    snapshot = ValidationSnapshot(
+        snapshot_id="v",
+        binding_id="b",
+        product_slug=SLUG,
+        snapshot_ref="s",
+        captured_at=NOW,
+        error_gap_count=0,
+        warning_gap_count=0,
+        prior_warning_gap_count=0,
+        gate_status={name: True for name in WLG_GATE_COMPONENTS},
+    )
+    assert snapshot.triple_gate_pass is True
+    assert set(snapshot.gate_status) == set(WLG_GATE_COMPONENTS)

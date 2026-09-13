@@ -236,9 +236,27 @@ class CoverageSnapshot:
         return tuple(reasons)
 
 
+#: The four components a WLG-built product's gate reports. Named so a WLG consumer has one
+#: place to read them from instead of four string literals that can drift apart.
+WLG_GATE_COMPONENTS: tuple[str, ...] = (
+    "spec_satisfied",
+    "closure_valid",
+    "net_delta_ok",
+    "warning_ratchet",
+)
+
+
 @dataclass(frozen=True, slots=True)
 class ValidationSnapshot:
-    """The build system's own gate result, read verbatim rather than re-derived."""
+    """The build system's own gate result, read verbatim rather than re-derived.
+
+    ``gate_status`` carries whatever named components that build system reports, and the pass
+    is their conjunction. The names are not fixed here because they belong to the build
+    system: a WLG-built product supplies :data:`WLG_GATE_COMPONENTS`, and a product built some
+    other way supplies its own. Requiring the WLG four everywhere would leave every other
+    product with one honest option and one dishonest one — no snapshot at all, or four
+    borrowed labels over checks that are not those checks.
+    """
 
     snapshot_id: str
     binding_id: str
@@ -248,7 +266,7 @@ class ValidationSnapshot:
     error_gap_count: int
     warning_gap_count: int
     prior_warning_gap_count: int
-    triple_gate_status: dict[str, Any]
+    gate_status: dict[str, Any]
     gaps_by_rule: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -258,28 +276,33 @@ class ValidationSnapshot:
         for name in ("error_gap_count", "warning_gap_count", "prior_warning_gap_count"):
             if getattr(self, name) < 0:
                 raise ContractError(f"{name} must be nonnegative")
-        missing = sorted(
-            {"spec_satisfied", "closure_valid", "net_delta_ok", "warning_ratchet"}
-            - set(self.triple_gate_status)
-        )
-        if missing:
-            raise ContractError(f"triple gate status is missing: {', '.join(missing)}")
-        for name, value in self.triple_gate_status.items():
+        if not self.gate_status:
+            # An empty conjunction is vacuously true: a gate that could never be red.
+            raise ContractError(
+                "a validation snapshot must name at least one gate component; an empty gate "
+                "status would pass unconditionally"
+            )
+        for name, value in self.gate_status.items():
             if not isinstance(value, bool):
-                raise ContractError(f"triple gate component {name!r} must be a boolean")
-        for name in ("triple_gate_status", "gaps_by_rule"):
+                raise ContractError(f"gate component {name!r} must be a boolean")
+        for name in ("gate_status", "gaps_by_rule"):
             object.__setattr__(
                 self, name, immutable_json_object(getattr(self, name), f"validation {name}")
             )
 
     @property
     def triple_gate_pass(self) -> bool:
-        """The conjunction as the build system states it. Never a softer re-derivation."""
+        """The conjunction of every component the build system reported.
 
-        return all(
-            bool(self.triple_gate_status[name])
-            for name in ("spec_satisfied", "closure_valid", "net_delta_ok", "warning_ratchet")
-        )
+        Never a softer re-derivation: each component is read as given, and the pass is all of
+        them. A component this code does not recognize still has to be true.
+        """
+
+        return all(bool(value) for value in self.gate_status.values())
+
+    @property
+    def failed_components(self) -> tuple[str, ...]:
+        return tuple(sorted(name for name, value in self.gate_status.items() if not value))
 
     @property
     def ratchet_delta(self) -> int:
@@ -491,10 +514,9 @@ def evaluate_release_readiness(
                 f"warning gaps rose by {validation.ratchet_delta} since the previous snapshot"
             )
         if not validation.triple_gate_pass:
-            failed = sorted(
-                name for name, value in validation.triple_gate_status.items() if not value
+            reasons.append(
+                f"build gate did not pass: {', '.join(validation.failed_components)}"
             )
-            reasons.append(f"build gate did not pass: {', '.join(failed)}")
         block_on = tuple(manifest.release_rule("block_on_error_rules", ()) or ())
         reasons.extend(validation.failing_rules(block_on))
         if validation.error_gap_count > max_errors:
@@ -775,6 +797,7 @@ def snapshot_identity(*, product_slug: str, captured_at: datetime, registry_sha2
 
 
 __all__ = [
+    "WLG_GATE_COMPONENTS",
     "BindingStatus",
     "ClaimState",
     "CoverageSnapshot",

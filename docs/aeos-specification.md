@@ -861,7 +861,16 @@ cross-product cadence; nothing on the per-move path waits for it.
 
 The control plane does not own the build graph. `CoverageSnapshot` and `ValidationSnapshot`
 capture it at an instant with a replay anchor, and the build system's own gate conjunction is
-read verbatim rather than re-derived into something softer. `ProductGateManifest` carries the
+read verbatim rather than re-derived into something softer.
+
+`ValidationSnapshot.gate_status` carries whatever named components that build system reports,
+and the pass is their conjunction — including any component this code has never heard of. The
+names are not fixed in the kernel because they belong to the build system: a WLG-built product
+supplies `WLG_GATE_COMPONENTS`, and a product built another way supplies its own. Requiring
+the WLG four everywhere would leave every other product with one honest option and one
+dishonest one — no snapshot at all, or four borrowed labels over checks that are not those
+checks. A snapshot naming no component is refused, because an empty conjunction is true and
+that is a gate which could never be red. `ProductGateManifest` carries the
 product's own launch bars — pilot counts, precision fixtures, canary windows, statute pins,
 insurance in force, counsel sign-off — as gate inputs rather than prose, each flipping to
 green only with an evidence reference.
