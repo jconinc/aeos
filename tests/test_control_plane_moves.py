@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import math
 
 import pytest
 
@@ -466,6 +467,67 @@ def test_a_measured_rate_sizes_the_work_it_was_measured_for() -> None:
     )
     assert projection.is_complete
     assert projection.projected_parks_per_week == 8.0
+    assert projection.within_headroom
+
+
+@pytest.mark.parametrize(
+    ("scheduled", "headroom", "refusal"),
+    [
+        # The scheduled volume is refused where it enters, so the sentence names the family
+        # whose number is wrong. The aggregate check downstream would also refuse these, but
+        # only as a total, which tells the operator nothing about where to look.
+        ({"capture_coverage": math.inf}, 10.0, "volume for 'capture_coverage' must be a finite"),
+        ({"capture_coverage": math.nan}, 10.0, "volume for 'capture_coverage' must be a finite"),
+        # The headroom is not a per-family number, so this one is the aggregate's to refuse.
+        ({"capture_coverage": 1.0}, math.inf, "available approval load must be a finite"),
+        ({"capture_coverage": 1.0}, math.nan, "available approval load must be a finite"),
+    ],
+)
+def test_an_unbounded_or_undefined_load_is_refused_rather_than_sized(
+    scheduled: dict[str, float], headroom: float, refusal: str
+) -> None:
+    """A sign test passes both of these, and each then lies in a different direction.
+
+    `nan < 0` is False, so a NaN volume reaches the projection and makes every later
+    comparison False. Infinite headroom is a capacity nothing can exceed, so it certifies
+    any load at all. Neither is a measurement, so neither is accepted as one.
+    """
+
+    with pytest.raises(ContractError, match=refusal):
+        project_approval_load(
+            product_slug="fictional-app",
+            module_key="pipeline",
+            families=pipeline_module().move_families,
+            scheduled_moves_per_week=scheduled,
+            observed_park_rate={"capture_coverage": 0.5},
+            headroom_parks_per_week=headroom,
+        )
+
+
+def test_an_undefined_park_rate_is_refused_because_no_comparison_against_it_is_true() -> None:
+    with pytest.raises(ContractError, match="between zero and one"):
+        project_approval_load(
+            product_slug="fictional-app",
+            module_key="pipeline",
+            families=pipeline_module().move_families,
+            scheduled_moves_per_week={"capture_coverage": 1.0},
+            observed_park_rate={"capture_coverage": math.nan},
+            headroom_parks_per_week=10.0,
+        )
+
+
+def test_a_finite_load_against_a_finite_headroom_still_sizes_normally() -> None:
+    """Control: the finite check refuses the two bad shapes, not ordinary arithmetic."""
+
+    projection = project_approval_load(
+        product_slug="fictional-app",
+        module_key="pipeline",
+        families=pipeline_module().move_families,
+        scheduled_moves_per_week={"capture_coverage": 1.0},
+        observed_park_rate={"capture_coverage": 0.5},
+        headroom_parks_per_week=10.0,
+    )
+    assert projection.projected_parks_per_week == 0.5
     assert projection.within_headroom
 
 
