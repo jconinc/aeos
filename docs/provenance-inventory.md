@@ -107,6 +107,13 @@ graph, provider output, or mutable test artifact.
 
 ## Explicitly unresolved at inventory version 2
 
+**Capacity follow-up, 13 September 2026:** the mailbox row above records the intended host
+consumer contract, not proof of a connected automatic draft worker. Inspection at Wema
+`ca44a76c5b5b69d2d0c84f1ff3f7d5503c51800d` found the reply loop and its tests but no
+production caller for `run_reply_loop`; agent reply previews exist separately. See
+[operating-capacity guidance](operating-capacity.md) for the exact scope and planning
+consequence. This observation does not change the extraction pins or accept new behavior.
+
 - The exact committed MultiAgent revision from which extraction will be copied may advance; every
   change must update the pin and diff the affected source modules/tests.
 - A real analytics policy/profile must be active before outcome-driven optimization can claim

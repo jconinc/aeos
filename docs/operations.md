@@ -1,5 +1,14 @@
 # Packaging, deployment, migration and rollback
 
+## Operating capacity
+
+Use [Operating capacity and solo operation](operating-capacity.md) when estimating founder
+workload, support staffing or the capacity assumed by a revenue forecast. Count the work the
+host, CLI, model gateway and pipeline already perform. Separate owner approval time from
+unresolved handling time, and identify an integration gap separately from a model limitation.
+Unknown escalation rates remain unknown; neither mandatory hiring nor zero human effort
+follows from customer count alone. This guidance adds no runtime gate or permission.
+
 ## Build and verify
 
 From the repository root:

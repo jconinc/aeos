@@ -22,6 +22,11 @@ The governing documents are:
   compatibility and adoption contract.
 - [`docs/operations.md`](docs/operations.md) — package, deployment, migration and rollback.
 
+For staffing, workload or revenue estimates, also read
+[`docs/operating-capacity.md`](docs/operating-capacity.md). It distinguishes implemented
+automation, host integration, reserved decisions and measured owner time. It is planning
+guidance, not a change to any product's authority or activation policy.
+
 The first Wema slices are article revision advice, saved-review follow-up, and one daily growth
 route decision. Runtime activation remains host-controlled:
 
