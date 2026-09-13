@@ -255,12 +255,12 @@ class ValidationScope:
         return product_slug == self.product_slug and subject_id in self.subject_ids
 
 
-def run_scoped_validation[_Result](
+def run_scoped_validation[Result](
     *,
     scope: ValidationScope,
-    validator: Callable[[ValidationScope], tuple[_Result, ...]],
-    belongs_to: Callable[[_Result], tuple[str, str]],
-) -> tuple[_Result, ...]:
+    validator: Callable[[ValidationScope], tuple[Result, ...]],
+    belongs_to: Callable[[Result], tuple[str, str]],
+) -> tuple[Result, ...]:
     """Run one validator inside its scope and refuse a result that escaped it.
 
     The check is not decoration: a validator that quietly widened would pass unnoticed until
