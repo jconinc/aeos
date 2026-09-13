@@ -14,14 +14,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, TypeVar
+from typing import Any
 
 from aeos_kernel._validation import immutable_json_object, required, thaw_json, utc
 from aeos_kernel.errors import ContractError
 from aeos_kernel.modules import MoveFamily, PriorityClass
 from aeos_kernel.moves import MoveRequest
-
-_Result = TypeVar("_Result")
 
 _PRIORITY_ORDER: dict[PriorityClass, int] = {
     PriorityClass.PRIORITY: 0,
@@ -257,7 +255,7 @@ class ValidationScope:
         return product_slug == self.product_slug and subject_id in self.subject_ids
 
 
-def run_scoped_validation(
+def run_scoped_validation[_Result](
     *,
     scope: ValidationScope,
     validator: Callable[[ValidationScope], tuple[_Result, ...]],
