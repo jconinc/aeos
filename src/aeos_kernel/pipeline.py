@@ -717,15 +717,20 @@ class ProductHealth:
     open_warning_gaps: int
     ratchet_delta: int
     readiness: Readiness | None
-    open_tasks: int
+    #: Open build tasks, or None where this product has no build-task store to read. A host
+    #: whose build system keeps its own queue outside the control plane cannot answer this,
+    #: and a zero would say the queue is empty when the truth is that nobody looked.
+    open_tasks: int | None
     parked_move_count: int
 
     def __post_init__(self) -> None:
         required(self.product_slug, "product_slug")
         utc(self.captured_at, "captured_at")
-        for name in ("open_error_gaps", "open_warning_gaps", "open_tasks", "parked_move_count"):
+        for name in ("open_error_gaps", "open_warning_gaps", "parked_move_count"):
             if getattr(self, name) < 0:
                 raise ContractError(f"{name} must be nonnegative")
+        if self.open_tasks is not None and self.open_tasks < 0:
+            raise ContractError("open_tasks must be nonnegative")
         if not 0 <= self.coverage_pct <= 1:
             raise ContractError("coverage percentage must fall between zero and one")
 
@@ -756,23 +761,30 @@ class ProductHealth:
             "open_warning_gaps": self.open_warning_gaps,
             "warning_ratchet_trend": self.warning_trend,
             "release_readiness": self.readiness.value if self.readiness else "n/a",
-            "open_tasks": self.open_tasks,
+            "open_tasks": self.open_tasks if self.open_tasks is not None else "unmeasured",
             "parked_move_count": self.parked_move_count,
             "health_score": self.health_score,
         }
 
 
 def pipeline_signals(health: ProductHealth) -> dict[str, float]:
-    """The portfolio metrics this product contributes to the nightly rollup."""
+    """The portfolio metrics this product contributes to the nightly rollup.
 
-    return {
+    A metric this product cannot measure is absent from the rollup rather than present as a
+    zero. A rollup that averages an unmeasured queue as empty reports a portfolio healthier
+    than anybody observed.
+    """
+
+    rows = {
         "coverage_pct": health.coverage_pct,
         "open_error_gaps": float(health.open_error_gaps),
         "open_warning_gaps": float(health.open_warning_gaps),
         "warning_ratchet_delta": float(health.ratchet_delta),
-        "open_build_tasks": float(health.open_tasks),
         "approval_queue_depth": float(health.parked_move_count),
     }
+    if health.open_tasks is not None:
+        rows["open_build_tasks"] = float(health.open_tasks)
+    return rows
 
 
 def binding_required_refusal(*, move_type: str, product_slug: str, bound: bool) -> str:
