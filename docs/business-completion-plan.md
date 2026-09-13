@@ -183,6 +183,28 @@ an arbitrary requirement to rebuild all infrastructure before customer-facing wo
   outcome evidence. Measure response quality, completion, corrections/reopens, owner minutes
   and cost; define evaluation thresholds before interpreting the results.
 
+## Durable support spending and provenance component — 13 September
+
+Wema `5335d4d6` plus accounting correction `589cfbee` adds a small native PostgreSQL
+reservation around the existing gateway call. It uses the current work lease, exact request
+and context, four durable call slots and one aggregate lock for daily/monthly support caps.
+Unknown submission keeps the full exposure; known usage can settle it once. An unfinished
+or uncertain call stops further slots, and a reclaimed work item cannot replay a recorded
+call. Input/prompt/cost provenance now has storage, with serialized report appends and no
+format-only model acceptance. Legacy rows remain unbound; linear 0107 is provisional until
+integration orders the other lanes' unlanded migrations.
+
+Five native files pass 178 cases, with authenticated receipts/coverage, one killed selected
+mutation and five positive controls. The final run took 50.020 seconds with two exclusive
+PostgreSQL workers. The earlier pass reused 62 gateway cases; the final helper correction
+changed the five files' actual native input closures and all five executed. Native schema
+parity, architecture, lint and Python/TypeScript checks pass. Original launcher refusals and
+the 34-pass/one-fail uncertain-cost witness are retained. Wema's record-only successor is
+`02531150`. This component is not completion of the 440-file native selection, group coverage,
+production handler, current-source adoption, reservation retention or release requirements.
+The existing Marketing/research/provider cost consumers still need explicit shared-cap
+integration; the support aggregate alone is not a global all-business cap.
+
 ## Immediate next implementation packet
 
 The first new feature packet is the missing support drafting connection. Inspect the existing
