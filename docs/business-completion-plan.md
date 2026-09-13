@@ -4,6 +4,48 @@ Owner-directed scope, 13 September 2026. Implementation is active; completion is
 The [full goal](business-completion-goal.md) is the acceptance target. Delivery packets order
 the work; they do not postpone applicable business capabilities to an unspecified later release.
 
+## Master completion checklist
+
+The requirement map currently contains **553 indexed IDs: 540 unassessed, seven with partial
+source implementation and six with unverified workflows; none is accepted complete**. This
+is the state of this reconciliation, not a claim that 540 features are missing. Existing
+functionality and accepted evidence must be reused after their applicability is established.
+The full applicability assessment remains a required work item, alongside implementation.
+
+- [ ] Assess every indexed requirement and its referenced obligations: applicable, or an
+  explicit product-specific exclusion. Name the existing implementation before adding code.
+- [ ] Connect research, offers, playbooks, distribution, customer responses and measured learning.
+- [ ] Complete leads, partnerships, sales, purchase fulfilment, renewals and recovery.
+- [ ] Complete customer support from inquiry through grounded help, permitted action,
+  confirmed outcome and follow-up. **Currently being implemented and tested.**
+- [ ] Close operational monitoring: detection window, investigation, response and evidence
+  that each condition has cleared; missing observations remain unknown.
+- [ ] Connect financial and business performance to prepared decisions using trustworthy
+  revenue, cost, conversion and contribution records.
+- [ ] Connect repeated customer difficulties to improved help or a verified product fix,
+  with appropriate customer follow-up and preserved privacy.
+- [ ] Verify quality, authority, privacy, security and shared spending controls across all
+  applicable consumers, including failures and recovery.
+- [ ] Complete the simple Desk and CLI journeys: clear meaning and consequences, comments,
+  disagreement, deferral and returning later. Measure actual representative user effort.
+- [ ] Integrate reusable AEOS work into `/home/john/code/aeos`, preserve its other work,
+  and make Wema consume the integrated version through its normal dependency pin.
+- [ ] Complete applicable native checks and coverage, then compatible integration,
+  deployment, recovery and installed workflow verification.
+
+An applicable requirement is complete only when its defining behavior is implemented, a
+named production caller uses it, successful and relevant refusal/recovery journeys have
+acceptance evidence, required Desk/CLI instructions are maintained, and its integrated and
+delivered disposition is verified. Where user comprehension is required, record the user's
+actual explanation, confusion and completion time. Test counts and package publication alone
+do not satisfy these conditions. Pending human decisions remain named dependencies; never
+manufacture an approval or silently exclude its requirement.
+
+The final check is a review of the entire map and referenced obligations: no unassessed,
+partial, unverified or otherwise unresolved applicable requirement; no unspecified later
+work; preserved existing behavior; verified repository integration and delivery. The current
+support increment cannot complete the overall goal by itself.
+
 ## Scope and source authority
 
 The broader source is `future_projects/aeos` at
