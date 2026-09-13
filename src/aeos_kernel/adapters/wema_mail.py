@@ -6,9 +6,9 @@ message's class and routing facts, and the matched order's state. No subject, bo
 name or address ever enters the packet — the projections refuse an ``@`` in any string — and
 the model has no seat at this table (``permits_model_choice`` is the host's to set, and Wema
 sets it false): the registry's recommended action is the single entailed candidate when its
-facts hold, the fallback is entailed when they do not, and "open the mailbox" is always
-available and never entailed. Sending a reply and refunding an order are outward effects the
-host registers and a person attests; this adapter only names them.
+facts hold, the fallback is entailed when they do not, and "open the mailbox" remains
+available and is entailed for risky messages. Sending, refunding and reissuing access are
+outward effects the host registers and a person attests; this adapter only names them.
 """
 
 from __future__ import annotations
@@ -31,13 +31,15 @@ from aeos_kernel.evidence import (
 from aeos_kernel.vocabulary import PrivacyClass
 
 MAIL_ADAPTER_ID = "wema.mail_triage"
-MAIL_ADAPTER_VERSION = "1"
+MAIL_ADAPTER_VERSION = "2"
 MAIL_SOURCE_REF_TYPE = "mail_message"
 MAIL_DECISION_KIND = "mail_reply"
 SEND_REPLY_OPERATION = "wema.mail.send_reply"
 REFUND_OPERATION = "wema.order.refund"
+RESEND_ACCESS_OPERATION = "wema.order.resend_access_and_reply"
 OUTBOUND_MAIL_TAG = "outbound_mail"
 PAYMENT_TAG = "payment"
+ACCESS_RECOVERY_TAG = "access_recovery"
 
 MAIL_ACTIONS = frozenset(
     {
@@ -184,6 +186,9 @@ class WemaOrderContext:
     currency: str
     days_since_purchase: int
     refundable: bool
+    #: Host-computed digest of current eligible access-delivery inputs, absent for legacy,
+    #: gift, expired, frozen, suppressed or otherwise ineligible orders. Never a capability.
+    access_source_digest: str | None = None
 
     def __post_init__(self) -> None:
         _closed_text(self.order_id, "order id", 64)
@@ -193,9 +198,15 @@ class WemaOrderContext:
             raise ValueError("order amount and age must be nonnegative")
         if len(self.currency) != 3 or not self.currency.isalpha():
             raise ValueError("order currency must be an ISO 4217 code")
+        if self.access_source_digest is not None:
+            _digest(self.access_source_digest, "access source digest")
+
+    @property
+    def access_resendable(self) -> bool:
+        return self.status == "fulfilled" and self.access_source_digest is not None
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        values: dict[str, Any] = {
             "order_id": self.order_id,
             "status": self.status,
             "amount_minor": self.amount_minor,
@@ -203,6 +214,9 @@ class WemaOrderContext:
             "days_since_purchase": self.days_since_purchase,
             "refundable": self.refundable,
         }
+        if self.access_source_digest is not None:
+            values["access_source_digest"] = self.access_source_digest
+        return values
 
 
 def build_wema_mail_packet(
@@ -323,6 +337,23 @@ def _refund_effect(order: WemaOrderContext) -> EffectTemplate:
     )
 
 
+def _access_effect(message: WemaMailMessageProjection, order: WemaOrderContext) -> EffectTemplate:
+    return EffectTemplate(
+        operation=RESEND_ACCESS_OPERATION,
+        operation_version="1",
+        parameters={
+            "message_id": message.message_id,
+            "order_id": order.order_id,
+            "access_source_digest": order.access_source_digest,
+        },
+        boundary_tags=(OUTBOUND_MAIL_TAG, ACCESS_RECOVERY_TAG),
+        expected_postcondition="access_link_accepted_for_delivery_and_reply_sent",
+        reversible=False,
+        # The link goes to the purchaser contact; the reply goes to the original sender.
+        fanout_ceiling=2,
+    )
+
+
 _TITLES = {
     "refund_and_reply": "Refund the order and send the reply",
     "resend_access_and_reply": "Resend access and send the reply",
@@ -347,6 +378,16 @@ def _candidate(
         reason = (
             "The registry recommends a refund for this class and the order is inside the window."
         )
+    elif action == "resend_access_and_reply":
+        if order is None or not order.access_resendable:
+            raise ValueError(
+                "an access resend needs a fulfilled order with a current access source"
+            )
+        effect = _access_effect(message, order)
+        benefit = (
+            "Send a fresh link to the email used for the purchase, then reply to this message."
+        )
+        reason = "This message is linked to an order eligible for a fresh access link."
     elif action in SENDING_ACTIONS:
         effect = _send_effect(message)
         benefit = "The person gets a plain answer from the mailbox they wrote to."
@@ -356,7 +397,9 @@ def _candidate(
         benefit = "A person reads the message before anything is sent."
         reason = "The registry routes this message to a person, or its facts do not hold."
     cited = ("mailbox_policy", "mail_message_projection") + (
-        ("order_context",) if order is not None and action == "refund_and_reply" else ()
+        ("order_context",)
+        if order is not None and action in {"refund_and_reply", "resend_access_and_reply"}
+        else ()
     )
     return Candidate(
         candidate_id=f"mail-{action.replace('_', '-')}",
@@ -386,6 +429,10 @@ def mail_candidates(
     entailed = message.entailed_action
     if entailed == "refund_and_reply" and (order is None or not order.refundable):
         raise ValueError("the entailed refund has no refundable matched order")
+    if entailed == "resend_access_and_reply" and (order is None or not order.access_resendable):
+        raise ValueError(
+            "the entailed access resend has no fulfilled order with a current access source"
+        )
     if entailed not in mailbox.allowed_actions:
         raise ValueError("the entailed action is outside the mailbox's allowed actions")
     actions: list[str] = [entailed]
@@ -395,6 +442,8 @@ def mail_candidates(
     candidates: list[Candidate] = []
     for action in actions:
         if action == "refund_and_reply" and (order is None or not order.refundable):
+            continue
+        if action == "resend_access_and_reply" and (order is None or not order.access_resendable):
             continue
         candidates.append(
             _candidate(action, message=message, order=order, entailed=action == entailed)

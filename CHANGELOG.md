@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Give Wema access resend its own human-attested compound operation, bound to the exact
+  message, fulfilled order and host-computed current access source. Generic reply authority
+  cannot authorize access recovery. The mailbox adapter advances to version 2; ordinary
+  reply/refund operation shapes remain unchanged. This source contract still requires its
+  Wema native execution and packaged consumer proof before release.
+
 ## 0.7.1 — candidate, 2026-09-05
 
 - Retain validated model-call identities and safe structured outputs on refusal, including

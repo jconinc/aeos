@@ -508,20 +508,43 @@ yesterday's choice.
 
 ### 13.7 Mailbox triage adapter
 
-The third Wema slice decides what one inbound business message gets — a refund and a reply, a
-reply, a privacy request, or a person reading it in the mailbox — from closed values only: the
+The third Wema slice decides what one inbound business message gets — a refund and a reply,
+access recovery and a reply, a reply, a privacy request, or a person reading it — from closed
+values only: the
 mailbox registry's policy for that mailbox, the message's class and routing facts as the host's
 sync recorded them, and the matched order's state. The projections refuse an address, a line
 break or an unregistered value; no subject, body, sender or name has a field to travel in.
 
 The registry's recommended action is the single entailed candidate while its named facts hold,
 the fallback is entailed when they do not, a risky message always entails reading it, and "read it
-in the mailbox" is always offered and never entailed. Sending a reply and refunding an order are
+in the mailbox" is always offered. Sending a reply and refunding an order are
 outward effects with the boundary tags `outbound_mail` and `payment`; the host registers them,
 a person attests every one in this slice, and a refund carries the order amount as its cost
 ceiling. The recommendation becomes or updates one card in Wema's existing queue with the
 decision identity in its evidence; the reply text a person approves is the host's, drafted and
 gated under the text-quality lane of §9.1, and never part of the packet.
+
+`wema.mail_triage@2` gives `resend_access_and_reply` its own compound operation,
+`wema.order.resend_access_and_reply@1`. Its exact parameters are `message_id`, `order_id` and
+`access_source_digest`; its boundaries are `outbound_mail` and `access_recovery`. The fanout
+ceiling is two: a fresh access link goes to the order's purchaser contact and the reply goes
+to the original message's sender. Neither address nor an access capability enters AEOS.
+The host must bind current eligibility and delivery inputs in `access_source_digest`, including
+the exact order, entitlement, purchaser contact, capability state and approved delivery material.
+It must omit that digest for gifts and for missing, expired, frozen, suppressed or otherwise
+ineligible access. The adapter also requires the order to be fulfilled. An inconsistent entailed
+resend refuses; an ineligible resend alternative is omitted while the existing fallback remains.
+
+The host must recheck that same access source and current authority before changing a capability
+or submitting delivery. Each newly authorized resend needs a distinct durable attempt identity;
+the original order's accepted delivery is not evidence for it. Only confirmed acceptance of
+that access message may release the paired reply. The final compound receipt must bind both
+provider results; uncertain acceptance must remain uncertain through retries and recovery.
+The adapter and generic receipt validator cannot establish those host facts from a reference
+alone. Existing generic reply authorizations cannot authorize this compound operation, and
+earlier projections without the access-source binding cannot become resend authority. No
+historical attestation is rewritten. Ordinary reply and refund operation contracts retain their
+parameters and postconditions; new packets carry adapter version 2 and require current review.
 
 ## 14. Schema and compatibility policy
 
