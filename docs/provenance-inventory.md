@@ -239,8 +239,11 @@ execution or operational completion claim.
 
 ## Product control plane — 13 September 2026
 
-Nine modules (`gaps`, `registry`, `modules`, `moves`, `approvals`, `gates`, `scheduling`,
-`pipeline`, `improvement`) specified in §20. Classification: **New**. They are not an
+Ten modules (`gaps`, `registry`, `modules`, `moves`, `approvals`, `gates`, `scheduling`,
+`pipeline`, `improvement`, `rails`) specified in the specification's **Product control plane**
+section. Named rather than numbered: another lane added a section at the same number, so the
+joined document has to renumber one of them and a §-reference here would then point at the
+wrong section without anything going red. Classification: **New**. They are not an
 extraction: no upstream module carries a product registry, a move ledger, a release-readiness
 gate or a difficulty-to-improvement path, and the behavior was written against the
 requirement set at `future_projects/aeos` commit
