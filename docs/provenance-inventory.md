@@ -311,3 +311,20 @@ The operational helper and control-plane algorithms are unchanged by this repair
 The earlier measurements above remain checkpoint evidence. Release receipts bind the repaired
 source, wheel digest, native checks and installed consumer separately; publication alone does
 not establish Wema runtime acceptance or authorize product effects.
+
+## Native support-reference correction — 14 September 2026
+
+At AEOS `01d554234cc885725a74aba0dafd7f41c75ecc58`,
+`src/aeos_kernel/improvement.py` applied its generic long-digit free-text detector to
+`DifficultyObservation.support_refs`. Wema `d72f49844e96ce0f7dc9a33d6d35e93e050161d5`
+`packages/db/wema_db/support_observations.py` emits native `mail_message:<UUID>` handles;
+a UUID with an entirely decimal 12-character final group was incorrectly refused.
+The correction adds only a field-specific, bounded ASCII opaque-reference grammar;
+`assert_shareable` and summary privacy checks remain unchanged. The kernel retains no
+product names, database access or alternative encoding. `tests/test_support_references.py`
+covers exact native UUID round-trip, bounded legacy tokens, malformed/embedded/suffixed
+UUID forms and sensitive reference/summary refusals. The named host consumer is Wema's
+`apps/worker/wema_worker/handlers/support_snapshot.py::observations_from_snapshot`;
+its native producer→observation→row-resolution controls are in Wema's
+`apps/worker/tests/test_support_opaque_references.py`. Package/version/pin integration
+and deployed acceptance remain the host release owner's separate work.

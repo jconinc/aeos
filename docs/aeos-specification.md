@@ -893,7 +893,19 @@ throughput is never read as convergence — that is measured from a fresh snapsh
 ### 20.8 Customer difficulty to verified improvement
 
 `DifficultyObservation` aggregates the same trouble over a window: a reason code, counts and
-opaque support references. `raise_improvement` declines below the recurrence threshold — one
+opaque support references. A support reference is either an existing ASCII opaque token
+(`A–Z`, `a–z`, digits, `_`, `.`, `-`; starts with a letter or digit; at most128 characters)
+that passes the ordinary identifier backstop, or exactly `namespace:UUID`. The namespace
+starts with a lowercase ASCII letter and contains only lowercase ASCII letters, digits
+and underscores, at most64 characters; the UUID has the canonical lowercase hexadecimal
+8–4–4–4–12 spelling. UUID decimal groups are opaque identity bytes, not free text. The
+kernel preserves the exact reference; it does not normalize, encode or invent another
+reference format. Prefixes, suffixes, embedded text and malformed UUID forms refuse.
+
+This field-specific syntax does not weaken summary or other free-text privacy checks.
+The host must derive references from its authorized native records and preserve source
+digests; matching syntax alone proves neither record existence nor authority and cannot
+be used to disguise customer content. `raise_improvement` declines below the recurrence threshold — one
 report is a report, not yet a pattern.
 
 A summary is admitted on the strength of who wrote it, never on a pattern search.

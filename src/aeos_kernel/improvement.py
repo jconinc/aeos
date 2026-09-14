@@ -127,6 +127,34 @@ def assert_shareable(text: str, field_name: str) -> str:
     return text
 
 
+# References have their own closed syntax; a free-text identifier detector must not
+# reinterpret a native UUID's decimal groups as a telephone/customer number. No value
+# is normalized or encoded, and recognizing syntax does not establish source authority.
+_SUPPORT_UUID_REFERENCE = re.compile(
+    r"[a-z][a-z0-9_]{0,63}:"
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+)
+_SUPPORT_SIMPLE_REFERENCE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
+
+
+def _support_reference(reference: str) -> str:
+    """Preserve a native namespaced UUID or a bounded legacy opaque token exactly.
+
+    The host supplies these handles from its own authorized records. Matching this grammar
+    neither proves that a record exists nor permits a producer to wrap customer content in
+    UUID-shaped text. Ordinary summaries retain the unchanged identifier backstop.
+    """
+
+    if _SUPPORT_UUID_REFERENCE.fullmatch(reference):
+        return reference
+    assert_shareable(reference, "support reference")
+    if not _SUPPORT_SIMPLE_REFERENCE.fullmatch(reference):
+        raise ContractError(
+            "support reference must be an opaque token or a namespaced canonical UUID"
+        )
+    return reference
+
+
 def assert_summary_admissible(
     *,
     summary: str,
@@ -214,7 +242,7 @@ class DifficultyObservation:
             raise ContractError("support references must be unique")
         for reference in self.support_refs:
             required(reference, "support reference")
-            assert_shareable(reference, "support reference")
+            _support_reference(reference)
         if not isinstance(self.summary_authority, SummaryAuthority):
             raise ContractError("summary authority is not recognized")
         if not isinstance(self.coverage, ObservationCoverage):
