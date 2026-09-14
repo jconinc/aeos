@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.1 — candidate, 2026-09-14
+
+- Accept exact namespaced canonical UUID support references even when a UUID group contains
+  only decimal digits. These native opaque identities no longer trigger the customer-number
+  detector used for shared text.
+- Limit the exception to the support-reference field and its bounded ASCII grammar. Malformed,
+  embedded, suffixed and sensitive references refuse; general shared-text and summary privacy
+  checks remain unchanged. References are never normalized or encoded.
+- Preserve native row identity and source digests through the Wema observation adapter.
+  Matching reference syntax does not establish row existence or grant source authority.
+- Keep runtime, distribution and current specification identity at 0.8.1. The patch changes no
+  interchange schema, host authority, provider effect or activation setting; normal consuming
+  application installation and release verification remain separate.
+
 ## 0.8.0 — candidate, 2026-09-14
 
 - Add the reusable business control plane: product and module registration, bounded moves and

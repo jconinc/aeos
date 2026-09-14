@@ -1,6 +1,6 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.8.0
+**Version:** 0.8.1
 **Date:** 14 September 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
