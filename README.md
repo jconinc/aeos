@@ -48,10 +48,10 @@ graph-snapshot contract. Historical v1 decision resources remain readable, but h
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
 
-The 0.8.0 candidate contains the reusable business control plane and its Wema consumer contracts.
-It is integrated in source and built locally; Wema's locked dependency still names the published
-0.7.2 wheel until a reviewed 0.8.0 artifact is published and installed through the normal lock
-process.
+The 0.8.0 candidate contains the reusable business control plane, native operational observation
+contracts and Wema consumer contracts. Its runtime version agrees with package metadata.
+Consumers install a reviewed wheel through their normal hash-pinned dependency process; their
+own release records establish installed compatibility, activation and recovery evidence.
 
 AEOS 0.4 uses that private graph foundation for relationships among safe content, questions,
 audiences, routes, source states, playbooks and aggregate outcomes. Wema's daily-growth adapter

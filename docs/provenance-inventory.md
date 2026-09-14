@@ -298,3 +298,16 @@ stays separate from the earlier author's unit runs and from pending published-co
 No upstream engine or graph was copied. No private message, identity, secret, approval or effect
 record is accepted by this helper. Its digest comparisons do not authenticate an entire audit
 log and do not close SEC-058.
+
+## 0.8.0 package identity repair — 14 September 2026
+
+The private integration starts from `9ed081fcd0bbf84568f0e1e5c633b6997c1588fd`.
+Its build metadata already names 0.8.0, but `aeos_kernel.__version__` still named 0.7.2.
+The runtime constant now agrees with the build version. `tests/test_public_api.py` compares
+these independently declared identities rather than repeating a hard-coded expected version.
+Installed-wheel verification additionally compares runtime identity with distribution metadata.
+The operational helper and control-plane algorithms are unchanged by this repair.
+
+The earlier measurements above remain checkpoint evidence. Release receipts bind the repaired
+source, wheel digest, native checks and installed consumer separately; publication alone does
+not establish Wema runtime acceptance or authorize product effects.

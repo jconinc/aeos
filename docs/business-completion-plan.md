@@ -16,10 +16,11 @@ now **90.0%**. The 22 pinned MultiAgent compatibility cases pass against the det
 `d99002a1903a56b5601d7ec3455e5dfa43028935` source (3.20 seconds); the live Memgraph case
 remains separately unproved for this integrated source.
 
-The source is versioned as a local **0.8.0 candidate**. The bounded wheel build produced
+At that historical checkpoint, the local **0.8.0 candidate** build produced
 `dist/aeos_kernel-0.8.0-py3-none-any.whl` with SHA-256
-`2327f6e95dffbfdda25c63ac7cdcacedb6c34ef96f9d479cb9b932d25624cfec`. Wema's normal
-dependency process still points at the published 0.7.2 wheel;
+`2327f6e95dffbfdda25c63ac7cdcacedb6c34ef96f9d479cb9b932d25624cfec`. That wheel
+reported 0.7.2 at runtime and is superseded by the 14 September version repair. Wema's normal
+dependency process at that checkpoint pointed at the published 0.7.2 wheel;
 publication, lock refresh, private installed-consumer proof and delivery are explicit release
 gates. No unpublished or local path is silently substituted for that lock.
 

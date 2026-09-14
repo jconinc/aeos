@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 — candidate, 2026-09-13
+## 0.8.0 — candidate, 2026-09-14
 
 - Add the reusable business control plane: product and module registration, bounded moves and
   approvals, gates and stop rules, scheduled admission, release-readiness evidence, operational
@@ -9,8 +9,10 @@
   Wema's native Desk, persistence, model gateway and effect authority in charge of product facts
   and outward actions.
 - Keep incomplete coverage, missing validation, unregistered modules, absent rails and pending
-  human decisions visible as blocking gaps. This candidate has local integrated proof only; it is
-  not a publication, Wema dependency-pin update or production activation.
+  human decisions visible as blocking gaps. Package publication does not grant host activation
+  or establish completion of a consuming product.
+- Correct the runtime version to agree with 0.8.0 package metadata and check that agreement
+  against the build configuration. Earlier local 0.8.0 wheels reported 0.7.2 at runtime.
 
 ## 0.7.2 — candidate, 2026-09-13
 
