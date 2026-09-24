@@ -328,3 +328,19 @@ UUID forms and sensitive reference/summary refusals. The named host consumer is 
 its native producer→observation→row-resolution controls are in Wema's
 `apps/worker/tests/test_support_opaque_references.py`. Package/version/pin integration
 and deployed acceptance remain the host release owner's separate work.
+
+## Rail refusal precedence — PB-99, 23 September 2026
+
+Correction against published AEOS 0.8.1 source `dcbd3028dcbca31315754fd2100156a936bbf612`,
+`src/aeos_kernel/rails.py`, and accepted Business-map packet PB-99 revision 2.
+Classification: **New behavior correction**, following REQ-RULE-002 and REQ-WLG-018.
+The canonical merge now gives `DECLINE` precedence over `PARK`, then `HOLD`, while retaining
+all reasons, observing semantics, gaps and family defaults. No severity field is added;
+PB-99's separate D-07.13 decision remains open.
+
+Named consumers are Wema's `wema_commercial_guidance.aeos_rails` and its release-promotion
+and product-lifecycle guards. `tests/test_control_plane_rails.py` covers the lexically first
+park plus decline plus hold, park over a lexically first hold, inapplicable plus decline,
+ordinary park, and inapplicable-only outcomes. The new mixed-refusal test fails on the
+unchanged source with `PARKED` instead of `DECLINE`. Kernel source proof does not establish
+immutable artifact publication, Wema installation or live delivery.

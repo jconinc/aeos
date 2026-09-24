@@ -49,12 +49,12 @@ class RailMode(StrEnum):
     ENFORCING = "enforcing"
 
 
-#: How a verdict maps onto the move's decision. `park` outranks `decline`, which outranks
-#: `hold`: a person being asked is a stronger outcome than a refusal, and a refusal is
-#: stronger than a suppression.
+#: A refusal outranks an approval request: approval resumes the previewed payload without
+#: re-running a refusal. Approval requests outrank holds. A non-applicable answer remains
+#: indexed but cannot override an objection.
 _SEVERITY: dict[RailVerdict, int] = {
-    RailVerdict.PARK: 3,
-    RailVerdict.DECLINE: 2,
+    RailVerdict.DECLINE: 3,
+    RailVerdict.PARK: 2,
     RailVerdict.HOLD: 1,
     RailVerdict.PASS: 0,
     RailVerdict.NOT_APPLICABLE: 0,
@@ -190,9 +190,10 @@ def evaluate_rails(
 ) -> MergedRails:
     """Run every rail that answers for this move and merge the answers.
 
-    Merging is arithmetic because the shape is uniform: the strongest verdict wins, a park
-    beating a decline beating a hold. An observing rail contributes its gaps and its sentence
-    but never its verdict, so a rail can be read for a while before it is trusted.
+    Merging is arithmetic because the shape is uniform: a decline outranks a park, which
+    outranks a hold. Approval resumes previewed payload without re-running a refusal, so an
+    approval request cannot mask that refusal. An observing rail contributes its gaps and its
+    sentence but never its verdict, so a rail can be read before it is trusted.
 
     Gaps from every rail travel, observing or not. A gap is a fact about the product, and
     whether the rule that found it is switched on does not make it less true.

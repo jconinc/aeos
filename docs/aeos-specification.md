@@ -950,7 +950,9 @@ from us and a mismatched pair would write to people who reported something else.
 contains its registered name, a closed verdict, a reason and materialized gaps. A mismatched
 result name refuses. Enforcing rules contribute a decision; observing rules retain findings
 without changing that decision. The host selects the mode in its governed registration, not
-from model output. Park takes precedence over decline, and decline over hold. A family's
+from model output. Decline takes precedence over park, and park over hold: approval resumes
+previewed payload without re-running a refusal. Non-applicable results cannot override an
+objection. A family's
 human-override declaration supplies the parked default when no stronger rule decides.
 
 Wema's `wema_commercial_guidance.aeos_rails` supplies its native facts and callable registry;

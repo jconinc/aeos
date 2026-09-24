@@ -53,22 +53,55 @@ def test_every_rail_answers_in_the_same_shape_so_merging_is_arithmetic() -> None
     assert len(merged.results) == 2
 
 
-def test_the_strongest_verdict_wins_and_a_park_outranks_a_decline() -> None:
-    """A person being asked is a stronger outcome than a refusal: the refusal may be wrong."""
+def test_a_decline_outranks_a_lexically_first_park_and_a_hold() -> None:
+    """PB-99: approval cannot override a refusal; every reason remains available."""
 
     merged = evaluate_rails(
         (
-            rail("a.decline", RailVerdict.DECLINE),
-            rail("b.park", RailVerdict.PARK),
+            rail("a.park", RailVerdict.PARK),
+            rail("b.decline", RailVerdict.DECLINE),
             rail("c.hold", RailVerdict.HOLD),
         ),
         context(),
     )
-    assert merged.decision is MoveDecision.PARKED
-    without_park = evaluate_rails(
-        (rail("a.decline", RailVerdict.DECLINE), rail("c.hold", RailVerdict.HOLD)), context()
+    assert merged.decision is MoveDecision.DECLINE
+    assert merged.reasons == ("a.park says no", "b.decline says no", "c.hold says no")
+
+
+def test_a_park_outranks_a_lexically_first_hold() -> None:
+    """PB-99: a hold must not suppress a required approval request."""
+
+    merged = evaluate_rails(
+        (rail("a.hold", RailVerdict.HOLD), rail("b.park", RailVerdict.PARK)), context()
     )
-    assert without_park.decision is MoveDecision.DECLINE
+    assert merged.decision is MoveDecision.PARKED
+    assert tuple(result.verdict for result in merged.results) == (
+        RailVerdict.HOLD, RailVerdict.PARK,
+    )
+    assert merged.reasons == ("a.hold says no", "b.park says no")
+
+
+def test_an_inapplicable_enforcing_rail_cannot_override_a_decline() -> None:
+    """PB-99: a rule for another move cannot turn a refusal into permission."""
+
+    def unexpected_check(_name: str, _context: RailContext) -> RailResult:
+        pytest.fail("A rail for another move must not run")
+
+    other = Rail(name="a.other", move_types=("something_else",), check=unexpected_check)
+    merged = evaluate_rails((other, rail("b.decline", RailVerdict.DECLINE)), context())
+    assert merged.decision is MoveDecision.DECLINE
+    assert tuple(result.verdict for result in merged.results) == (
+        RailVerdict.NOT_APPLICABLE, RailVerdict.DECLINE,
+    )
+    assert merged.reasons == ("b.decline says no",)
+
+
+def test_a_park_without_other_objections_requests_approval() -> None:
+    """PB-99: correcting a mixed refusal must preserve an ordinary approval request."""
+
+    merged = evaluate_rails((rail("a.park", RailVerdict.PARK),), context())
+    assert merged.decision is MoveDecision.PARKED
+    assert merged.reasons == ("a.park says no",)
 
 
 def test_all_rails_passing_leaves_the_default_decision() -> None:
