@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.2 — candidate, 2026-09-23
+
+- Give an enforcing refusal precedence over an approval request, then a hold (PB-99).
+  Approval resumes the previewed payload, so it must not mask a refusal that it will not re-run.
+- Retain all rule reasons, observing results, gaps, non-applicable results and family defaults.
+  The host still checks every enforcing result before an effect; no new severity API is added.
+- Preserve 0.8.1 opaque support-reference validation. Package publication and Wema deployment
+  require their separate verified artifact and consumer evidence.
+
 ## 0.8.1 — candidate, 2026-09-14
 
 - Accept exact namespaced canonical UUID support references even when a UUID group contains
