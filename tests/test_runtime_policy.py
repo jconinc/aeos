@@ -166,6 +166,34 @@ def test_duplicate_inventory_and_unused_allowlist_entry_refuse() -> None:
         )
 
 
+def test_distinct_source_roots_can_share_one_guarded_route() -> None:
+    other_root = replace(INVENTORY[0], source_root="another_source")
+    inventory = (*INVENTORY, other_root)
+    digest = transport_inventory_digest(inventory)
+    assert digest == transport_inventory_digest(tuple(reversed(inventory)))
+    assert digest != transport_inventory_digest(INVENTORY)
+    effective = compile_runtime_policy(
+        platform=_platform(source_inventory_digest=digest),
+        product=_product(),
+        tool_scope=_tool(A),
+        transport_inventory=inventory,
+    )
+    assert effective.allowed_hosts == (A,)
+    with pytest.raises(ContractError, match="inventory is stale"):
+        compile_runtime_policy(
+            platform=_platform(), product=_product(), tool_scope=_tool(A),
+            transport_inventory=inventory,
+        )
+
+
+def test_same_source_root_duplicate_or_conflicting_authority_refuses() -> None:
+    with pytest.raises(ContractError, match="transport inventory contains duplicates"):
+        transport_inventory_digest((*INVENTORY, INVENTORY[0]))
+    conflicting = replace(INVENTORY[0], transport_authority="other_guard")
+    with pytest.raises(ContractError, match="transport inventory contains duplicates"):
+        transport_inventory_digest((*INVENTORY, conflicting))
+
+
 @pytest.mark.parametrize(
     "host",
     [

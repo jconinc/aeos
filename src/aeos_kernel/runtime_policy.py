@@ -128,7 +128,7 @@ class TransportBinding:
 
 def transport_inventory_digest(bindings: tuple[TransportBinding, ...]) -> str:
     """Bind policy compilation to a complete, unique source inventory."""
-    _unique(tuple((b.target, b.tool_key) for b in bindings), "transport inventory")
+    _unique(tuple((b.source_root, b.target, b.tool_key) for b in bindings), "transport inventory")
     return stable_fingerprint(
         [
             b.as_dict()
