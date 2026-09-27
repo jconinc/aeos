@@ -40,6 +40,8 @@ _URL_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
 _HOST_LIKE = re.compile(r"(?:[\w%-]+\.)+[\w%-]+(?::\d+)?(?:[/?#]|$)")
 #: Where free text is split into candidate URL tokens: space, brackets and quotes.
 _TOKEN_BREAK = re.compile(r"[\s()\[\]{}<>\"'`]+")
+#: A punycode (IDNA A-label) name part; it is read as its Unicode name wherever it sits in text.
+_A_LABEL = re.compile(r"xn--[a-z0-9-]*[a-z0-9]", re.IGNORECASE)
 
 
 class TermClass(StrEnum):
@@ -377,14 +379,39 @@ def _payload_forms(text: str) -> list[str]:
 
     forms: list[str] = []
     for round_text in _text_forms(text):
-        forms.append(round_text)
+        forms.extend((round_text, _unicode_labels(round_text)))
         # A space-separated token is parsed whole, so a malformed URL refuses; the same text
-        # split at brackets and quotes finds a URL a wrapper would otherwise hide.
+        # split at brackets and quotes finds a URL a wrapper would otherwise hide, and a scheme
+        # inside a token (``URL:https://…``) starts a URL of its own.
         tokens = {*round_text.split(), *_TOKEN_BREAK.split(round_text)}
+        tokens |= {
+            token[match.start() :] for token in tokens for match in _URL_SCHEME.finditer(token)
+        }
         for token in sorted(token.rstrip(".,;:!?") for token in tokens):
             if token and (_URL_SCHEME.match(token) or _HOST_LIKE.match(token)):
                 forms.extend(url_forms(token))
     return forms
+
+
+def _unicode_labels(text: str) -> str:
+    return _A_LABEL.sub(_unicode_label, text)
+
+
+def _unicode_label(match: re.Match[str]) -> str:
+    name = _decode_label(match.group().lower())
+    if name is None:
+        # Raised outside any handler: the codec's exception quotes the label.
+        raise PaidTermError(
+            PaidFenceReason.NORMALIZATION_UNSTABLE, "a punycode name part cannot be decoded"
+        )
+    return name
+
+
+def _decode_label(label: str) -> str | None:
+    try:
+        return label.encode("ascii").decode("idna")
+    except UnicodeError:
+        return None
 
 
 def _surface_texts(surfaces: PaidSurfaces) -> list[tuple[str, NormalizedTerm]]:

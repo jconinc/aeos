@@ -23,6 +23,9 @@
   flags, register bindings and forbidden phrases only from it, refusing a manifest that
   disagrees with its own bytes; provider URLs inside brackets or quotes, URLs encoded whole,
   and mapping keys are inspected; no refusal chains an exception that quotes the input.
+- Review round 3: a punycode name part is read as its Unicode name wherever it sits in provider
+  text (`URL:https://xn--…`, `ref=xn--…`); a URL that starts inside a token is parsed as a URL;
+  a punycode name part that cannot be decoded refuses as unstable without quoting it.
 - The distribution version stays 0.8.2 in this lane. Root chooses and publishes the reviewed
   version and updates the Wema pin.
 

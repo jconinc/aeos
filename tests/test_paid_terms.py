@@ -362,6 +362,22 @@ def test_an_unstable_url_refuses_before_any_match() -> None:
     assert decision.reason_code == "paid_term_normalization_unstable"
 
 
+def test_a_prefixed_url_and_an_undecodable_punycode_name_are_inspected() -> None:
+    decision = fence(
+        (False, True, True),
+        PaidSurfaces(provider_payload={"description": "URL:https://[fictional.test/x"}),
+    )
+    assert decision.reason_code == "paid_term_normalization_unstable"
+    decision = fence(
+        (True, True, True), PaidSurfaces(provider_payload={"description": "Visit xn--zz9 now"})
+    )
+    assert decision.reason_code == "paid_term_normalization_unstable"
+    assert "zz9" not in repr(decision)
+    assert fence(
+        (True, True, True), PaidSurfaces(provider_payload={"description": "Visit bücher.example"})
+    ).allowed
+
+
 @pytest.mark.parametrize(
     "payload",
     [
@@ -410,6 +426,10 @@ def test_a_scheme_less_punycode_host_is_read_as_its_unicode_name() -> None:
     for payload in (
         {"final_url": "xn--bcher-kva.example/landing"},
         {"description": "Visit xn--bcher-kva.example today"},
+        {"description": "URL:https://xn--bcher-kva.example/x"},
+        {"description": "ref=XN--BCHER-KVA.example"},
+        {"description": "see/xn--bcher-kva.example"},
+        {"cta": "Go|xn--bcher-kva"},
     ):
         decision = fence(
             (False, True, True),
