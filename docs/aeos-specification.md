@@ -762,6 +762,25 @@ product-specific policy enters the control plane; rails read it through
 never hard-code a threshold. `liability_class` must agree between profile and manifest, and
 it selects which launch bars the product's gate manifest must carry.
 
+The canonical product policy manifest (`product_policy.py`, schema
+`aeos.product-manifest.v1`, reader `1.0.0`) is the approved, immutable document a host stores
+for one product in one portfolio phase. `load_canonical_manifest` is the only parser: it
+refuses duplicate JSON keys, non-UTF-8 input, floats, unknown fields and a product, phase or
+version that differs from the stored identity. Every payload leaf belongs to exactly one of
+sixteen sections, and each section names the one authority class whose decision approves it.
+`canonical_manifest_bytes_v1` fixes set order, decimal and integer spelling, lowercase UUIDs and
+digests, so equal meaning gives equal bytes and one SHA-256 digest; the packaged
+`schemas/product_policy/` vectors freeze those bytes. `grants_principal(purpose, principal_id,
+principal_class)` matches an exact service grant and never infers one from ownership or class.
+`as_product_manifest` carries the release-policy values into `ProductManifest` without adding
+any. `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
+registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result
+that carries only reason codes and digests, never raw copy, terms or URLs.
+`policy_authority.py` authorizes a policy command only through `resolve_authority` and an
+exact grant naming subject, command, section and principal; a missing, stale, revoked,
+conflicting or wrong-class grant is a typed refusal. AEOS keeps no grant store, decision
+ledger, database or provider client for any of these; the host owns persistence and effects.
+
 `SharedAssetBinding` represents a physical asset several products share, with exactly one
 owner. Onboarding declares what a product consumes; consuming an undeclared asset, or
 declaring one with no active binding, refuses with a gap. Retiring the owner of a live shared

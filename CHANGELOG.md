@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — policy-lane candidate on 0.8.2, 2026-09-27
+
+- Add the canonical product policy manifest (PB-195): one strict parser, closed schema,
+  sixteen authority sections, canonical bytes and digest vectors, exact service grants and
+  reader compatibility. The legacy `ProductManifest` is reached through an adapter that adds
+  no value.
+- Add the paid-term fence with one shared normalizer, bounded URL decoding, register
+  validation and the eight flag rows. Results carry reason codes and digests only.
+- Authorize policy commands through `resolve_authority` with exact grants; absent, stale,
+  revoked, conflicting and wrong-class grants refuse.
+- Keep a decimal-string coverage minimum as a real release bar, and block when the minimum
+  cannot be read instead of dropping the check.
+- The distribution version stays 0.8.2 in this lane. Root chooses and publishes the reviewed
+  version and updates the Wema pin.
+
 ## 0.8.2 — candidate, 2026-09-23
 
 - Give an enforcing refusal precedence over an approval request, then a hold (PB-99).

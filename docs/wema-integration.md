@@ -173,3 +173,17 @@ next step and is routed to John until an exact package exists. The later package
 founder's five-card Today frontier. No Desk password, MFA code, session cookie, graph credential,
 provider credential, or raw source export is retained by either handoff. The Codex process never
 receives Wema or Memgraph credentials, and no model runs on the production host.
+
+## Product policy manifest
+
+Wema stores manifest revisions, decisions, heads, command receipts and paid permits in its own
+tables, and calls AEOS for every rule that is not persistence:
+
+- `load_canonical_manifest` validates each proposed payload and gives the canonical bytes and
+  digest Wema stores; Wema re-derives the digest on every read and refuses a mismatch.
+- `authorize_policy_command` decides each command from the grant records Wema supplies. Wema
+  holds no confirmed grants until the owner decisions exist, so every command refuses with
+  `policy_authority_missing`.
+- `evaluate_paid_fence` runs identically in the planner and the final worker. Wema adds the
+  permit row, locks and provider reconciliation.
+

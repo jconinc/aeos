@@ -1,0 +1,16 @@
+{
+  "algorithm": "canonical_manifest_bytes_v1",
+  "canonical_bytes": "canonical_manifest_v1.canonical",
+  "grant_set_sha256": "7ec0e9a1ec2c41abcb082cff9907b0d536e0c2fbc6eb637421db5b7d49523d25",
+  "input": "canonical_manifest_v1.json",
+  "manifest_sha256": "7db45bfa785930332fb9d3bded1529d23ce85d962534c20bde809c4d59855927",
+  "phase_changed": {
+    "manifest_sha256": "a083c5adca43dcac5ca7640bbdcc09338aaacf37fbf0f84e7028d5fac9477ecb",
+    "portfolio_phase_revision_id": "0190f2a4-1b2c-7d3e-8f40-000000000002"
+  },
+  "product_changed": {
+    "manifest_sha256": "e6ef0f704b1f388b46b3d1f3ecefadd320f78526568bee19b72822ae770cf568",
+    "product_instance_id": "0190f2a4-1b2c-7d3e-8f40-5a6b7c8d9e10"
+  },
+  "schema_version": "aeos.product-manifest.v1"
+}

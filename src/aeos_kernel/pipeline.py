@@ -10,6 +10,7 @@ why the gate and the "why is this blocked" answer can never drift apart.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -234,6 +235,26 @@ class CoverageSnapshot:
             elif satisfied < needed:
                 reasons.append(f"{shape_kind} coverage is {satisfied} of {needed} required")
         return tuple(reasons)
+
+
+_UNREADABLE = object()
+
+
+def _coverage_minimum(value: Any) -> float | object | None:
+    """Read ``min_overall`` as a number or a canonical decimal string such as ``"1"``.
+
+    A canonical product manifest carries fractions as decimal strings, so a string must count.
+    A value that is neither is reported rather than skipped: skipping would silently drop the
+    coverage bar.
+    """
+
+    if value is None:
+        return None
+    if isinstance(value, int | float) and not isinstance(value, bool):
+        return float(value)
+    if isinstance(value, str) and re.fullmatch(r"\d+(?:\.\d+)?", value):
+        return float(value)
+    return _UNREADABLE
 
 
 #: The four components a WLG-built product's gate reports. Named so a WLG consumer has one
@@ -481,14 +502,12 @@ def evaluate_release_readiness(
     else:
         thresholds = dict(family_coverage_thresholds)
         thresholds.update(manifest.release_rule("coverage_thresholds", {}) or {})
-        minimum = thresholds.pop("min_overall", None)
-        if (
-            isinstance(minimum, int | float)
-            and not isinstance(minimum, bool)
-            and coverage.coverage_pct < float(minimum)
-        ):
+        minimum = _coverage_minimum(thresholds.pop("min_overall", None))
+        if minimum is _UNREADABLE:
+            reasons.append("the coverage minimum is not a number this gate can read")
+        elif isinstance(minimum, float) and coverage.coverage_pct < minimum:
             reasons.append(
-                f"coverage is {coverage.coverage_pct:.0%}; at least {float(minimum):.0%} "
+                f"coverage is {coverage.coverage_pct:.0%}; at least {minimum:.0%} "
                 f"required ({coverage.covered_requirements} of "
                 f"{coverage.total_requirements} requirements)"
             )
