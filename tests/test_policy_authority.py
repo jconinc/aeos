@@ -175,12 +175,6 @@ def command_grant(command: str, section: str, authority_class: str) -> Authority
     [
         ("revoke_manifest", None, "whole_manifest", "product_owner"),
         (
-            "revoke_manifest",
-            "service_grant_withdrawal",
-            "service_grant_withdrawal",
-            "security_role",
-        ),
-        (
             "withdraw_latest_service_grant_set",
             None,
             "service_grant_withdrawal",
@@ -219,3 +213,28 @@ def test_a_proposal_needs_only_its_exact_grant() -> None:
         decide(proposal, command="activate_manifest", section=None).status
         is PolicyAuthorityStatus.MISSING
     )
+
+
+def test_a_grant_withdrawing_revocation_needs_both_exact_grants() -> None:
+    whole = command_grant("revoke_manifest", "whole_manifest", "product_owner")
+    security = grant(
+        authority_id="grant-security",
+        args={"command": "revoke_manifest", "section": "service_grant_withdrawal"},
+        value={"authority_class": "security_role", "decision_ref": "example://decision/sec"},
+    )
+    scoped = {"command": "revoke_manifest", "section": "service_grant_withdrawal"}
+    assert decide(security, **scoped).status is PolicyAuthorityStatus.MISSING
+    assert decide(whole, **scoped).status is PolicyAuthorityStatus.MISSING
+    both = decide(whole, security, **scoped)
+    assert both.authorized and both.authority_class == "product_owner"
+    assert both.grant_withdrawal is not None
+    assert both.grant_withdrawal.authority_class == "security_role"
+    assert both.grant_withdrawal.decision_ref == "example://decision/sec"
+    wrong = grant(
+        authority_id="grant-wrong",
+        args={"command": "revoke_manifest", "section": "service_grant_withdrawal"},
+        value={"authority_class": "product_owner", "decision_ref": "example://decision/x"},
+    )
+    assert decide(whole, wrong, **scoped).status is PolicyAuthorityStatus.CLASS_MISMATCH
+    plain = decide(whole, security, command="revoke_manifest", section=None)
+    assert plain.authorized and plain.grant_withdrawal is None

@@ -5,6 +5,8 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import json
+import traceback
+from importlib import resources
 from typing import Any
 
 import pytest
@@ -22,6 +24,11 @@ from aeos_kernel.paid_terms import (
     normalize_text,
     url_forms,
     validate_registers,
+)
+from aeos_kernel.product_policy import (
+    CanonicalProductManifest,
+    decode_strict_json,
+    load_canonical_manifest,
 )
 
 BRAND = "Fictional Brandname"
@@ -68,12 +75,48 @@ def bind(held: dict[TermClass, Any]) -> dict[TermClass, RegisterBinding]:
     }
 
 
+PREFIX = {
+    TermClass.OWN_BRAND: "brand",
+    TermClass.CATEGORY: "category",
+    TermClass.THIRD_PARTY_OPERATOR: "operator",
+}
+
+
+def manifest(
+    flags: tuple[bool, bool, bool],
+    bindings: dict[TermClass, RegisterBinding],
+    forbidden_phrases: list[str] | None = None,
+) -> CanonicalProductManifest:
+    """A fictional product policy whose paid fence names ``bindings``."""
+
+    raw = resources.files("aeos_kernel.schemas").joinpath("product_policy")
+    payload = decode_strict_json(raw.joinpath("canonical_manifest_v1.json").read_bytes())
+    paid_fence = payload["authority"]["paid_fence"]
+    paid_fence["allow_brand_terms"], paid_fence["allow_category_terms"] = flags[0], flags[1]
+    paid_fence["allow_third_party_operator_terms"] = flags[2]
+    for term_class, binding in bindings.items():
+        paid_fence[f"{PREFIX[term_class]}_term_register_digest"] = binding.digest
+        paid_fence[f"{PREFIX[term_class]}_term_register_version"] = binding.version
+    if forbidden_phrases is not None:
+        payload["tone_profile"]["forbidden_phrases"] = forbidden_phrases
+    return load_canonical_manifest(payload)
+
+
+def chain_text(error: BaseException) -> str:
+    """The error and every exception chained to it, as a log would print them."""
+
+    return "".join(traceback.format_exception(type(error), error, None))
+
+
 def fence(flags: tuple[bool, bool, bool], surfaces: PaidSurfaces, **kwargs: Any) -> Any:
     held = kwargs.get("registers", registers())
     return evaluate_paid_fence(
-        flags=PaidFenceFlags(*flags, bindings=kwargs.get("bindings", bind(registers()))),
+        manifest=manifest(
+            flags,
+            kwargs.get("bindings", bind(registers())),
+            kwargs.get("forbidden_phrases"),
+        ),
         registers=held,
-        forbidden_phrases=kwargs.get("forbidden_phrases", ()),
         surfaces=surfaces,
     )
 
@@ -354,7 +397,9 @@ def test_an_unparseable_url_is_a_typed_refusal_that_never_quotes_it(url: str) ->
     with pytest.raises(PaidTermError) as caught:
         url_forms(url)
     assert caught.value.reason_code == "paid_term_normalization_unstable"
-    assert "e℀" not in str(caught.value) and "fictional" not in str(caught.value)
+    assert caught.value.__cause__ is None and caught.value.__context__ is None
+    rendered = chain_text(caught.value)
+    assert "℀" not in rendered and "fictional" not in rendered
     decision = fence((True, True, True), PaidSurfaces(provider_payload={"final_url": url}))
     assert decision.reason_code == "paid_term_normalization_unstable"
     assert "fictional" not in repr(decision) and "℀" not in repr(decision)
@@ -373,3 +418,69 @@ def test_a_scheme_less_punycode_host_is_read_as_its_unicode_name() -> None:
             bindings=bind(held),
         )
         assert decision.reason_code == "paid_term_class_disallowed", payload
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"description": "Visit (https://xn--bcher-kva.example/x) today"},
+        {"description": "Visit [xn--bcher-kva.example/x], today"},
+        {"description": 'Visit "xn--bcher-kva.example." today'},
+        {"description": "Visit https%3A%2F%2Fxn--bcher-kva.example/x today"},
+        {"description": "Visit https%253A%252F%252Fxn--bcher-kva.example%252Fx today"},
+        {"xn--bcher-kva.example/x": "plain value"},
+        {"sitelinks": [{"https://xn--bcher-kva.example/x": 1}]},
+    ],
+)
+def test_a_url_hidden_by_brackets_encoding_or_a_mapping_key_is_inspected(
+    payload: dict[str, Any],
+) -> None:
+    held = registers(brand=["bücher"])
+    decision = fence(
+        (False, True, True),
+        PaidSurfaces(provider_payload=payload),
+        registers=held,
+        bindings=bind(held),
+    )
+    assert decision.reason_code == "paid_term_class_disallowed", payload
+    assert decision.surface == "provider_payload"
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["a\udcff", "https://landing.test/%C3%28", "https://e\u2100.com/x"],
+)
+def test_no_refusal_chains_an_exception_that_quotes_the_input(text: str) -> None:
+    with pytest.raises(PaidTermError) as caught:
+        url_forms(text) if text.startswith("https") else normalize_text(text)
+    assert caught.value.__cause__ is None and caught.value.__context__ is None
+    with pytest.raises(PaidTermError) as unreadable:
+        load_term_register(b'{"terms": ["Fictional Brandname"], "terms": []}')
+    assert unreadable.value.__cause__ is None and unreadable.value.__context__ is None
+    assert "Fictional" not in chain_text(unreadable.value)
+
+
+def test_a_caller_cannot_substitute_a_local_register_and_its_own_bindings() -> None:
+    approved = registers()
+    local = registers(brand=["Unapproved Local Term"])
+    policy = manifest((True, True, True), bind(approved))
+    decision = evaluate_paid_fence(manifest=policy, registers=local, surfaces=PaidSurfaces())
+    assert decision.reason_code == "paid_term_register_invalid"
+    assert evaluate_paid_fence(manifest=policy, registers=approved, surfaces=PaidSurfaces()).allowed
+
+
+def test_a_manifest_that_disagrees_with_its_bytes_is_refused() -> None:
+    approved = registers()
+    honest = manifest((False, True, True), bind(approved))
+    forged_payload = json.loads(honest.canonical_bytes)
+    forged_payload["authority"]["paid_fence"]["allow_brand_terms"] = True
+    forged = dataclasses.replace(honest, payload=load_canonical_manifest(forged_payload).payload)
+    decision = evaluate_paid_fence(
+        manifest=forged, registers=approved, surfaces=PaidSurfaces(copy=[BRAND])
+    )
+    assert decision.reason_code == "manifest_integrity_failed"
+    refused = evaluate_paid_fence(
+        manifest=honest, registers=approved, surfaces=PaidSurfaces(copy=[BRAND])
+    )
+    assert refused.reason_code == "paid_term_class_disallowed"
+    assert refused.manifest_digest == honest.manifest_digest

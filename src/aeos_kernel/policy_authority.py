@@ -12,7 +12,7 @@ gets ``policy_authority_missing`` for every command, which is the correct held s
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import StrEnum
 from types import MappingProxyType
@@ -94,6 +94,8 @@ class PolicyAuthorityDecision:
     authority_class: str | None = None
     authority_id: str | None = None
     decision_ref: str | None = None
+    #: For a grant-withdrawing revocation, the separate security/role authorization.
+    grant_withdrawal: PolicyAuthorityDecision | None = None
 
     @property
     def authorized(self) -> bool:
@@ -104,8 +106,8 @@ def command_section(command: str, section: str | None) -> str:
     """The one section label a command is authorized under; callers cannot choose another.
 
     ``revoke_manifest`` is authorized under ``whole_manifest``. When its scope also withdraws the
-    service-principal grants, the caller authorizes it a second time under
-    ``service_grant_withdrawal``; each authorization needs its own exact grant.
+    service-principal grants, ``authorize_policy_command`` also requires a second exact grant under
+    ``service_grant_withdrawal``; neither authorization stands in for the other.
     """
 
     if command not in POLICY_COMMANDS:
@@ -158,16 +160,45 @@ def authorize_policy_command(
     principal_id: str,
     at: datetime,
 ) -> PolicyAuthorityDecision:
-    """Resolve one exact grant for one command, or return the typed reason there is none."""
+    """Resolve one exact grant for one command, or return the typed reason there is none.
 
-    scope = {
-        "subject_id": subject_id,
-        "command": command,
-        "section": command_section(command, section),
-        "principal_id": principal_id,
-    }
-    supplied = tuple(records)
-    exact = tuple(record for record in supplied if _exact(record))
+    A grant-withdrawing ``revoke_manifest`` (section ``service_grant_withdrawal``) needs the
+    ordinary ``whole_manifest`` grant and, separately, the security/role withdrawal grant
+    (PB-195 R8-B1). The returned decision is the whole-manifest one, carrying the withdrawal
+    decision in ``grant_withdrawal``; the first refusal of either is returned instead.
+    """
+
+    label = command_section(command, section)
+    exact = tuple(record for record in records if _exact(record))
+
+    def one(scope_label: str) -> PolicyAuthorityDecision:
+        scope = {
+            "subject_id": subject_id,
+            "command": command,
+            "section": scope_label,
+            "principal_id": principal_id,
+        }
+        return _resolve(exact, vertical_id, tenant_id, scope, command, at)
+
+    if command == "revoke_manifest" and label == SERVICE_GRANT_WITHDRAWAL:
+        whole = one(WHOLE_MANIFEST)
+        if not whole.authorized:
+            return whole
+        withdrawal = one(SERVICE_GRANT_WITHDRAWAL)
+        if not withdrawal.authorized:
+            return withdrawal
+        return replace(whole, grant_withdrawal=withdrawal)
+    return one(label)
+
+
+def _resolve(
+    exact: tuple[AuthorityRecord, ...],
+    vertical_id: str,
+    tenant_id: str,
+    scope: dict[str, str],
+    command: str,
+    at: datetime,
+) -> PolicyAuthorityDecision:
     resolution = resolve_authority(
         exact, vertical_id=vertical_id, tenant_id=tenant_id, scope=scope, at=at
     )

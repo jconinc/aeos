@@ -22,8 +22,13 @@ from enum import StrEnum
 from typing import Any, Final
 from urllib.parse import unquote, urlsplit
 
+from aeos_kernel._validation import thaw_json
 from aeos_kernel.errors import ContractError
-from aeos_kernel.product_policy import decode_strict_json
+from aeos_kernel.product_policy import (
+    CanonicalProductManifest,
+    decode_strict_json,
+    load_canonical_manifest,
+)
 
 NORMALIZATION_VERSION: Final = "paid_term_normalize_v1"
 REGISTER_SCHEMA_VERSION: Final = "aeos.paid-term-register.v1"
@@ -33,6 +38,8 @@ _MALFORMED_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")
 _URL_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
 #: A scheme-less token shaped like ``host.name/path``: a provider may send a URL without a scheme.
 _HOST_LIKE = re.compile(r"(?:[\w%-]+\.)+[\w%-]+(?::\d+)?(?:[/?#]|$)")
+#: Where free text is split into candidate URL tokens: space, brackets and quotes.
+_TOKEN_BREAK = re.compile(r"[\s()\[\]{}<>\"'`]+")
 
 
 class TermClass(StrEnum):
@@ -48,6 +55,7 @@ class PaidFenceReason(StrEnum):
     FORBIDDEN_PHRASE = "paid_forbidden_phrase_present"
     NORMALIZATION_UNSTABLE = "paid_term_normalization_unstable"
     REGISTER_INVALID = "paid_term_register_invalid"
+    MANIFEST_INTEGRITY = "manifest_integrity_failed"
 
 
 class PaidTermError(ContractError):
@@ -74,12 +82,10 @@ def normalize_text(text: str) -> NormalizedTerm:
 
     if not isinstance(text, str):
         raise PaidTermError(PaidFenceReason.NORMALIZATION_UNSTABLE, "input is not text")
-    try:
-        text.encode("utf-8")
-    except UnicodeEncodeError as error:
+    if not _encodes(text):
         raise PaidTermError(
             PaidFenceReason.NORMALIZATION_UNSTABLE, "input contains an unpaired surrogate"
-        ) from error
+        )
     folded = unicodedata.normalize("NFKC", text).casefold()
     mapped = "".join(
         " " if unicodedata.category(char)[0] in {"Z", "P", "C"} else char for char in folded
@@ -88,18 +94,31 @@ def normalize_text(text: str) -> NormalizedTerm:
     return NormalizedTerm(words=words, skeleton="".join(char for char in words if char.isalnum()))
 
 
+def _encodes(text: str) -> bool:
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def _unquote_strict(text: str) -> str | None:
+    try:
+        return unquote(text, errors="strict")
+    except UnicodeDecodeError:
+        return None
+
+
 def _percent_forms(component: str) -> list[str]:
     forms = [component]
     current = component
     for _ in range(MAX_PERCENT_DECODE_ROUNDS):
         if _MALFORMED_ESCAPE.search(current):
             raise PaidTermError(PaidFenceReason.NORMALIZATION_UNSTABLE, "a URL escape is malformed")
-        try:
-            decoded = unquote(current, errors="strict")
-        except UnicodeDecodeError as error:
-            raise PaidTermError(
-                PaidFenceReason.NORMALIZATION_UNSTABLE, "a URL escape is not UTF-8"
-            ) from error
+        decoded = _unquote_strict(current)
+        if decoded is None:
+            # Raised outside any handler: the decoder's exception quotes the raw bytes.
+            raise PaidTermError(PaidFenceReason.NORMALIZATION_UNSTABLE, "a URL escape is not UTF-8")
         if decoded == current:
             return forms
         forms.append(decoded)
@@ -137,30 +156,41 @@ def url_forms(url: str) -> tuple[str, ...]:
 
     if not isinstance(url, str) or not url.strip():
         raise PaidTermError(PaidFenceReason.NORMALIZATION_UNSTABLE, "a URL is empty")
-    try:
-        parsed = urlsplit(url if _URL_SCHEME.match(url) else f"https://{url}")
-        hostname = parsed.hostname or ""
-    except ValueError as error:
-        # The parser's message quotes the URL; a refusal must never carry it.
-        raise PaidTermError(
-            PaidFenceReason.NORMALIZATION_UNSTABLE, "a URL cannot be parsed"
-        ) from error
+    parts = _split_url(url if _URL_SCHEME.match(url) else f"https://{url}")
+    if parts is None:
+        # Raised outside any handler: the parser's exception quotes the URL.
+        raise PaidTermError(PaidFenceReason.NORMALIZATION_UNSTABLE, "a URL cannot be parsed")
+    hostname, path, query, fragment = parts
     forms: list[str] = [url]
     host_forms = _percent_forms(hostname)
-    for host in host_forms:
-        forms.append(host)
+    forms.extend(host_forms)
     final_host = host_forms[-1]
     if final_host:
-        try:
-            ascii_host = final_host.encode("idna").decode("ascii")
-            forms.extend([ascii_host, ascii_host.encode("ascii").decode("idna")])
-        except UnicodeError as error:
+        host_names = _idna_forms(final_host)
+        if host_names is None:
             raise PaidTermError(
                 PaidFenceReason.NORMALIZATION_UNSTABLE, "a URL host is not a valid domain name"
-            ) from error
-    for component in (parsed.path, parsed.query, parsed.fragment):
+            )
+        forms.extend(host_names)
+    for component in (path, query, fragment):
         forms.extend(_percent_forms(component))
     return tuple(form for form in forms if form)
+
+
+def _split_url(url: str) -> tuple[str, str, str, str] | None:
+    try:
+        parsed = urlsplit(url)
+        return parsed.hostname or "", parsed.path, parsed.query, parsed.fragment
+    except ValueError:
+        return None
+
+
+def _idna_forms(host: str) -> tuple[str, str] | None:
+    try:
+        ascii_host = host.encode("idna").decode("ascii")
+        return ascii_host, ascii_host.encode("ascii").decode("idna")
+    except UnicodeError:
+        return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,15 +228,19 @@ def _serialize(value: Any) -> bytes:
     ).encode("utf-8")
 
 
+def _decode_register(raw: bytes) -> dict[str, Any] | None:
+    try:
+        return decode_strict_json(raw)
+    except ContractError:
+        return None
+
+
 def load_term_register(raw: bytes) -> TermRegister:
     """Parse one register artifact strictly; its digest is SHA-256 of the canonical bytes."""
 
-    try:
-        value = decode_strict_json(raw)
-    except ContractError as error:
-        raise PaidTermError(
-            PaidFenceReason.REGISTER_INVALID, "register bytes are unreadable"
-        ) from error
+    value = _decode_register(raw)
+    if value is None:
+        raise PaidTermError(PaidFenceReason.REGISTER_INVALID, "register bytes are unreadable")
     if set(value) != _REGISTER_FIELDS:
         raise PaidTermError(
             PaidFenceReason.REGISTER_INVALID, "register fields are not the closed set"
@@ -319,13 +353,17 @@ class PaidFenceDecision:
     surface: str | None = None
     normalized_input_digest: str | None = None
     provider_payload_digest: str | None = None
+    manifest_digest: str | None = None
 
 
 def _payload_strings(value: Any) -> Iterable[str]:
+    """Every string a provider would receive, mapping keys included."""
+
     if isinstance(value, str):
         yield value
     elif isinstance(value, Mapping):
-        for child in value.values():
+        for key, child in value.items():
+            yield from _payload_strings(key)
             yield from _payload_strings(child)
     elif isinstance(value, list | tuple):
         for child in value:
@@ -333,14 +371,19 @@ def _payload_strings(value: Any) -> Iterable[str]:
 
 
 def _payload_forms(text: str) -> list[str]:
-    """A provider string is inspected as text and, for every URL-shaped token, as a URL."""
+    """A provider string is inspected as text in every decoding round and, for every URL-shaped
+    token of every round, as a URL. Brackets and quotes never hide a URL; neither does encoding
+    the whole URL."""
 
-    if _URL_SCHEME.match(text):
-        return list(url_forms(text))
-    forms = _text_forms(text)
-    for token in text.split():
-        if _URL_SCHEME.match(token) or _HOST_LIKE.match(token):
-            forms.extend(url_forms(token))
+    forms: list[str] = []
+    for round_text in _text_forms(text):
+        forms.append(round_text)
+        # A space-separated token is parsed whole, so a malformed URL refuses; the same text
+        # split at brackets and quotes finds a URL a wrapper would otherwise hide.
+        tokens = {*round_text.split(), *_TOKEN_BREAK.split(round_text)}
+        for token in sorted(token.rstrip(".,;:!?") for token in tokens):
+            if token and (_URL_SCHEME.match(token) or _HOST_LIKE.match(token)):
+                forms.extend(url_forms(token))
     return forms
 
 
@@ -407,16 +450,42 @@ def validate_registers(
     return normalized
 
 
+def _manifest_fence(manifest: CanonicalProductManifest) -> tuple[PaidFenceFlags, list[str]]:
+    """The flags, register bindings and forbidden phrases of a manifest proven by its bytes."""
+
+    if _reloaded(manifest.canonical_bytes) != manifest:
+        raise PaidTermError(
+            PaidFenceReason.MANIFEST_INTEGRITY, "the product policy does not match its bytes"
+        )
+    payload = thaw_json(manifest.payload)
+    return (
+        PaidFenceFlags.from_manifest(payload["authority"]["paid_fence"]),
+        list(payload["tone_profile"]["forbidden_phrases"]),
+    )
+
+
+def _reloaded(canonical_bytes: bytes) -> CanonicalProductManifest | None:
+    try:
+        return load_canonical_manifest(canonical_bytes)
+    except ContractError:
+        return None
+
+
 def evaluate_paid_fence(
     *,
-    flags: PaidFenceFlags,
+    manifest: CanonicalProductManifest,
     registers: Mapping[TermClass, TermRegister],
-    forbidden_phrases: Sequence[str],
     surfaces: PaidSurfaces,
 ) -> PaidFenceDecision:
-    """Run the class fence; the planner and the final worker call exactly this function."""
+    """Run the class fence; the planner and the final worker call exactly this function.
+
+    The allow flags, the three register bindings and the forbidden phrases are read only from
+    ``manifest``, the typed revision the host's current-policy reader returned; a caller cannot
+    supply its own. Whether that revision is current and approved is the host reader's check.
+    """
 
     try:
+        flags, forbidden_phrases = _manifest_fence(manifest)
         normalized = validate_registers(registers, flags.bindings)
         phrases = [normalize_text(phrase) for phrase in forbidden_phrases]
         if any(not phrase.skeleton for phrase in phrases):
@@ -426,6 +495,7 @@ def evaluate_paid_fence(
     except PaidTermError as error:
         return PaidFenceDecision(allowed=False, reason_code=error.reason_code)
     payload_digest = surfaces.provider_payload_digest
+    policy_digest = manifest.manifest_digest
     input_digest = hashlib.sha256(
         _serialize(
             {
@@ -446,6 +516,7 @@ def evaluate_paid_fence(
             surface=surface,
             normalized_input_digest=input_digest,
             provider_payload_digest=payload_digest,
+            manifest_digest=policy_digest,
         )
 
     for surface, text in texts:
@@ -470,6 +541,7 @@ def evaluate_paid_fence(
         reason_code=PaidFenceReason.ALLOWED.value,
         normalized_input_digest=input_digest,
         provider_payload_digest=payload_digest,
+        manifest_digest=policy_digest,
     )
 
 

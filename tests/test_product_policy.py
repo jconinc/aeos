@@ -363,6 +363,65 @@ def test_the_purpose_matrix_is_the_closed_nineteen_rows() -> None:
     } == READ_ONLY_PURPOSES
 
 
+#: The literal R5 §2 field-table owners. Moving any path to another section, or giving a section
+#: another owner, must fail this test even when every path stays covered exactly once.
+EXPECTED_SECTIONS = {
+    "product_scope": (
+        "product_owner",
+        ("product_instance_id", "manifest_version", "effective_interval", "modules_enabled"),
+    ),
+    "portfolio_placement": ("portfolio_owner", ("portfolio_phase_revision_id", "authority.wedge")),
+    "service_principal_grants": ("security_role", ("service_principal_grants",)),
+    "credential_scopes": ("security_role", ("credential_scopes",)),
+    "brand_tone": ("brand_owner", ("tone_profile.voice", "tone_profile.forbidden_phrases")),
+    "product_legal": (
+        "product_legal_owner",
+        ("tone_profile.allowed_claim_templates", "fcra_posture"),
+    ),
+    "budget": ("finance_owner", ("budget_caps", "authority.probe_budget")),
+    "authority_targets": (
+        "authority_owner",
+        (
+            "authority.measurement_window_days",
+            "authority.target_query_classes",
+            "authority.answer_engines",
+            "authority.citation_rate_floor",
+            "authority.earned_citations_floor",
+            "authority.source_diversity_min",
+        ),
+    ),
+    "owned_audience": ("privacy_legal_owner", ("authority.owned_audience",)),
+    "paid_fence": ("brand_owner", ("authority.paid_fence",)),
+    "commercial_terms": (
+        "commercial_owner",
+        ("commercial.unit_economics", "commercial.renewal_attention", "commercial.quote"),
+    ),
+    "deliverability": ("delivery_owner", ("commercial.deliverability",)),
+    "content_policy": ("content_policy_owner", ("content_policy",)),
+    "correction_policy": ("correction_policy_owner", ("correction_policy",)),
+    "source_bindings": ("support_owner", ("source_bindings",)),
+    "release_compatibility": ("release_owner", ("schema_version", "compatibility")),
+    "aeos_companion": (
+        "aeos_policy_owner",
+        (
+            "gating",
+            "liability_class",
+            "approval_policy_ref",
+            "release_policy",
+            "wlg_sync_policy",
+            "task_generation_policy",
+            "family_overrides",
+        ),
+    ),
+}
+
+
+def test_each_section_has_its_literal_owner_and_paths() -> None:
+    assert {
+        name: (SECTION_AUTHORITY_CLASSES[name], SECTION_PATHS[name]) for name in POLICY_SECTIONS
+    } == EXPECTED_SECTIONS
+
+
 def test_every_policy_path_belongs_to_exactly_one_approval_section() -> None:
     covered = [path for paths in SECTION_PATHS.values() for path in paths]
     assert len(covered) == len(set(covered))

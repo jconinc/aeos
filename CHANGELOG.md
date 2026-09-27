@@ -13,11 +13,16 @@
 - Keep a decimal-string coverage minimum as a real release bar, and block when the minimum
   cannot be read instead of dropping the check.
 - Review round 1: split claim templates and FCRA posture into a product/legal section; require
-  an authority class for every command, including revocation and the new
-  `withdraw_latest_service_grant_set`; accept a register only as its own signed bytes named by
+  an authority class for every command except `propose_manifest`, whose proposal approves
+  nothing, including revocation and the new `withdraw_latest_service_grant_set`; accept a register only as its own signed bytes named by
   the manifest, including an approved empty register; decode scheme-less provider URLs and
   percent-encoded provider text; refuse an unparseable URL without quoting it; compare the
   coverage minimum exactly.
+- Review round 2: a grant-withdrawing revocation needs both the whole-manifest grant and the
+  security/role withdrawal grant; `evaluate_paid_fence` takes the typed manifest and reads its
+  flags, register bindings and forbidden phrases only from it, refusing a manifest that
+  disagrees with its own bytes; provider URLs inside brackets or quotes, URLs encoded whole,
+  and mapping keys are inspected; no refusal chains an exception that quotes the input.
 - The distribution version stays 0.8.2 in this lane. Root chooses and publishes the reviewed
   version and updates the Wema pin.
 
