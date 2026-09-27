@@ -421,6 +421,12 @@ def test_an_unparseable_url_is_a_typed_refusal_that_never_quotes_it(url: str) ->
     assert "fictional" not in repr(decision) and "℀" not in repr(decision)
 
 
+def full_width(text: str) -> str:
+    """The full-width compatibility form of printable ASCII, which NFKC maps back."""
+
+    return "".join(chr(ord(char) + 0xFEE0) for char in text)
+
+
 def test_a_scheme_less_punycode_host_is_read_as_its_unicode_name() -> None:
     held = registers(brand=["bücher"])
     for payload in (
@@ -430,6 +436,10 @@ def test_a_scheme_less_punycode_host_is_read_as_its_unicode_name() -> None:
         {"description": "ref=XN--BCHER-KVA.example"},
         {"description": "see/xn--bcher-kva.example"},
         {"cta": "Go|xn--bcher-kva"},
+        {"description": "ref=" + full_width("xn--") + "bcher-kva.example"},
+        {"description": "see/" + full_width("xn--") + "bcher-kva.example/x"},
+        {"description": full_width("URL:https://xn--bcher-kva.") + "example/x"},
+        {"description": "Visit " + full_width("XN--BCHER-KVA") + " today"},
     ):
         decision = fence(
             (False, True, True),

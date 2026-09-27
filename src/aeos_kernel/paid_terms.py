@@ -378,18 +378,24 @@ def _payload_forms(text: str) -> list[str]:
     the whole URL."""
 
     forms: list[str] = []
-    for round_text in _text_forms(text):
-        forms.extend((round_text, _unicode_labels(round_text)))
-        # A space-separated token is parsed whole, so a malformed URL refuses; the same text
-        # split at brackets and quotes finds a URL a wrapper would otherwise hide, and a scheme
-        # inside a token (``URL:https://…``) starts a URL of its own.
-        tokens = {*round_text.split(), *_TOKEN_BREAK.split(round_text)}
-        tokens |= {
-            token[match.start() :] for token in tokens for match in _URL_SCHEME.finditer(token)
-        }
-        for token in sorted(token.rstrip(".,;:!?") for token in tokens):
-            if token and (_URL_SCHEME.match(token) or _HOST_LIKE.match(token)):
-                forms.extend(url_forms(token))
+    for decoded in _text_forms(text):
+        # A compatibility form (a full-width punycode name part or URL) is also read as the ASCII
+        # it normalizes to, so it is inspected exactly like its ASCII twin.
+        for round_text in dict.fromkeys((decoded, unicodedata.normalize("NFKC", decoded))):
+            forms.extend(_round_forms(round_text))
+    return forms
+
+
+def _round_forms(round_text: str) -> list[str]:
+    forms = [round_text, _unicode_labels(round_text)]
+    # A space-separated token is parsed whole, so a malformed URL refuses; the same text split
+    # at brackets and quotes finds a URL a wrapper would otherwise hide, and a scheme inside a
+    # token (``URL:https://…``) starts a URL of its own.
+    tokens = {*round_text.split(), *_TOKEN_BREAK.split(round_text)}
+    tokens |= {token[match.start() :] for token in tokens for match in _URL_SCHEME.finditer(token)}
+    for token in sorted(token.rstrip(".,;:!?") for token in tokens):
+        if token and (_URL_SCHEME.match(token) or _HOST_LIKE.match(token)):
+            forms.extend(url_forms(token))
     return forms
 
 
