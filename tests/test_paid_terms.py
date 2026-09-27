@@ -440,6 +440,11 @@ def test_a_scheme_less_punycode_host_is_read_as_its_unicode_name() -> None:
         {"description": "see/" + full_width("xn--") + "bcher-kva.example/x"},
         {"description": full_width("URL:https://xn--bcher-kva.") + "example/x"},
         {"description": "Visit " + full_width("XN--BCHER-KVA") + " today"},
+        # A full-width percent sign is decoded after it normalizes, and an escape that decodes to
+        # a full-width percent sign is normalized in the next round.
+        {"description": "tag=" + full_width("xn--%") + "62cher-kva.example/x"},
+        {"items": [{"ref=" + full_width("xn--%") + "62cher-kva.example/x": "plain"}]},
+        {"description": "tag=xn--%EF%BC%85%36%32cher-kva.example"},
     ):
         decision = fence(
             (False, True, True),

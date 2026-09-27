@@ -135,17 +135,22 @@ def _percent_forms(component: str) -> list[str]:
 
 def _text_forms(text: str) -> list[str]:
     """Decoding rounds of free text. ``50% off`` is text, not a malformed escape; only an
-    encoding still unwinding after four rounds is refused."""
+    encoding still unwinding after four rounds is refused.
+
+    Each round first takes the NFKC form, so a compatibility character (a full-width percent sign
+    or punycode name part) is decoded and read exactly like its ASCII twin, and an
+    escape that decodes to one is normalized in the next round."""
 
     forms = [text]
     current = text
     for _ in range(MAX_PERCENT_DECODE_ROUNDS):
-        decoded = unquote(current, errors="replace")
+        normalized = unicodedata.normalize("NFKC", current)
+        decoded = unquote(normalized, errors="replace")
         if decoded == current:
             return forms
-        forms.append(decoded)
+        forms.extend(dict.fromkeys(form for form in (normalized, decoded) if form not in forms))
         current = decoded
-    if unquote(current, errors="replace") != current:
+    if unquote(unicodedata.normalize("NFKC", current), errors="replace") != current:
         raise PaidTermError(
             PaidFenceReason.NORMALIZATION_UNSTABLE,
             "provider text is still percent-encoded after four decoding rounds",
@@ -378,11 +383,8 @@ def _payload_forms(text: str) -> list[str]:
     the whole URL."""
 
     forms: list[str] = []
-    for decoded in _text_forms(text):
-        # A compatibility form (a full-width punycode name part or URL) is also read as the ASCII
-        # it normalizes to, so it is inspected exactly like its ASCII twin.
-        for round_text in dict.fromkeys((decoded, unicodedata.normalize("NFKC", decoded))):
-            forms.extend(_round_forms(round_text))
+    for round_text in _text_forms(text):
+        forms.extend(_round_forms(round_text))
     return forms
 
 
