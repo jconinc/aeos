@@ -14,6 +14,7 @@ from typing import Any
 
 from aeos_kernel._validation import immutable_json_object, required, thaw_json
 from aeos_kernel.errors import ContractError
+from aeos_kernel.execution_lanes import MoveTaskLane
 from aeos_kernel.gaps import GapRow, GapSeverity
 from aeos_kernel.registry import ProductManifest
 
@@ -46,6 +47,7 @@ class MoveFamily:
     escalation_role: str = ""
     allowed_tools: tuple[str, ...] = ()
     args_schema: dict[str, Any] = field(default_factory=dict)
+    execution_lanes: tuple[MoveTaskLane, ...] = ()
 
     def __post_init__(self) -> None:
         for name in ("move_type", "module_key", "owner_role", "approval_policy"):
@@ -59,6 +61,13 @@ class MoveFamily:
                 raise ContractError(f"move family {label}s must be unique")
             for item in group:
                 required(item, f"move family {label}")
+        if not isinstance(self.execution_lanes, tuple):
+            raise ContractError("move family execution lanes must be an ordered tuple")
+        if any(not isinstance(step, MoveTaskLane) for step in self.execution_lanes):
+            raise ContractError("move family execution lane is not recognized")
+        keys = [step.step_key for step in self.execution_lanes]
+        if len(set(keys)) != len(keys):
+            raise ContractError("move family execution step keys must be unique")
         if self.never_graduates and not self.human_override:
             raise ContractError("only a parking family can be marked as never graduating")
         if self.dual_control and not (self.human_override and self.never_graduates):
@@ -84,6 +93,17 @@ class MoveFamily:
 
         return not self.allowed_actor_roles or role in self.allowed_actor_roles
 
+    def require_execution_lanes(self) -> tuple[MoveTaskLane, ...]:
+        """Refuse activation until this family has its complete ordered lane tuple.
+
+        Older installed family declarations have no lane field. Keeping them
+        parseable supports an inactive migration; it does not authorize their
+        execution under the PB-194 contract.
+        """
+        if not self.execution_lanes:
+            raise ContractError(f"move family {self.move_type!r} has no execution lanes")
+        return self.execution_lanes
+
     def permits_tool(self, tool: str) -> bool:
         return not self.allowed_tools or tool in self.allowed_tools
 
@@ -96,6 +116,7 @@ class MoveFamily:
             "approval_policy": self.approval_policy,
             "evidence_kinds": list(self.evidence_kinds),
             "rails": list(self.rails),
+            "execution_lanes": [step.as_dict() for step in self.execution_lanes],
             "human_override": self.human_override,
             "never_graduates": self.never_graduates,
             "long_running": self.long_running,
