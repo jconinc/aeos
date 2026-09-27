@@ -16,7 +16,7 @@ from uuid import UUID
 
 from aeos_kernel._validation import digest, required, utc
 from aeos_kernel.errors import ContractError
-from aeos_kernel.runtime_policy import EffectiveRuntimePolicy
+from aeos_kernel.runtime_policy import EffectiveRuntimePolicy, PermissionLaneIdentity
 
 _SAFE_KEY = re.compile(r"[a-z][a-z0-9_.-]{0,127}\Z")
 _VERSION = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
@@ -30,6 +30,33 @@ def _positive(value: int, name: str) -> None:
 def _safe_key(value: str, name: str) -> None:
     if not isinstance(value, str) or not _SAFE_KEY.fullmatch(value):
         raise ContractError(f"{name} must be a safe canonical key")
+
+
+@dataclass(frozen=True, slots=True)
+class SourceEvidenceReference:
+    """Resolvable source-owned record identity and safe content commitment."""
+
+    kind: str
+    evidence_id: UUID
+    evidence_digest: str
+
+    def __post_init__(self) -> None:
+        _safe_key(self.kind, "source evidence kind")
+        if not isinstance(self.evidence_id, UUID):
+            raise ContractError("source evidence id must be a UUID")
+        digest(self.evidence_digest, "source evidence digest")
+
+
+def _source_references(references: tuple[SourceEvidenceReference, ...], name: str) -> None:
+    if (
+        not isinstance(references, tuple)
+        or not references
+        or any(not isinstance(reference, SourceEvidenceReference) for reference in references)
+    ):
+        raise ContractError(f"{name} must be a nonempty immutable reference set")
+    keys = tuple((reference.kind, str(reference.evidence_id)) for reference in references)
+    if tuple(sorted(set(keys))) != keys:
+        raise ContractError(f"{name} must be canonical and unique")
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,12 +115,14 @@ class CurrentKeyProof:
     platform_generation: int
     manifest_digest: str | None
     permission_generation: int
+    permission_lane: PermissionLaneIdentity
     source_generation: int
     inventory_digest: str
     declaration_digest: str
     domain_census_digest: str
     domain_census_complete: bool
     domains: tuple[KeyDomainEvidence, ...]
+    source_evidence_refs: tuple[SourceEvidenceReference, ...]
     issued_at: datetime
     expires_at: datetime
 
@@ -106,6 +135,11 @@ class CurrentKeyProof:
             raise ContractError("proof scope is too long")
         for name in ("platform_generation", "permission_generation", "source_generation"):
             _positive(getattr(self, name), name)
+        if not isinstance(self.permission_lane, PermissionLaneIdentity) or (
+            self.permission_lane.permission_generation != self.permission_generation
+            or self.permission_lane.product_slug != self.product_slug
+        ):
+            raise ContractError("proof permission lane is invalid")
         if self.manifest_digest is not None:
             digest(self.manifest_digest, "manifest digest")
         for name in ("inventory_digest", "declaration_digest", "domain_census_digest"):
@@ -118,6 +152,7 @@ class CurrentKeyProof:
             raise ContractError("proof domains must be an immutable tuple")
         if len({domain.domain_id for domain in self.domains}) != len(self.domains):
             raise ContractError("proof domains contain duplicates")
+        _source_references(self.source_evidence_refs, "proof source evidence")
         utc(self.issued_at, "proof issue time")
         utc(self.expires_at, "proof expiry time")
         if self.expires_at <= self.issued_at:
@@ -130,6 +165,7 @@ class CurrentKeyState:
 
     product_slug: str
     runtime_root: str
+    permission_lane: PermissionLaneIdentity
     source_generation: int
     inventory_digest: str
     declaration_digest: str
@@ -137,10 +173,15 @@ class CurrentKeyState:
     domain_census_complete: bool
     required_domain_ids: tuple[str, ...]
     domains: tuple[KeyDomainEvidence, ...]
+    source_evidence_refs: tuple[SourceEvidenceReference, ...]
 
     def __post_init__(self) -> None:
         required(self.product_slug, "current product slug")
         required(self.runtime_root, "current runtime root")
+        if not isinstance(self.permission_lane, PermissionLaneIdentity) or (
+            self.permission_lane.product_slug != self.product_slug
+        ):
+            raise ContractError("current permission lane is invalid")
         _positive(self.source_generation, "current source generation")
         for name in ("inventory_digest", "declaration_digest", "domain_census_digest"):
             digest(getattr(self, name), name)
@@ -156,6 +197,7 @@ class CurrentKeyState:
             raise ContractError("current domains contain duplicates")
         for domain_id in self.required_domain_ids:
             _safe_key(domain_id, "required domain id")
+        _source_references(self.source_evidence_refs, "current source evidence")
 
 
 class KeyEvidenceReader(Protocol):
@@ -194,10 +236,13 @@ def verify_current_key_proof(
         or proof.platform_generation != policy.platform_generation
         or proof.manifest_digest != policy.manifest_digest
         or proof.permission_generation != policy.permission_generation
+        or proof.permission_lane != policy.permission_lane
+        or proof.permission_lane != current.permission_lane
         or proof.source_generation != current.source_generation
         or proof.inventory_digest != current.inventory_digest
         or proof.declaration_digest != current.declaration_digest
         or proof.domain_census_digest != current.domain_census_digest
+        or proof.source_evidence_refs != current.source_evidence_refs
     ):
         raise ContractError("current key proof has a stale policy or source binding")
     if not proof.issued_at <= db_now < proof.expires_at:

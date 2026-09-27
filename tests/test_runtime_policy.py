@@ -10,6 +10,7 @@ import pytest
 from aeos_kernel.errors import ContractError
 from aeos_kernel.runtime_policy import (
     HostTarget,
+    PermissionLaneIdentity,
     ProductSecurity,
     RuntimePolicy,
     ToolEgressScope,
@@ -63,7 +64,18 @@ def _product(**changes: object) -> ProductSecurity:
 
 
 def _tool(*hosts: HostTarget) -> ToolEgressScope:
-    return ToolEgressScope("care", "draft_reply", "model", 3, hosts)
+    lane = PermissionLaneIdentity(
+        permission_id=UUID("00000000-0000-4000-8000-000000000010"),
+        binding_id=UUID("00000000-0000-4000-8000-000000000011"),
+        binding_generation=2,
+        permission_generation=3,
+        product_slug="care",
+        tool_key="model",
+        move_types=("draft_reply",),
+        egress_reference="guarded_http",
+        role_scope_epoch=4,
+    )
+    return ToolEgressScope("care", "draft_reply", "model", 3, hosts, lane)
 
 
 def test_exact_intersection_and_tightening_are_staging_only() -> None:
@@ -82,6 +94,7 @@ def test_exact_intersection_and_tightening_are_staging_only() -> None:
     assert effective.key_rotation_days == 30
     assert effective.audit_retention_days == 60
     assert effective.permission_generation == 3
+    assert effective.permission_lane == _tool(A).permission_lane
     assert effective.manifest_digest == "a" * 64
 
 
@@ -181,7 +194,9 @@ def test_distinct_source_roots_can_share_one_guarded_route() -> None:
     assert effective.allowed_hosts == (A,)
     with pytest.raises(ContractError, match="inventory is stale"):
         compile_runtime_policy(
-            platform=_platform(), product=_product(), tool_scope=_tool(A),
+            platform=_platform(),
+            product=_product(),
+            tool_scope=_tool(A),
             transport_inventory=inventory,
         )
 

@@ -13,15 +13,35 @@ from aeos_kernel.key_proof import (
     CurrentKeyProof,
     CurrentKeyState,
     KeyDomainEvidence,
+    SourceEvidenceReference,
     verify_current_key_proof,
 )
-from aeos_kernel.runtime_policy import EffectiveRuntimePolicy
+from aeos_kernel.runtime_policy import EffectiveRuntimePolicy, PermissionLaneIdentity
 
 NOW = dt.datetime(2026, 9, 27, 17, 0, tzinfo=dt.UTC)
 ISSUED = NOW - dt.timedelta(hours=1)
 PROOF_ID = UUID("00000000-0000-4000-8000-000000000001")
 POLICY_ID = UUID("00000000-0000-4000-8000-000000000002")
 KEY_ID = UUID("00000000-0000-4000-8000-000000000003")
+EVIDENCE_ID = UUID("00000000-0000-4000-8000-000000000004")
+
+
+def _lane() -> PermissionLaneIdentity:
+    return PermissionLaneIdentity(
+        permission_id=UUID("00000000-0000-4000-8000-000000000010"),
+        binding_id=UUID("00000000-0000-4000-8000-000000000011"),
+        binding_generation=2,
+        permission_generation=3,
+        product_slug="care",
+        tool_key="model",
+        move_types=("draft_reply",),
+        egress_reference="guarded_http",
+        role_scope_epoch=4,
+    )
+
+
+def _refs() -> tuple[SourceEvidenceReference, ...]:
+    return (SourceEvidenceReference("source_inventory", EVIDENCE_ID, "e" * 64),)
 
 
 def _policy() -> EffectiveRuntimePolicy:
@@ -30,6 +50,7 @@ def _policy() -> EffectiveRuntimePolicy:
         platform_generation=2,
         manifest_digest="a" * 64,
         permission_generation=3,
+        permission_lane=_lane(),
         allowed_hosts=(),
         untrusted_sources=(),
         go_live_mode="staging",
@@ -67,12 +88,14 @@ def _proof() -> CurrentKeyProof:
         platform_generation=2,
         manifest_digest="a" * 64,
         permission_generation=3,
+        permission_lane=_lane(),
         source_generation=7,
         inventory_digest="b" * 64,
         declaration_digest="c" * 64,
         domain_census_digest="d" * 64,
         domain_census_complete=True,
         domains=(_domain(),),
+        source_evidence_refs=_refs(),
         issued_at=ISSUED,
         expires_at=NOW + dt.timedelta(hours=1),
     )
@@ -82,6 +105,7 @@ def _current() -> CurrentKeyState:
     return CurrentKeyState(
         product_slug="care",
         runtime_root="api",
+        permission_lane=_lane(),
         source_generation=7,
         inventory_digest="b" * 64,
         declaration_digest="c" * 64,
@@ -89,6 +113,7 @@ def _current() -> CurrentKeyState:
         domain_census_complete=True,
         required_domain_ids=("care_records",),
         domains=(_domain(readback_at=NOW),),
+        source_evidence_refs=_refs(),
     )
 
 
@@ -123,6 +148,48 @@ def test_exact_current_proof_matches_but_carries_no_live_mode() -> None:
     assert _policy().go_live_mode == "staging"
 
 
+def test_equal_generation_different_permission_lane_refuses() -> None:
+    other_binding = replace(_lane(), binding_id=UUID("00000000-0000-4000-8000-000000000099"))
+    other_role_scope = replace(_lane(), role_scope_epoch=5)
+    for different in (other_binding, other_role_scope):
+        assert different.permission_generation == _lane().permission_generation
+        with pytest.raises(ContractError, match="stale policy or source"):
+            _verify(policy=replace(_policy(), permission_lane=different))
+        with pytest.raises(ContractError, match="stale policy or source"):
+            _verify(current=replace(_current(), permission_lane=different))
+    assert (
+        _verify(
+            proof=replace(_proof(), permission_lane=other_binding),
+            policy=replace(_policy(), permission_lane=other_binding),
+            current=replace(_current(), permission_lane=other_binding),
+        )
+        == PROOF_ID
+    )
+
+
+def test_source_evidence_refs_match_exactly_and_are_required() -> None:
+    extra = SourceEvidenceReference(
+        "domain_census", UUID("00000000-0000-4000-8000-000000000005"), "f" * 64
+    )
+    refs = (extra, *_refs())
+    assert (
+        _verify(
+            proof=replace(_proof(), source_evidence_refs=refs),
+            current=replace(_current(), source_evidence_refs=refs),
+        )
+        == PROOF_ID
+    )
+    with pytest.raises(ContractError, match="stale policy or source"):
+        _verify(proof=replace(_proof(), source_evidence_refs=refs))
+    changed = (replace(_refs()[0], evidence_digest="f" * 64),)
+    with pytest.raises(ContractError, match="stale policy or source"):
+        _verify(current=replace(_current(), source_evidence_refs=changed))
+    with pytest.raises(ContractError, match="nonempty immutable reference set"):
+        replace(_proof(), source_evidence_refs=())
+    with pytest.raises(ContractError, match="canonical and unique"):
+        replace(_proof(), source_evidence_refs=(*_refs(), *_refs()))
+
+
 def test_missing_proof_or_reader_state_refuses() -> None:
     with pytest.raises(ContractError, match="unavailable"):
         verify_current_key_proof(
@@ -148,7 +215,6 @@ def test_missing_proof_or_reader_state_refuses() -> None:
     ("proof_change", "policy_change", "current_change"),
     [
         ({"platform_generation": 1}, {}, {}),
-        ({"permission_generation": 2}, {}, {}),
         ({"manifest_digest": "e" * 64}, {}, {}),
         ({"source_generation": 6}, {}, {}),
         ({"inventory_digest": "e" * 64}, {}, {}),
@@ -214,6 +280,8 @@ def test_proof_expiry_and_policy_rotation_deadline_refuse() -> None:
 
 
 def test_proof_rejects_duplicate_domains_and_nonopaque_version() -> None:
+    with pytest.raises(ContractError, match="proof permission lane is invalid"):
+        replace(_proof(), permission_generation=2)
     with pytest.raises(ContractError, match="duplicates"):
         replace(_proof(), domains=(_domain(), _domain()))
     with pytest.raises(ContractError, match="opaque safe token"):

@@ -229,6 +229,37 @@ class ProductSecurity:
 
 
 @dataclass(frozen=True, slots=True)
+class PermissionLaneIdentity:
+    """Exact authenticated PB-167 permission and role/scope generation."""
+
+    permission_id: UUID
+    binding_id: UUID
+    binding_generation: int
+    permission_generation: int
+    product_slug: str
+    tool_key: str
+    move_types: tuple[str, ...]
+    egress_reference: str
+    role_scope_epoch: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.permission_id, UUID) or not isinstance(self.binding_id, UUID):
+            raise ContractError("permission and binding ids must be UUIDs")
+        _positive(self.binding_generation, "binding generation")
+        _positive(self.permission_generation, "permission generation")
+        _reference(self.product_slug, "permission product", limit=128)
+        _key(self.tool_key, "permission tool")
+        if not isinstance(self.move_types, tuple) or not self.move_types:
+            raise ContractError("permission Move scope must be a nonempty tuple")
+        for move_type in self.move_types:
+            _reference(move_type, "permission Move type", limit=128)
+        if tuple(sorted(set(self.move_types))) != self.move_types:
+            raise ContractError("permission Move scope must be canonical")
+        _reference(self.egress_reference, "permission egress reference")
+        _positive(self.role_scope_epoch, "role scope epoch")
+
+
+@dataclass(frozen=True, slots=True)
 class ToolEgressScope:
     """An already authenticated PB-167 grant's requested host scope."""
 
@@ -237,12 +268,20 @@ class ToolEgressScope:
     tool_key: str
     permission_generation: int
     hosts: tuple[HostTarget, ...]
+    permission_lane: PermissionLaneIdentity
 
     def __post_init__(self) -> None:
         _reference(self.product_slug, "product slug", limit=128)
         _reference(self.move_type, "Move type", limit=128)
         _key(self.tool_key, "tool key")
         _positive(self.permission_generation, "permission generation")
+        if not isinstance(self.permission_lane, PermissionLaneIdentity) or (
+            self.permission_lane.product_slug != self.product_slug
+            or self.permission_lane.tool_key != self.tool_key
+            or self.permission_lane.permission_generation != self.permission_generation
+            or self.move_type not in self.permission_lane.move_types
+        ):
+            raise ContractError("tool scope does not match its exact permission lane")
         if not isinstance(self.hosts, tuple):
             raise ContractError("tool hosts must be an immutable tuple")
         if any(not isinstance(host, HostTarget) for host in self.hosts):
@@ -256,6 +295,7 @@ class EffectiveRuntimePolicy:
     platform_generation: int
     manifest_digest: str | None
     permission_generation: int
+    permission_lane: PermissionLaneIdentity
     allowed_hosts: tuple[HostTarget, ...]
     untrusted_sources: tuple[str, ...]
     go_live_mode: str
@@ -311,6 +351,7 @@ def compile_runtime_policy(
         platform_generation=platform.generation,
         manifest_digest=product.manifest_digest if product else None,
         permission_generation=tool_scope.permission_generation,
+        permission_lane=tool_scope.permission_lane,
         allowed_hosts=tuple(
             sorted(scope_hosts, key=lambda h: (h.host, h.scheme, h.port, h.purpose))
         ),
