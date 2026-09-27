@@ -68,6 +68,9 @@ READ_ONLY_PURPOSES: Final = frozenset(
 
 #: The revocation sentinel. It names the whole revision and is never an approval section.
 WHOLE_MANIFEST: Final = "whole_manifest"
+#: The scope label under which the security/role owner withdraws a selected grant set, either
+#: alongside a scoped revocation or through ``withdraw_latest_service_grant_set``.
+SERVICE_GRANT_WITHDRAWAL: Final = "service_grant_withdrawal"
 
 
 class ManifestReason(StrEnum):
@@ -95,7 +98,8 @@ SECTION_AUTHORITY_CLASSES: Final[Mapping[str, str]] = MappingProxyType(
         "portfolio_placement": "portfolio_owner",
         "service_principal_grants": "security_role",
         "credential_scopes": "security_role",
-        "tone_and_claims": "brand_owner",
+        "brand_tone": "brand_owner",
+        "product_legal": "product_legal_owner",
         "budget": "finance_owner",
         "authority_targets": "authority_owner",
         "owned_audience": "privacy_legal_owner",
@@ -116,12 +120,12 @@ SECTION_PATHS: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
             "manifest_version",
             "effective_interval",
             "modules_enabled",
-            "fcra_posture",
         ),
         "portfolio_placement": ("portfolio_phase_revision_id", "authority.wedge"),
         "service_principal_grants": ("service_principal_grants",),
         "credential_scopes": ("credential_scopes",),
-        "tone_and_claims": ("tone_profile",),
+        "brand_tone": ("tone_profile.voice", "tone_profile.forbidden_phrases"),
+        "product_legal": ("tone_profile.allowed_claim_templates", "fcra_posture"),
         "budget": ("budget_caps", "authority.probe_budget"),
         "authority_targets": (
             "authority.measurement_window_days",
@@ -850,7 +854,7 @@ def policy_leaf_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
 
     paths: list[str] = []
     for key, value in payload.items():
-        if key in {"authority", "commercial"} and isinstance(value, Mapping):
+        if key in {"authority", "commercial", "tone_profile"} and isinstance(value, Mapping):
             paths.extend(f"{key}.{child}" for child in value)
         else:
             paths.append(key)
@@ -871,6 +875,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "SECTION_AUTHORITY_CLASSES",
     "SECTION_PATHS",
+    "SERVICE_GRANT_WITHDRAWAL",
     "WHOLE_MANIFEST",
     "CanonicalProductManifest",
     "ManifestContractError",

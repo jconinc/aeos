@@ -3,7 +3,7 @@
 ## Unreleased — policy-lane candidate on 0.8.2, 2026-09-27
 
 - Add the canonical product policy manifest (PB-195): one strict parser, closed schema,
-  sixteen authority sections, canonical bytes and digest vectors, exact service grants and
+  seventeen authority sections, canonical bytes and digest vectors, exact service grants and
   reader compatibility. The legacy `ProductManifest` is reached through an adapter that adds
   no value.
 - Add the paid-term fence with one shared normalizer, bounded URL decoding, register
@@ -12,6 +12,12 @@
   revoked, conflicting and wrong-class grants refuse.
 - Keep a decimal-string coverage minimum as a real release bar, and block when the minimum
   cannot be read instead of dropping the check.
+- Review round 1: split claim templates and FCRA posture into a product/legal section; require
+  an authority class for every command, including revocation and the new
+  `withdraw_latest_service_grant_set`; accept a register only as its own signed bytes named by
+  the manifest, including an approved empty register; decode scheme-less provider URLs and
+  percent-encoded provider text; refuse an unparseable URL without quoting it; compare the
+  coverage minimum exactly.
 - The distribution version stays 0.8.2 in this lane. Root chooses and publishes the reviewed
   version and updates the Wema pin.
 

@@ -10,6 +10,8 @@ import pytest
 from aeos_kernel.authority import AuthorityRecord, ScopeSelector
 from aeos_kernel.errors import ContractError
 from aeos_kernel.policy_authority import (
+    COMMAND_AUTHORITY_CLASSES,
+    POLICY_COMMANDS,
     PolicyAuthorityStatus,
     authorize_policy_command,
     command_section,
@@ -131,3 +133,89 @@ def test_every_command_has_one_fixed_scope_label() -> None:
         command_section("activate_manifest", "budget")
     with pytest.raises(ContractError):
         command_section("approve_everything", None)
+    with pytest.raises(ContractError):
+        command_section("withdraw_latest_service_grant_set", "whole_manifest")
+    assert command_section("withdraw_latest_service_grant_set", None) == "service_grant_withdrawal"
+    assert command_section("revoke_manifest", "service_grant_withdrawal") == (
+        "service_grant_withdrawal"
+    )
+
+
+#: The literal class table. Swapping any two rows must fail this test.
+EXPECTED_COMMAND_CLASSES = {
+    "propose_phase": "portfolio_owner",
+    "record_phase_decision": "portfolio_owner",
+    "select_phase": "portfolio_owner",
+    "deactivate_phase": "portfolio_owner",
+    "retire_phase": "portfolio_owner",
+    "propose_manifest": None,
+    "activate_manifest": "release_owner",
+    "replace_manifest": "product_owner",
+    "revoke_manifest": "product_owner",
+    "rollback_manifest": "release_owner",
+    "deactivate_manifest": "release_owner",
+    "withdraw_latest_service_grant_set": "security_role",
+}
+
+
+def test_every_command_names_its_required_class() -> None:
+    assert dict(COMMAND_AUTHORITY_CLASSES) == EXPECTED_COMMAND_CLASSES
+    assert set(POLICY_COMMANDS) == set(EXPECTED_COMMAND_CLASSES) | {"record_manifest_decision"}
+
+
+def command_grant(command: str, section: str, authority_class: str) -> AuthorityRecord:
+    return grant(
+        args={"command": command, "section": section},
+        value={"authority_class": authority_class, "decision_ref": "example://decision/cmd"},
+    )
+
+
+@pytest.mark.parametrize(
+    ("command", "section", "label", "required"),
+    [
+        ("revoke_manifest", None, "whole_manifest", "product_owner"),
+        (
+            "revoke_manifest",
+            "service_grant_withdrawal",
+            "service_grant_withdrawal",
+            "security_role",
+        ),
+        (
+            "withdraw_latest_service_grant_set",
+            None,
+            "service_grant_withdrawal",
+            "security_role",
+        ),
+        ("select_phase", None, "portfolio_phase", "portfolio_owner"),
+        ("activate_manifest", None, "manifest_selection", "release_owner"),
+        ("replace_manifest", None, "manifest_selection", "product_owner"),
+        ("rollback_manifest", None, "manifest_selection", "release_owner"),
+        ("record_manifest_decision", "product_legal", "product_legal", "product_legal_owner"),
+        ("record_manifest_decision", "brand_tone", "brand_tone", "brand_owner"),
+    ],
+)
+def test_a_command_grant_of_the_wrong_class_does_not_authorize(
+    command: str, section: str | None, label: str, required: str
+) -> None:
+    for authority_class in ("brand_owner", "product_owner", "security_role", "release_owner"):
+        decision = decide(
+            command_grant(command, label, authority_class), command=command, section=section
+        )
+        if authority_class == required:
+            assert decision.authorized, (command, authority_class)
+        else:
+            assert decision.status is PolicyAuthorityStatus.CLASS_MISMATCH, (
+                command,
+                authority_class,
+            )
+    right = decide(command_grant(command, label, required), command=command, section=section)
+    assert right.authorized and right.authority_class == required
+
+
+def test_a_proposal_needs_only_its_exact_grant() -> None:
+    proposal = command_grant("propose_manifest", "manifest_proposal", "support_move_service")
+    assert decide(proposal, command="propose_manifest", section=None).authorized
+    assert (
+        decide(proposal, command="activate_manifest", section=None).status
+        is PolicyAuthorityStatus.MISSING
+    )

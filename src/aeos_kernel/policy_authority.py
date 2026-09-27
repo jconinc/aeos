@@ -11,10 +11,11 @@ gets ``policy_authority_missing`` for every command, which is the correct held s
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Final
 
 from aeos_kernel.authority import (
@@ -26,7 +27,12 @@ from aeos_kernel.authority import (
     selector_matches,
 )
 from aeos_kernel.errors import ContractError
-from aeos_kernel.product_policy import POLICY_SECTIONS, SECTION_AUTHORITY_CLASSES, WHOLE_MANIFEST
+from aeos_kernel.product_policy import (
+    POLICY_SECTIONS,
+    SECTION_AUTHORITY_CLASSES,
+    SERVICE_GRANT_WITHDRAWAL,
+    WHOLE_MANIFEST,
+)
 
 #: The closed PB-195 command surface.
 POLICY_COMMANDS: Final = (
@@ -42,11 +48,33 @@ POLICY_COMMANDS: Final = (
     "revoke_manifest",
     "rollback_manifest",
     "deactivate_manifest",
+    "withdraw_latest_service_grant_set",
 )
 #: The scope label a command other than a section decision or revocation is authorized under.
 PHASE_SCOPE: Final = "portfolio_phase"
 SELECTION_SCOPE: Final = "manifest_selection"
 PROPOSAL_SCOPE: Final = "manifest_proposal"
+#: The authority class each command requires outside a section decision, from PB-195 R5's held
+#: human decisions: the portfolio owner holds phase and transition authority, the product owner
+#: replacement and revocation, the release owner activation generation and rollback candidate,
+#: and the security/role authority grant-set revocation (R11). A proposal names no class: it is
+#: a candidate that approves nothing, so only its exact grant is required.
+COMMAND_AUTHORITY_CLASSES: Final[Mapping[str, str | None]] = MappingProxyType(
+    {
+        "propose_phase": "portfolio_owner",
+        "record_phase_decision": "portfolio_owner",
+        "select_phase": "portfolio_owner",
+        "deactivate_phase": "portfolio_owner",
+        "retire_phase": "portfolio_owner",
+        "propose_manifest": None,
+        "activate_manifest": "release_owner",
+        "replace_manifest": "product_owner",
+        "revoke_manifest": "product_owner",
+        "rollback_manifest": "release_owner",
+        "deactivate_manifest": "release_owner",
+        "withdraw_latest_service_grant_set": "security_role",
+    }
+)
 SCOPE_KEYS: Final = frozenset({"subject_id", "command", "section", "principal_id"})
 
 
@@ -73,7 +101,12 @@ class PolicyAuthorityDecision:
 
 
 def command_section(command: str, section: str | None) -> str:
-    """The one section label a command is authorized under; callers cannot choose another."""
+    """The one section label a command is authorized under; callers cannot choose another.
+
+    ``revoke_manifest`` is authorized under ``whole_manifest``. When its scope also withdraws the
+    service-principal grants, the caller authorizes it a second time under
+    ``service_grant_withdrawal``; each authorization needs its own exact grant.
+    """
 
     if command not in POLICY_COMMANDS:
         raise ContractError(f"unknown policy command {command!r}")
@@ -81,15 +114,29 @@ def command_section(command: str, section: str | None) -> str:
         if section not in POLICY_SECTIONS:
             raise ContractError("a manifest decision names one policy section")
         return str(section)
+    if command == "revoke_manifest" and section == SERVICE_GRANT_WITHDRAWAL:
+        return SERVICE_GRANT_WITHDRAWAL
     if section is not None:
         raise ContractError(f"{command} does not take a policy section")
     if command == "revoke_manifest":
         return WHOLE_MANIFEST
+    if command == "withdraw_latest_service_grant_set":
+        return SERVICE_GRANT_WITHDRAWAL
     if command == "propose_manifest":
         return PROPOSAL_SCOPE
     if command.endswith("_phase"):
         return PHASE_SCOPE
     return SELECTION_SCOPE
+
+
+def required_authority_class(command: str, section_label: str) -> str | None:
+    """The authority class a grant must carry for this command under this label."""
+
+    if section_label in SECTION_AUTHORITY_CLASSES:
+        return SECTION_AUTHORITY_CLASSES[section_label]
+    if section_label == SERVICE_GRANT_WITHDRAWAL:
+        return "security_role"
+    return COMMAND_AUTHORITY_CLASSES[command]
 
 
 def _exact(record: AuthorityRecord) -> bool:
@@ -141,7 +188,7 @@ def authorize_policy_command(
         or not decision_ref
     ):
         return PolicyAuthorityDecision(PolicyAuthorityStatus.MISSING)
-    required_class = SECTION_AUTHORITY_CLASSES.get(scope["section"])
+    required_class = required_authority_class(command, scope["section"])
     if required_class is not None and authority_class != required_class:
         return PolicyAuthorityDecision(
             PolicyAuthorityStatus.CLASS_MISMATCH, authority_class, record.authority_id
@@ -169,6 +216,7 @@ def _gap_status(
 
 
 __all__ = [
+    "COMMAND_AUTHORITY_CLASSES",
     "PHASE_SCOPE",
     "POLICY_COMMANDS",
     "PROPOSAL_SCOPE",
@@ -178,4 +226,5 @@ __all__ = [
     "PolicyAuthorityStatus",
     "authorize_policy_command",
     "command_section",
+    "required_authority_class",
 ]

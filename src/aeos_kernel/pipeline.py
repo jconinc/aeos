@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
+from fractions import Fraction
 from typing import Any
 
 from aeos_kernel._validation import digest, immutable_json_object, required, utc
@@ -240,20 +241,27 @@ class CoverageSnapshot:
 _UNREADABLE = object()
 
 
-def _coverage_minimum(value: Any) -> float | object | None:
+def _exact_coverage(coverage: CoverageSnapshot) -> Fraction:
+    if not coverage.total_requirements:
+        return Fraction(0)
+    return Fraction(coverage.covered_requirements, coverage.total_requirements)
+
+
+def _coverage_minimum(value: Any) -> Fraction | object | None:
     """Read ``min_overall`` as a number or a canonical decimal string such as ``"1"``.
 
     A canonical product manifest carries fractions as decimal strings, so a string must count.
-    A value that is neither is reported rather than skipped: skipping would silently drop the
-    coverage bar.
+    The value is kept exact: a positive minimum too small for a float must still block zero
+    coverage. A value that is neither is reported rather than skipped: skipping would silently
+    drop the coverage bar.
     """
 
     if value is None:
         return None
     if isinstance(value, int | float) and not isinstance(value, bool):
-        return float(value)
+        return Fraction(value)
     if isinstance(value, str) and re.fullmatch(r"\d+(?:\.\d+)?", value):
-        return float(value)
+        return Fraction(value)
     return _UNREADABLE
 
 
@@ -505,9 +513,9 @@ def evaluate_release_readiness(
         minimum = _coverage_minimum(thresholds.pop("min_overall", None))
         if minimum is _UNREADABLE:
             reasons.append("the coverage minimum is not a number this gate can read")
-        elif isinstance(minimum, float) and coverage.coverage_pct < minimum:
+        elif isinstance(minimum, Fraction) and _exact_coverage(coverage) < minimum:
             reasons.append(
-                f"coverage is {coverage.coverage_pct:.0%}; at least {minimum:.0%} "
+                f"coverage is {coverage.coverage_pct:.0%}; at least {float(minimum):.0%} "
                 f"required ({coverage.covered_requirements} of "
                 f"{coverage.total_requirements} requirements)"
             )

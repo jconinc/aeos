@@ -31,6 +31,8 @@ MAX_PERCENT_DECODE_ROUNDS: Final = 4
 
 _MALFORMED_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")
 _URL_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
+#: A scheme-less token shaped like ``host.name/path``: a provider may send a URL without a scheme.
+_HOST_LIKE = re.compile(r"(?:[\w%-]+\.)+[\w%-]+(?::\d+)?(?:[/?#]|$)")
 
 
 class TermClass(StrEnum):
@@ -110,14 +112,41 @@ def _percent_forms(component: str) -> list[str]:
     return forms
 
 
+def _text_forms(text: str) -> list[str]:
+    """Decoding rounds of free text. ``50% off`` is text, not a malformed escape; only an
+    encoding still unwinding after four rounds is refused."""
+
+    forms = [text]
+    current = text
+    for _ in range(MAX_PERCENT_DECODE_ROUNDS):
+        decoded = unquote(current, errors="replace")
+        if decoded == current:
+            return forms
+        forms.append(decoded)
+        current = decoded
+    if unquote(current, errors="replace") != current:
+        raise PaidTermError(
+            PaidFenceReason.NORMALIZATION_UNSTABLE,
+            "provider text is still percent-encoded after four decoding rounds",
+        )
+    return forms
+
+
 def url_forms(url: str) -> tuple[str, ...]:
     """Every text form of a URL the fence inspects: each decoding round and both host forms."""
 
     if not isinstance(url, str) or not url.strip():
         raise PaidTermError(PaidFenceReason.NORMALIZATION_UNSTABLE, "a URL is empty")
-    parsed = urlsplit(url if _URL_SCHEME.match(url) else f"https://{url}")
+    try:
+        parsed = urlsplit(url if _URL_SCHEME.match(url) else f"https://{url}")
+        hostname = parsed.hostname or ""
+    except ValueError as error:
+        # The parser's message quotes the URL; a refusal must never carry it.
+        raise PaidTermError(
+            PaidFenceReason.NORMALIZATION_UNSTABLE, "a URL cannot be parsed"
+        ) from error
     forms: list[str] = [url]
-    host_forms = _percent_forms(parsed.hostname or "")
+    host_forms = _percent_forms(hostname)
     for host in host_forms:
         forms.append(host)
     final_host = host_forms[-1]
@@ -216,10 +245,46 @@ def load_term_register(raw: bytes) -> TermRegister:
 
 
 @dataclass(frozen=True, slots=True)
+class RegisterBinding:
+    """The register digest and version a product manifest's paid fence names for one class."""
+
+    digest: str
+    version: str
+
+
+#: The manifest ``authority.paid_fence`` key prefix for each class's register binding.
+_BINDING_PREFIX: Final = {
+    TermClass.OWN_BRAND: "brand",
+    TermClass.CATEGORY: "category",
+    TermClass.THIRD_PARTY_OPERATOR: "operator",
+}
+
+
+@dataclass(frozen=True, slots=True)
 class PaidFenceFlags:
+    """The three allow flags and the register each class must be checked against."""
+
     allow_brand_terms: bool
     allow_category_terms: bool
     allow_third_party_operator_terms: bool
+    bindings: Mapping[TermClass, RegisterBinding]
+
+    @classmethod
+    def from_manifest(cls, paid_fence: Mapping[str, Any]) -> PaidFenceFlags:
+        """Read a canonical manifest's ``authority.paid_fence``; nothing is defaulted."""
+
+        return cls(
+            allow_brand_terms=paid_fence["allow_brand_terms"],
+            allow_category_terms=paid_fence["allow_category_terms"],
+            allow_third_party_operator_terms=paid_fence["allow_third_party_operator_terms"],
+            bindings={
+                term_class: RegisterBinding(
+                    digest=paid_fence[f"{prefix}_term_register_digest"],
+                    version=paid_fence[f"{prefix}_term_register_version"],
+                )
+                for term_class, prefix in _BINDING_PREFIX.items()
+            },
+        )
 
     def allows(self, term_class: TermClass) -> bool:
         return {
@@ -267,6 +332,18 @@ def _payload_strings(value: Any) -> Iterable[str]:
             yield from _payload_strings(child)
 
 
+def _payload_forms(text: str) -> list[str]:
+    """A provider string is inspected as text and, for every URL-shaped token, as a URL."""
+
+    if _URL_SCHEME.match(text):
+        return list(url_forms(text))
+    forms = _text_forms(text)
+    for token in text.split():
+        if _URL_SCHEME.match(token) or _HOST_LIKE.match(token):
+            forms.extend(url_forms(token))
+    return forms
+
+
 def _surface_texts(surfaces: PaidSurfaces) -> list[tuple[str, NormalizedTerm]]:
     texts: list[tuple[str, NormalizedTerm]] = []
     for name in ("positive_keywords", "context", "copy"):
@@ -275,17 +352,23 @@ def _surface_texts(surfaces: PaidSurfaces) -> list[tuple[str, NormalizedTerm]]:
         for url in getattr(surfaces, name):
             texts.extend((name, normalize_text(form)) for form in url_forms(url))
     for text in _payload_strings(surfaces.provider_payload):
-        forms = url_forms(text) if _URL_SCHEME.match(text) else (text,)
-        texts.extend(("provider_payload", normalize_text(form)) for form in forms)
+        texts.extend(("provider_payload", normalize_text(form)) for form in _payload_forms(text))
     return texts
 
 
 def validate_registers(
     registers: Mapping[TermClass, TermRegister],
+    bindings: Mapping[TermClass, RegisterBinding],
 ) -> dict[TermClass, tuple[NormalizedTerm, ...]]:
-    """All three classes present, in their own slot, with no empty or colliding form."""
+    """All three classes present, each the signed artifact its manifest binding names, in its own
+    slot, with no empty or colliding form.
 
-    if set(registers) != set(TermClass):
+    A register is trusted only as a re-read of its own canonical bytes, so a register built in
+    the caller, or one whose fields disagree with its bytes or digest, is refused. A complete
+    empty register is valid: it is how a brand owner approves that a class has no terms.
+    """
+
+    if set(registers) != set(TermClass) or set(bindings) != set(TermClass):
         raise PaidTermError(
             PaidFenceReason.REGISTER_INVALID, "all three term registers are required"
         )
@@ -298,11 +381,17 @@ def validate_registers(
             raise PaidTermError(
                 PaidFenceReason.REGISTER_INVALID, "a register is in the wrong class"
             )
-        forms = register.normalized()
-        if not forms:
+        if load_term_register(register.canonical_bytes) != register:
             raise PaidTermError(
-                PaidFenceReason.REGISTER_INVALID, "an empty register cannot fence its class"
+                PaidFenceReason.REGISTER_INVALID, "a register does not match its signed bytes"
             )
+        binding = bindings[term_class]
+        if register.digest != binding.digest or register.artifact_version != binding.version:
+            raise PaidTermError(
+                PaidFenceReason.REGISTER_INVALID,
+                "a register is not the artifact the product policy names",
+            )
+        forms = register.normalized()
         for form in forms:
             if not form.skeleton:
                 raise PaidTermError(
@@ -328,7 +417,7 @@ def evaluate_paid_fence(
     """Run the class fence; the planner and the final worker call exactly this function."""
 
     try:
-        normalized = validate_registers(registers)
+        normalized = validate_registers(registers, flags.bindings)
         phrases = [normalize_text(phrase) for phrase in forbidden_phrases]
         if any(not phrase.skeleton for phrase in phrases):
             raise PaidTermError(PaidFenceReason.REGISTER_INVALID, "a forbidden phrase is empty")
@@ -394,6 +483,7 @@ __all__ = [
     "PaidFenceReason",
     "PaidSurfaces",
     "PaidTermError",
+    "RegisterBinding",
     "TermClass",
     "TermRegister",
     "evaluate_paid_fence",

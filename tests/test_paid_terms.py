@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import itertools
 import json
 from typing import Any
@@ -14,6 +15,7 @@ from aeos_kernel.paid_terms import (
     PaidFenceFlags,
     PaidSurfaces,
     PaidTermError,
+    RegisterBinding,
     TermClass,
     evaluate_paid_fence,
     load_term_register,
@@ -59,10 +61,18 @@ def registers(
     }
 
 
+def bind(held: dict[TermClass, Any]) -> dict[TermClass, RegisterBinding]:
+    return {
+        term_class: RegisterBinding(register.digest, register.artifact_version)
+        for term_class, register in held.items()
+    }
+
+
 def fence(flags: tuple[bool, bool, bool], surfaces: PaidSurfaces, **kwargs: Any) -> Any:
+    held = kwargs.get("registers", registers())
     return evaluate_paid_fence(
-        flags=PaidFenceFlags(*flags),
-        registers=kwargs.get("registers", registers()),
+        flags=PaidFenceFlags(*flags, bindings=kwargs.get("bindings", bind(registers()))),
+        registers=held,
         forbidden_phrases=kwargs.get("forbidden_phrases", ()),
         surfaces=surfaces,
     )
@@ -120,23 +130,103 @@ def test_register_loading_is_closed_and_digest_is_order_free() -> None:
         registers(operator=["fictional brandname"]),
         registers(category=["!!!"]),
         registers(category=["respiteplanner", "respite planner"]),
-        registers(brand=[]),
-        registers(operator=[]),
     ],
 )
-def test_colliding_or_empty_register_forms_make_the_whole_fence_unavailable(
+def test_colliding_register_forms_make_the_whole_fence_unavailable(
     held: dict[TermClass, Any],
 ) -> None:
     decision = fence(
-        (True, True, True), PaidSurfaces(positive_keywords=["plain words"]), registers=held
+        (True, True, True),
+        PaidSurfaces(positive_keywords=["plain words"]),
+        registers=held,
+        bindings=bind(held),
     )
     assert not decision.allowed and decision.reason_code == "paid_term_register_invalid"
+
+
+def test_an_approved_complete_empty_register_is_a_valid_class_with_no_terms() -> None:
+    held = registers(brand=[], operator=[])
+    decision = fence(
+        (False, True, False),
+        PaidSurfaces(positive_keywords=[BRAND, "plain words"]),
+        registers=held,
+        bindings=bind(held),
+    )
+    assert decision.allowed, decision.reason_code
+
+
+def _forged(register: Any, **changes: Any) -> Any:
+    return dataclasses.replace(register, **changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"complete": False},
+        {"canonical_bytes": b""},
+        {"digest": "0" * 64},
+        {"terms": ()},
+        {"owner_decision_ref": ""},
+        {"artifact_version": "2"},
+    ],
+)
+def test_a_register_built_outside_its_signed_bytes_is_refused(changes: dict[str, Any]) -> None:
+    held = registers()
+    held[TermClass.OWN_BRAND] = _forged(held[TermClass.OWN_BRAND], **changes)
+    decision = fence((False, True, True), PaidSurfaces(), registers=held, bindings=bind(held))
+    assert decision.reason_code == "paid_term_register_invalid"
+
+
+def test_a_register_the_product_policy_does_not_name_is_refused() -> None:
+    other = registers(brand=["Another Brandname"])
+    decision = fence((False, True, True), PaidSurfaces(), registers=other)
+    assert decision.reason_code == "paid_term_register_invalid"
+    newer = registers()
+    newer[TermClass.CATEGORY] = load_term_register(
+        register_bytes("category", [CATEGORY], artifact_version="2")
+    )
+    decision = fence((True, True, True), PaidSurfaces(), registers=newer)
+    assert decision.reason_code == "paid_term_register_invalid"
+    assert fence((True, True, True), PaidSurfaces(), registers=newer, bindings=bind(newer)).allowed
+    held = registers()
+    misversioned = bind(held)
+    misversioned[TermClass.CATEGORY] = RegisterBinding(held[TermClass.CATEGORY].digest, "2")
+    decision = fence((True, True, True), PaidSurfaces(), registers=held, bindings=misversioned)
+    assert decision.reason_code == "paid_term_register_invalid"
+
+
+def test_flags_read_a_canonical_manifest_paid_fence() -> None:
+    held = registers()
+    paid_fence: dict[str, Any] = {
+        "allow_brand_terms": True,
+        "allow_category_terms": False,
+        "allow_third_party_operator_terms": False,
+    }
+    for term_class, prefix in (
+        (TermClass.OWN_BRAND, "brand"),
+        (TermClass.CATEGORY, "category"),
+        (TermClass.THIRD_PARTY_OPERATOR, "operator"),
+    ):
+        paid_fence[f"{prefix}_term_register_ref"] = f"example://terms/{prefix}"
+        paid_fence[f"{prefix}_term_register_digest"] = held[term_class].digest
+        paid_fence[f"{prefix}_term_register_version"] = held[term_class].artifact_version
+    flags = PaidFenceFlags.from_manifest(paid_fence)
+    assert flags.bindings == bind(held)
+    assert (flags.allow_brand_terms, flags.allow_category_terms) == (True, False)
+    with pytest.raises(KeyError):
+        PaidFenceFlags.from_manifest(
+            {
+                key: value
+                for key, value in paid_fence.items()
+                if key != "operator_term_register_digest"
+            }
+        )
 
 
 def test_all_three_registers_are_required_in_their_own_slots() -> None:
     held = registers()
     with pytest.raises(PaidTermError):
-        validate_registers({TermClass.OWN_BRAND: held[TermClass.OWN_BRAND]})
+        validate_registers({TermClass.OWN_BRAND: held[TermClass.OWN_BRAND]}, bind(held))
     swapped = dict(held)
     swapped[TermClass.CATEGORY] = held[TermClass.OWN_BRAND]
     swapped[TermClass.OWN_BRAND] = held[TermClass.CATEGORY]
@@ -227,3 +317,59 @@ def test_an_unstable_url_refuses_before_any_match() -> None:
         (True, True, True), PaidSurfaces(destination_urls=["https://landing.test/%G1"])
     )
     assert decision.reason_code == "paid_term_normalization_unstable"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"final_url": "landing.test/%46ictional%20Brandname"},
+        {"final_url": "landing.test/%2546ictional%2520Brandname"},
+        {"description": "Visit landing.test/%46ictional%2DBrandname today"},
+        {"description": "Plain %46ictional%20Brandname help"},
+    ],
+)
+def test_a_scheme_less_provider_string_is_decoded_like_a_url(payload: dict[str, str]) -> None:
+    decision = fence((False, True, True), PaidSurfaces(provider_payload=payload))
+    assert decision.reason_code == "paid_term_class_disallowed"
+    assert decision.surface == "provider_payload"
+
+
+def test_ordinary_percent_text_in_a_provider_string_is_not_malformed() -> None:
+    decision = fence(
+        (True, True, True),
+        PaidSurfaces(provider_payload={"headline": "50% off planning help, 100%/month"}),
+    )
+    assert decision.allowed, decision.reason_code
+
+
+def test_provider_text_still_encoded_after_four_rounds_is_refused() -> None:
+    decision = fence(
+        (True, True, True), PaidSurfaces(provider_payload={"headline": "Plain %2525252546 help"})
+    )
+    assert decision.reason_code == "paid_term_normalization_unstable"
+
+
+@pytest.mark.parametrize("url", ["https://e℀.com/x", "https://[fictional.test/x"])
+def test_an_unparseable_url_is_a_typed_refusal_that_never_quotes_it(url: str) -> None:
+    with pytest.raises(PaidTermError) as caught:
+        url_forms(url)
+    assert caught.value.reason_code == "paid_term_normalization_unstable"
+    assert "e℀" not in str(caught.value) and "fictional" not in str(caught.value)
+    decision = fence((True, True, True), PaidSurfaces(provider_payload={"final_url": url}))
+    assert decision.reason_code == "paid_term_normalization_unstable"
+    assert "fictional" not in repr(decision) and "℀" not in repr(decision)
+
+
+def test_a_scheme_less_punycode_host_is_read_as_its_unicode_name() -> None:
+    held = registers(brand=["bücher"])
+    for payload in (
+        {"final_url": "xn--bcher-kva.example/landing"},
+        {"description": "Visit xn--bcher-kva.example today"},
+    ):
+        decision = fence(
+            (False, True, True),
+            PaidSurfaces(provider_payload=payload),
+            registers=held,
+            bindings=bind(held),
+        )
+        assert decision.reason_code == "paid_term_class_disallowed", payload

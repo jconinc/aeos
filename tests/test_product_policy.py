@@ -278,7 +278,7 @@ def test_a_revision_row_cannot_store_another_products_payload() -> None:
         {"manifest_version": "another"},
     ):
         with pytest.raises(ManifestContractError) as caught:
-            load_canonical_manifest(raw, **kwargs)  # type: ignore[arg-type]
+            load_canonical_manifest(raw, **kwargs)
         assert caught.value.reason_code == "manifest_identity_mismatch"
 
 
@@ -328,8 +328,32 @@ def test_reader_compatibility_is_a_closed_window() -> None:
     assert not load_canonical_manifest(unknown).reader_compatible()
 
 
+#: PB-195 R5's purpose table, copied from the contract. Swapping any two rows must fail.
+EXPECTED_PURPOSE_CLASSES = {
+    "authority_run": "authority_run_admission_service",
+    "authority_probe": "authority_probe_worker",
+    "authority_measurement": "authority_measurement_service",
+    "channel_of_record": "channel_context_api",
+    "content_freshness": "content_freshness_worker",
+    "correction_deadline": "correction_intake_service",
+    "publication_correction_gate": "publication_correction_service",
+    "paid_plan": "marketing_result_evaluation_api",
+    "paid_effect": "marketing_effects_worker",
+    "model_call": "model_gateway_service",
+    "credential_use": "external_gateway_service",
+    "support_move_admission": "support_move_service",
+    "renewal_action": "renewal_action_service",
+    "sending_surface_evaluation": "sending_surface_service",
+    "partner_quote_admission": "partner_quote_admission_service",
+    "assistance_copy_adoption": "marketing_assistance_api",
+    "outreach_copy_send": "distribution_worker",
+    "email_program_activation": "marketing_email_worker",
+    "readback": "product_policy_read_client",
+}
+
+
 def test_the_purpose_matrix_is_the_closed_nineteen_rows() -> None:
-    assert len(PURPOSE_PRINCIPAL_CLASSES) == 19
+    assert dict(PURPOSE_PRINCIPAL_CLASSES) == EXPECTED_PURPOSE_CLASSES
     assert len(set(PURPOSE_PRINCIPAL_CLASSES.values())) == 19
     assert {
         "authority_measurement",
@@ -372,7 +396,7 @@ def test_the_canonical_view_is_immutable() -> None:
     manifest = load_canonical_manifest(payload())
     assert isinstance(manifest, CanonicalProductManifest)
     with pytest.raises(TypeError):
-        manifest.payload["manifest_version"] = "edited"  # type: ignore[index]
+        manifest.payload["manifest_version"] = "edited"
     snapshot = copy.deepcopy(payload())
     load_canonical_manifest(snapshot)
     assert snapshot == payload()

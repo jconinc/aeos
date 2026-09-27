@@ -184,6 +184,13 @@ tables, and calls AEOS for every rule that is not persistence:
 - `authorize_policy_command` decides each command from the grant records Wema supplies. Wema
   holds no confirmed grants until the owner decisions exist, so every command refuses with
   `policy_authority_missing`.
-- `evaluate_paid_fence` runs identically in the planner and the final worker. Wema adds the
-  permit row, locks and provider reconciliation.
+- `authorize_policy_command` also requires each grant's authority class: the section's owner for
+  a section decision, the product owner to revoke, the release owner to activate or roll back,
+  the portfolio owner for phase commands, and the security/role owner to withdraw service
+  grants. A revocation that also withdraws grants needs both grants.
+- `evaluate_paid_fence` runs identically in the planner and the final worker. Wema builds its
+  flags with `PaidFenceFlags.from_manifest`, so each register must be the signed artifact whose
+  digest and version the current manifest names. Wema adds the permit row, locks and provider
+  reconciliation; permit reuse, unknown provider outcomes and in-flight revocation are tested
+  there.
 
