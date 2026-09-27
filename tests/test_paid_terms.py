@@ -408,6 +408,16 @@ def test_provider_text_still_encoded_after_four_rounds_is_refused() -> None:
     assert decision.reason_code == "paid_term_normalization_unstable"
 
 
+def test_the_nfkc_step_never_uses_one_of_the_four_decoding_rounds() -> None:
+    # Four percent-decoding rounds end in a full-width percent sign that NFKC maps to "%": text.
+    four = "50%252525EF%252525BC%25252585 off planning help"
+    decision = fence((True, True, True), PaidSurfaces(provider_payload={"headline": four}))
+    assert decision.allowed, decision.reason_code
+    five = "50%25252525EF%25252525BC%2525252585 off planning help"
+    decision = fence((True, True, True), PaidSurfaces(provider_payload={"headline": five}))
+    assert decision.reason_code == "paid_term_normalization_unstable"
+
+
 @pytest.mark.parametrize("url", ["https://e℀.com/x", "https://[fictional.test/x"])
 def test_an_unparseable_url_is_a_typed_refusal_that_never_quotes_it(url: str) -> None:
     with pytest.raises(PaidTermError) as caught:
@@ -445,6 +455,11 @@ def test_a_scheme_less_punycode_host_is_read_as_its_unicode_name() -> None:
         {"description": "tag=" + full_width("xn--%") + "62cher-kva.example/x"},
         {"items": [{"ref=" + full_width("xn--%") + "62cher-kva.example/x": "plain"}]},
         {"description": "tag=xn--%EF%BC%85%36%32cher-kva.example"},
+        # A full-width "xn--" still encoded three more times is read after its fourth round.
+        {
+            "description": "tag=%252525EF%252525BD%25252598%252525EF%252525BD%2525258E"
+            "%252525EF%252525BC%2525258D%252525EF%252525BC%2525258Dbcher-kva.example"
+        },
     ):
         decision = fence(
             (False, True, True),

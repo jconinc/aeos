@@ -143,18 +143,22 @@ def _text_forms(text: str) -> list[str]:
 
     forms = [text]
     current = text
-    for _ in range(MAX_PERCENT_DECODE_ROUNDS):
+    for decoding_round in range(MAX_PERCENT_DECODE_ROUNDS + 1):
         normalized = unicodedata.normalize("NFKC", current)
+        if normalized not in forms:
+            forms.append(normalized)
         decoded = unquote(normalized, errors="replace")
-        if decoded == current:
+        if decoded == normalized:
             return forms
-        forms.extend(dict.fromkeys(form for form in (normalized, decoded) if form not in forms))
+        # Only a percent-decoding change counts as a round; the NFKC step never uses one.
+        if decoding_round == MAX_PERCENT_DECODE_ROUNDS:
+            raise PaidTermError(
+                PaidFenceReason.NORMALIZATION_UNSTABLE,
+                "provider text is still percent-encoded after four decoding rounds",
+            )
+        if decoded not in forms:
+            forms.append(decoded)
         current = decoded
-    if unquote(unicodedata.normalize("NFKC", current), errors="replace") != current:
-        raise PaidTermError(
-            PaidFenceReason.NORMALIZATION_UNSTABLE,
-            "provider text is still percent-encoded after four decoding rounds",
-        )
     return forms
 
 
