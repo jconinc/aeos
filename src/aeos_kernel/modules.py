@@ -131,7 +131,12 @@ class MoveFamily:
 
 @dataclass(frozen=True, slots=True)
 class Module:
-    """A registered rule profile, shape extension and move-family set."""
+    """A registered rule profile, shape extension and move-family set.
+
+    An explicitly availability-only module can satisfy a dependency without
+    registering any Move family or capability. The host must validate the
+    profile named by ``rule_profile_ref`` before it registers such a module.
+    """
 
     key: str
     version: str
@@ -140,11 +145,20 @@ class Module:
     shape_extensions: tuple[str, ...] = ()
     module_dependencies: tuple[str, ...] = ()
     required_credential_scopes: tuple[str, ...] = ()
+    availability_only: bool = False
 
     def __post_init__(self) -> None:
         for name in ("key", "version", "rule_profile_ref"):
             required(str(getattr(self, name)), name)
-        if not self.move_families:
+        if type(self.availability_only) is not bool:
+            raise ContractError("module availability_only must be a boolean")
+        if self.availability_only and (
+            self.move_families or self.shape_extensions or self.required_credential_scopes
+        ):
+            raise ContractError(
+                f"availability-only module {self.key!r} cannot register capabilities"
+            )
+        if not self.move_families and not self.availability_only:
             raise ContractError(f"module {self.key!r} registers no move family")
         types = [family.move_type for family in self.move_families]
         if len(set(types)) != len(types):
@@ -312,7 +326,8 @@ def load_modules(
     active: list[Module] = []
     for module in sorted(accepted.values(), key=lambda item: item.key):
         missing_scopes = sorted(
-            scope for scope in module.required_credential_scopes
+            scope
+            for scope in module.required_credential_scopes
             if scope not in manifest.credential_scopes
         )
         missing_rails = sorted(

@@ -249,6 +249,28 @@ def test_move_family_and_module_registration_refuse_ambiguous_declarations() -> 
         )
     with pytest.raises(ContractError):
         Module("edge", "1.0.0", "profile", ())
+    with pytest.raises(ContractError, match="availability_only must be a boolean"):
+        Module("edge", "1.0.0", "profile", (), availability_only=1)  # type: ignore[arg-type]
+    with pytest.raises(ContractError, match="cannot register capabilities"):
+        Module(
+            "edge",
+            "1.0.0",
+            "profile",
+            (_family(module_key="edge"),),
+            availability_only=True,
+        )
+    with pytest.raises(ContractError, match="cannot register capabilities"):
+        Module("edge", "1.0.0", "profile", (), shape_extensions=("extra",), availability_only=True)
+    with pytest.raises(ContractError, match="cannot register capabilities"):
+        Module(
+            "edge",
+            "1.0.0",
+            "profile",
+            (),
+            required_credential_scopes=("key",),
+            availability_only=True,
+        )
+    assert Module("edge", "1.0.0", "profile", (), availability_only=True).move_types == ()
     with pytest.raises(ContractError):
         Module(
             "edge",
@@ -290,6 +312,45 @@ def test_module_loader_drops_a_dependent_when_its_dependency_loses_a_rail() -> N
     assert loaded.active == ()
     assert set(loaded.refused) == {"dependency", "dependent"}
     assert [gap.gap_type for gap in loaded.gaps] == [
+        "move_type_ungated",
+        "module_dependency_unsatisfied",
+    ]
+
+
+def test_availability_only_module_loads_without_move_authority_and_follows_dependency() -> None:
+    dependency = _module(
+        "dependency",
+        family=_family(module_key="dependency", move_type="dependency_move", rail="dep.rail"),
+    )
+    availability = Module(
+        key="availability",
+        version="1.0.0",
+        rule_profile_ref="fictional.availability@1",
+        move_families=(),
+        module_dependencies=("dependency",),
+        availability_only=True,
+    )
+    registry = ModuleRegistry((dependency, availability))
+    selection = manifest("fictional-app", modules=("dependency", "availability"))
+    active = load_modules(
+        registry=registry,
+        manifest=selection,
+        available_rails=frozenset({"dep.rail"}),
+        detected_at=NOW,
+    )
+    assert {module.key for module in active.active} == {"dependency", "availability"}
+    assert active.move_types == ("dependency_move",)
+    assert active.family("availability_move") is None
+
+    refused = load_modules(
+        registry=registry,
+        manifest=selection,
+        available_rails=frozenset(),
+        detected_at=NOW,
+    )
+    assert refused.active == ()
+    assert refused.refused == ("availability", "dependency")
+    assert [gap.gap_type for gap in refused.gaps] == [
         "move_type_ungated",
         "module_dependency_unsatisfied",
     ]
