@@ -67,3 +67,18 @@ def test_judgment_step_requires_task_and_unique_order() -> None:
         MoveTaskLane("draft", ExecutionLane.JUDGMENT)
     with pytest.raises(ContractError, match="must be unique"):
         MoveTaskLane("draft", ExecutionLane.JUDGMENT, ("draft", "draft"))
+
+
+def test_serialized_lane_must_be_a_recognized_enum() -> None:
+    with pytest.raises(ContractError, match="execution lane is not recognized"):
+        MoveTaskLane("draft", "judgment", ("draft_text",))  # type: ignore[arg-type]
+
+
+def test_judgment_tasks_must_be_an_immutable_ordered_tuple() -> None:
+    with pytest.raises(ContractError, match="judgment tasks must be an ordered tuple"):
+        MoveTaskLane("draft", ExecutionLane.JUDGMENT, ["draft_text"])  # type: ignore[arg-type]
+
+
+def test_judgment_task_key_cannot_be_blank() -> None:
+    with pytest.raises(ContractError, match="judgment task must be a clean nonempty string"):
+        MoveTaskLane("draft", ExecutionLane.JUDGMENT, (" ",))

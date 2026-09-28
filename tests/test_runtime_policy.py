@@ -260,3 +260,10 @@ def test_effective_in_transit_requirement_refuses_plain_http() -> None:
             tool_scope=_tool(plain),
             transport_inventory=inventory,
         )
+
+
+def test_authenticated_tool_scope_refuses_mutable_or_uncanonical_hosts() -> None:
+    with pytest.raises(ContractError, match="tool hosts must be an immutable tuple"):
+        replace(_tool(A), hosts=[A])  # type: ignore[arg-type]
+    with pytest.raises(ContractError, match="tool hosts must be canonical targets"):
+        replace(_tool(A), hosts=("a.example.com",))  # type: ignore[arg-type]
