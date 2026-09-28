@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0 — candidate, 2026-09-28
+
+- Add ordered execution-lane declarations and fail-closed runtime egress scopes and route identity.
+- Bind encryption-key proof to the current policy, source evidence and permission lane so stale or
+  cross-lane proof cannot authorize a dependent effect.
+- Allow an explicit availability-only module with no Move families or effect authority. Ordinary
+  empty-family modules remain invalid, and dependency loading still applies.
+- Package publication and consuming Wema activation require separate installed-wheel and host
+  verification; this candidate grants neither by itself.
+
 ## 0.8.2 — candidate, 2026-09-23
 
 - Give an enforcing refusal precedence over an approval request, then a hold (PB-99).

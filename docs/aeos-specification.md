@@ -1,7 +1,7 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.8.2
-**Date:** 23 September 2026
+**Version:** 0.9.0
+**Date:** 28 September 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
 **Proven source:** MultiAgentCommunication decision machinery at
@@ -780,6 +780,16 @@ family declares its owner role, approval policy, evidence kinds, rails, priority
 its reserved-decision flags: `human_override`, `never_graduates`, `dual_control`,
 `requires_audit_record`, plus optional actor-role and tool allow-lists and an escalation
 role. A family declaring no rail cannot be registered.
+
+An empty family set is refused unless the descriptor explicitly sets `availability_only=True`.
+That opt-in is for a source-backed dependency which grants no Move, execution, shape or
+credential capability: an availability-only module must declare no families, shape extensions
+or required credential scopes. It still obeys normal module dependency loading. Before a host
+offers such a descriptor to the registry, the host must validate the complete, versioned
+policy identified by `rule_profile_ref` from its installed release. Missing, invalid or
+different policy makes the descriptor unavailable; a manifest request for it then refuses
+through ordinary module loading. Merely naming a policy or constructing the descriptor does
+not establish that the host policy exists or authorize an effect.
 
 `load_modules` activates a manifest's modules for one product and refuses the rest
 individually. A missing module dependency, an ungranted credential scope, or a rail no
