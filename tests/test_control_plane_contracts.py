@@ -57,6 +57,7 @@ from aeos_kernel.registry import (
     register_product,
     validate_family_profile,
 )
+from aeos_kernel.release_conditions import BlockingCondition
 from aeos_kernel.scheduling import Channel, ChannelKind, ChannelState, SweepPlan
 from tests.factories_control_plane import NOW, TODAY, manifest
 
@@ -292,6 +293,11 @@ def readiness(**kwargs: Any) -> ReleaseReadiness:
         "coverage_snapshot_id": "coverage:1",
         "validation_snapshot_id": "validation:1",
         "gate_manifest_id": "manifest-1",
+        "blocking_conditions": (
+            ()
+            if not kwargs.get("blocking_reasons", ("coverage is short",))
+            else (BlockingCondition("coverage_below_minimum", (), "coverage is short"),)
+        ),
         **kwargs,
     }
     return ReleaseReadiness(**fields)

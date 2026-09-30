@@ -212,6 +212,7 @@ from aeos_kernel.registry import (
     retire_blocked_by_shared_assets,
     validate_family_profile,
 )
+from aeos_kernel.release_conditions import BLOCKING_CONDITION_SCHEMA, BlockingCondition
 from aeos_kernel.rubric import (
     CalibrationState,
     EscalationRules,
@@ -258,6 +259,7 @@ from aeos_kernel.vocabulary import (
 __version__ = "0.8.2"
 
 __all__ = [
+    "BLOCKING_CONDITION_SCHEMA",
     "EVIDENCE_RANK",
     "PLACEHOLDER_TARGET_IDS",
     "SCORING_PROMPT",
@@ -277,6 +279,7 @@ __all__ = [
     "AuthorizationContext",
     "AuthorizedEffect",
     "BindingStatus",
+    "BlockingCondition",
     "BusinessModel",
     "BusinessModelType",
     "CalibrationState",

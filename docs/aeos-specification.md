@@ -886,6 +886,43 @@ apply, so a slow regime does not block its live siblings; evaluated at product l
 regime's bars apply, so an aggregate cannot hide a regime that is not live. `launch_refusal`
 turns a non-green readiness into a refusal whoever requested the launch.
 
+Fresh `ReleaseReadiness` readings also require `blocking_conditions`, a tuple of frozen
+`BlockingCondition(kind, params, reason)` values under `aeos.release-conditions@1`.
+The exact identity is canonical JSON `[kind, *params]`; display wording, counts, timestamps,
+snapshot IDs and digests never enter it. Conditions are unique and sorted by that key. Their
+reasons cover exactly `blocking_reasons`, so empty conditions and empty reasons coincide.
+Malformed kinds, parameter shapes, duplicate/unsorted keys and mismatched reasons refuse.
+`as_dict()` includes each condition's kind, parameter list and reason.
+
+| Condition kind | Stable parameters |
+| --- | --- |
+| `coverage_snapshot_missing`, `coverage_below_minimum`, `coverage_error_gaps` | none |
+| `coverage_kind_unmeasured`, `coverage_kind_short` | shape kind |
+| `validation_snapshot_missing`, `validation_stale`, `warning_gaps_rose` | none |
+| `build_gate_failed` | failed component |
+| `validation_rule_errors` | native rule identifier |
+| `validation_error_gaps_unattributed`, `gate_manifest_missing` | none |
+| `liability_gate_missing` | liability class, predicate kind |
+| `launch_bar_open` | gate identifier, source regime (empty for a product-wide bar) |
+
+The evaluator constructs identities and reasons together from the source inputs. When the
+aggregate build-error threshold blocks, each nonzero native per-rule error count contributes
+one rule condition. An explicitly blocking rule reuses that same condition and reason. An
+unexplained aggregate, including malformed per-rule attribution, contributes one unattributed
+condition with the existing aggregate reason. Malformed attribution below the aggregate
+blocking threshold is refused rather than accepted as green. Multiple failed components may share their aggregate display
+reason while retaining distinct keys. Permitted counts do not acquire new blockers merely
+because structured identities are available.
+
+This is PB-199 C21-6.1's kernel prerequisite. Reason-only historical readings cannot be
+reconstructed as current `ReleaseReadiness` objects; a host must preserve them as legacy data
+and withhold current comparison/effect claims until it has valid current inputs. There is no
+text parser or permissive missing-condition mode. Consumer migration and rollout are required
+before publishing and selecting this changed constructor. Durable sequencing, comparison,
+carry, rail authority and final host effect fences remain host responsibilities. PB-235's
+native gap census and `validation_new_gap` condition require their separate @2 contract;
+this @1 producer neither accepts that kind nor claims native repair convergence.
+
 `reconcile_tasks` compares the task mirror against observed build state and surfaces
 divergence; a task the build system stopped reporting is unknown, not complete. Task
 throughput is never read as convergence — that is measured from a fresh snapshot.

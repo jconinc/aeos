@@ -344,3 +344,21 @@ park plus decline plus hold, park over a lexically first hold, inapplicable plus
 ordinary park, and inapplicable-only outcomes. The new mixed-refusal test fails on the
 unchanged source with `PARKED` instead of `DECLINE`. Kernel source proof does not establish
 immutable artifact publication, Wema installation or live delivery.
+
+## Structured release blockers — PB-199 C21-6.1
+
+Classification: **New**, extending the existing readiness query from deployed AEOS
+`v0.8.2` / `7a4f1ef067c3cee9ec7074e11b41f727127fa760`,
+`src/aeos_kernel/pipeline.py:evaluate_release_readiness`. Accepted Wema contract PB-199
+SHA-256 `0fb0c2a8502214a8f3e90b092effa85254cca0ce1d90ef8128959c0013851c10`
+defines the closed condition vocabulary and its reason/identity invariants.
+
+| Source/requirement | Adaptation | Named consumer and evidence |
+| --- | --- | --- |
+| PB-199 C21-6.1; existing kernel readiness query at the source above | `release_conditions.BlockingCondition` and the existing `ReleaseReadiness` producer derive stable identities from original inputs, require complete reason coverage and refuse invalid or legacy constructor data. Aggregate and explicitly selected rule blockers share one identity. | Wema's `wema_worker.handlers.product_control_plane._evaluate` and `wema_commercial_guidance.aeos_product.promotion_rail_facts`, with their API/launch consumers, require the subsequent C21 comparison integration. `tests/test_release_conditions.py`, `test_control_plane_pipeline.py` and `test_control_plane_contracts.py` cover stable identity, different-rule/same-total changes, source refusals, condition/reason consistency and existing verdict behavior. |
+
+This source prerequisite is not a published kernel, Wema repin, durable C21 comparison,
+PB-235 native convergence implementation, or delivered host effect. Historical reason-only
+Wema rows require explicit legacy handling in the later consumer rollout; deriving condition
+IDs from their prose is prohibited. No Wema database, network, model or provider operation is
+introduced into the project-neutral kernel.

@@ -32,6 +32,7 @@ from aeos_kernel.pipeline import (
     WLGProjectBinding,
 )
 from aeos_kernel.registry import ReleaseState
+from aeos_kernel.release_conditions import BlockingCondition
 from aeos_kernel.scheduling import (
     AdmissionRefusal,
     Channel,
@@ -419,9 +420,12 @@ def test_pipeline_gate_batch_health_and_readiness_edges_remain_explicit() -> Non
     with pytest.raises(ContractError):
         ProductGateManifest("manifest", "fictional-app", (gate, gate), "source", NOW, "snapshot")
     with pytest.raises(ContractError):
-        ReleaseReadiness("fictional-app", Readiness.GREEN, ("blocked",), NOW, "", "", "")
+        ReleaseReadiness(
+            "fictional-app", Readiness.GREEN, ("blocked",), NOW, "", "", "",
+            (BlockingCondition("coverage_below_minimum", (), "blocked"),),
+        )
     with pytest.raises(ContractError):
-        ReleaseReadiness("fictional-app", Readiness.BLOCKED, (), NOW, "", "", "")
+        ReleaseReadiness("fictional-app", Readiness.BLOCKED, (), NOW, "", "", "", ())
     with pytest.raises(ContractError):
         PipelineGateDecision(
             "decision",

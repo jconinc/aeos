@@ -20,6 +20,7 @@ from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.errors import ContractError
 from aeos_kernel.gaps import GapRow, GapSeverity
 from aeos_kernel.registry import LiabilityClass, ProductManifest, ReleaseState
+from aeos_kernel.release_conditions import BlockingCondition, validate_blocking_conditions
 
 
 class BindingStatus(StrEnum):
@@ -223,17 +224,34 @@ class CoverageSnapshot:
     def kind_shortfalls(self, thresholds: dict[str, Any]) -> tuple[str, ...]:
         """Per-kind coverage that has not reached the family's declared threshold."""
 
-        reasons: list[str] = []
+        return tuple(condition.reason for condition in self.kind_blocking_conditions(thresholds))
+
+    def kind_blocking_conditions(self, thresholds: dict[str, Any]) -> tuple[BlockingCondition, ...]:
+        """Typed shortfalls built from the same kind/count inputs as their display reasons."""
+
+        conditions: list[BlockingCondition] = []
         for shape_kind, needed in sorted(thresholds.items()):
             if not isinstance(needed, int) or isinstance(needed, bool):
                 continue
             observed = self.coverage_by_kind.get(shape_kind)
             satisfied = observed.get("satisfied") if isinstance(observed, dict) else None
             if not isinstance(satisfied, int) or isinstance(satisfied, bool):
-                reasons.append(f"{shape_kind} coverage has not been measured")
+                conditions.append(
+                    BlockingCondition(
+                        "coverage_kind_unmeasured",
+                        (shape_kind,),
+                        f"{shape_kind} coverage has not been measured",
+                    )
+                )
             elif satisfied < needed:
-                reasons.append(f"{shape_kind} coverage is {satisfied} of {needed} required")
-        return tuple(reasons)
+                conditions.append(
+                    BlockingCondition(
+                        "coverage_kind_short",
+                        (shape_kind,),
+                        f"{shape_kind} coverage is {satisfied} of {needed} required",
+                    )
+                )
+        return tuple(conditions)
 
 
 #: The four components a WLG-built product's gate reports. Named so a WLG consumer has one
@@ -397,6 +415,15 @@ class ProductGateManifest:
     def liability_gate_set_valid(self, liability_class: LiabilityClass) -> tuple[str, ...]:
         """Missing class-selected bars, as reasons. Empty means the set is valid."""
 
+        return tuple(
+            condition.reason for condition in self.liability_blocking_conditions(liability_class)
+        )
+
+    def liability_blocking_conditions(
+        self, liability_class: LiabilityClass
+    ) -> tuple[BlockingCondition, ...]:
+        """Missing class-selected bars with identities independent of their wording."""
+
         present = {entry.predicate_kind for entry in self.gates if entry.launch_blocking}
         missing = [
             kind.value
@@ -404,7 +431,11 @@ class ProductGateManifest:
             if kind not in present
         ]
         return tuple(
-            f"class {liability_class.value} requires a launch-blocking {kind} gate"
+            BlockingCondition(
+                "liability_gate_missing",
+                (liability_class.value, kind),
+                f"class {liability_class.value} requires a launch-blocking {kind} gate",
+            )
             for kind in missing
         )
 
@@ -427,6 +458,7 @@ class ReleaseReadiness:
     coverage_snapshot_id: str
     validation_snapshot_id: str
     gate_manifest_id: str
+    blocking_conditions: tuple[BlockingCondition, ...]
     regime_id: str = ""
 
     def __post_init__(self) -> None:
@@ -438,6 +470,7 @@ class ReleaseReadiness:
             raise ContractError("a green readiness carries no blocking reasons")
         if self.readiness is not Readiness.GREEN and not self.blocking_reasons:
             raise ContractError("a readiness that is not green must say why")
+        validate_blocking_conditions(self.blocking_reasons, self.blocking_conditions)
 
     @property
     def is_green(self) -> bool:
@@ -448,6 +481,7 @@ class ReleaseReadiness:
             "product_slug": self.product_slug,
             "readiness": self.readiness.value,
             "blocking_reasons": list(self.blocking_reasons),
+            "blocking_conditions": [condition.as_dict() for condition in self.blocking_conditions],
             "evaluated_at": self.evaluated_at.isoformat(),
             "coverage_snapshot_id": self.coverage_snapshot_id,
             "validation_snapshot_id": self.validation_snapshot_id,
@@ -470,14 +504,22 @@ def evaluate_release_readiness(
 
     utc(now, "now")
     reasons: list[str] = []
+    conditions: dict[str, BlockingCondition] = {}
     parked = False
     max_errors = int(manifest.release_rule("max_open_error_gaps", 0) or 0)
 
-    # Every input is evaluated on its own. Stopping at the first absent one would report a
-    # missing snapshot and stay silent about blockers already sitting in the inputs that did
-    # arrive, which reads as one small problem instead of the several that exist.
+    def add(kind: str, params: tuple[str, ...], reason: str) -> None:
+        condition = BlockingCondition(kind, params, reason)
+        prior = conditions.get(condition.key)
+        if prior is not None and prior != condition:
+            raise ContractError("one release blocking condition cannot have two reasons")
+        conditions[condition.key] = condition
+        if reason not in reasons:
+            reasons.append(reason)
+
+    # Evaluate every available source: one missing input must not hide other known blockers.
     if coverage is None:
-        reasons.append("no coverage snapshot has been captured")
+        add("coverage_snapshot_missing", (), "no coverage snapshot has been captured")
     else:
         thresholds = dict(family_coverage_thresholds)
         thresholds.update(manifest.release_rule("coverage_thresholds", {}) or {})
@@ -487,50 +529,81 @@ def evaluate_release_readiness(
             and not isinstance(minimum, bool)
             and coverage.coverage_pct < float(minimum)
         ):
-            reasons.append(
+            add(
+                "coverage_below_minimum",
+                (),
                 f"coverage is {coverage.coverage_pct:.0%}; at least {float(minimum):.0%} "
                 f"required ({coverage.covered_requirements} of "
-                f"{coverage.total_requirements} requirements)"
+                f"{coverage.total_requirements} requirements)",
             )
-        reasons.extend(coverage.kind_shortfalls(thresholds))
+        for condition in coverage.kind_blocking_conditions(thresholds):
+            add(condition.kind, condition.params, condition.reason)
         coverage_errors = [gap for gap in coverage.gaps() if gap.severity is GapSeverity.ERROR]
         if len(coverage_errors) > max_errors:
-            reasons.append(
-                f"{len(coverage_errors)} coverage error gap(s); at most {max_errors} permitted"
+            add(
+                "coverage_error_gaps",
+                (),
+                f"{len(coverage_errors)} coverage error gap(s); at most {max_errors} permitted",
             )
 
     if validation is None:
-        reasons.append("no validation snapshot has been captured")
+        add("validation_snapshot_missing", (), "no validation snapshot has been captured")
     else:
         staleness = float(manifest.wlg_sync_policy.get("staleness_threshold_hours", 0) or 0)
         if validation.is_stale(now=now, threshold_hours=staleness):
             parked = True
-            reasons.append(
+            add(
+                "validation_stale",
+                (),
                 f"the validation snapshot is older than {staleness:g}h; a stale reading cannot "
-                "green-light a launch"
+                "green-light a launch",
             )
         if validation.ratchet_delta > 0:
-            reasons.append(
-                f"warning gaps rose by {validation.ratchet_delta} since the previous snapshot"
+            add(
+                "warning_gaps_rose",
+                (),
+                f"warning gaps rose by {validation.ratchet_delta} since the previous snapshot",
             )
-        if not validation.triple_gate_pass:
-            reasons.append(
-                f"build gate did not pass: {', '.join(validation.failed_components)}"
+        for component in validation.failed_components:
+            add(
+                "build_gate_failed",
+                (component,),
+                f"build gate did not pass: {', '.join(validation.failed_components)}",
             )
         block_on = tuple(manifest.release_rule("block_on_error_rules", ()) or ())
-        reasons.extend(validation.failing_rules(block_on))
-        if validation.error_gap_count > max_errors:
-            reasons.append(
-                f"{validation.error_gap_count} build error gap(s); at most {max_errors} permitted"
+        rule_counts, attribution_valid = _validation_error_counts(validation)
+        aggregate_blocked = validation.error_gap_count > max_errors
+        if not attribution_valid and not aggregate_blocked:
+            raise ContractError("validation rule attribution is malformed")
+        for rule, count in sorted(rule_counts.items()):
+            if count and (aggregate_blocked or rule in block_on):
+                add("validation_rule_errors", (rule,), f"{rule} has {count} error gap(s)")
+        attributed = sum(rule_counts.values())
+        if aggregate_blocked and (
+            not attribution_valid or attributed != validation.error_gap_count
+        ):
+            add(
+                "validation_error_gaps_unattributed",
+                (),
+                f"{validation.error_gap_count} build error gap(s); at most {max_errors} permitted",
             )
 
     if gate_manifest is None:
-        reasons.append("no_product_gate_manifest: the product's own launch bars are not compiled")
+        add(
+            "gate_manifest_missing",
+            (),
+            "no_product_gate_manifest: the product's own launch bars are not compiled",
+        )
     else:
-        reasons.extend(gate_manifest.liability_gate_set_valid(manifest.liability_class))
+        for condition in gate_manifest.liability_blocking_conditions(manifest.liability_class):
+            add(condition.kind, condition.params, condition.reason)
         for entry in gate_manifest.open_blocking(regime_id=regime_id):
             scope = f" ({entry.regime_id})" if entry.regime_id else ""
-            reasons.append(f"launch bar {entry.gate_id}{scope} is open: {entry.description}")
+            add(
+                "launch_bar_open",
+                (entry.gate_id, entry.regime_id),
+                f"launch bar {entry.gate_id}{scope} is open: {entry.description}",
+            )
 
     if not reasons:
         readiness = Readiness.GREEN
@@ -542,12 +615,40 @@ def evaluate_release_readiness(
         product_slug=manifest.product_slug,
         readiness=readiness,
         blocking_reasons=tuple(reasons),
+        blocking_conditions=tuple(conditions[key] for key in sorted(conditions)),
         evaluated_at=now,
         coverage_snapshot_id=coverage.snapshot_id if coverage else "",
         validation_snapshot_id=validation.snapshot_id if validation else "",
         gate_manifest_id=gate_manifest.manifest_id if gate_manifest else "",
         regime_id=regime_id,
     )
+
+
+def _validation_error_counts(validation: ValidationSnapshot) -> tuple[dict[str, int], bool]:
+    """Read usable native counts and flag attribution that cannot explain the aggregate.
+
+    Malformed attribution cannot erase the aggregate blocker or invent a rule identity.
+    The caller keeps it as one unattributed condition when the aggregate threshold fires.
+    """
+
+    result: dict[str, int] = {}
+    valid = True
+    for rule, counts in validation.gaps_by_rule.items():
+        if (
+            not isinstance(rule, str)
+            or not rule
+            or rule != rule.strip()
+            or not rule.isprintable()
+            or not isinstance(counts, dict)
+        ):
+            valid = False
+            continue
+        count = counts.get("error", 0)
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+            valid = False
+            continue
+        result[rule] = count
+    return result, valid
 
 
 @dataclass(frozen=True, slots=True)
@@ -592,9 +693,7 @@ def launch_refusal(
     if readiness.is_green:
         return None
     outcome = (
-        PipelineOutcome.PARK
-        if readiness.readiness is Readiness.PARKED
-        else PipelineOutcome.BLOCK
+        PipelineOutcome.PARK if readiness.readiness is Readiness.PARKED else PipelineOutcome.BLOCK
     )
     return outcome, readiness.blocking_reasons
 
