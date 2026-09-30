@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Render observing rail answers as "would have declined", "would have held" and "would have
+  parked" (PB-177), preserving all verdicts, reasons, gaps and decision arithmetic.
+
 ## 0.8.2 — candidate, 2026-09-23
 
 - Give an enforcing refusal precedence over an approval request, then a hold (PB-99).

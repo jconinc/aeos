@@ -362,3 +362,12 @@ PB-235 native convergence implementation, or delivered host effect. Historical r
 Wema rows require explicit legacy handling in the later consumer rollout; deriving condition
 IDs from their prose is prohibited. No Wema database, network, model or provider operation is
 introduced into the project-neutral kernel.
+
+### Observing-answer grammar (PB-177)
+
+Accepted PB-177 requires the grammar-only `DECLINE -> declined`, `HOLD -> held`, and
+`PARK -> parked` rendering. Adapted from `src/aeos_kernel/rails.py` at
+`e01554eb073a585203cef2805c1c7ec9257c4486`, preserving result and merge semantics.
+The production consumer is Wema
+`wema_commercial_guidance.aeos_rails`; `tests/test_control_plane_rails.py` covers all
+three restrictive answers and the unchanged observing decision/gaps.

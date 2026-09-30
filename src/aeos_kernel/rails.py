@@ -178,8 +178,11 @@ class MergedRails:
     def would_have(self) -> tuple[str, ...]:
         """What the observing rails would have done, had they been enforcing."""
 
+        rendered = {
+            RailVerdict.DECLINE: "declined", RailVerdict.HOLD: "held", RailVerdict.PARK: "parked",
+        }
         return tuple(
-            f"{result.rail} would have {result.verdict.value}: {result.reason}"
+            f"{result.rail} would have {rendered[result.verdict]}: {result.reason}"
             for result in self.observing_only
             if result.verdict not in {RailVerdict.PASS, RailVerdict.NOT_APPLICABLE}
         )

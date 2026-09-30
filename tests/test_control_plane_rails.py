@@ -110,15 +110,20 @@ def test_all_rails_passing_leaves_the_default_decision() -> None:
     assert merged.reasons == ()
 
 
-def test_an_observing_rail_reports_what_it_would_have_done_and_decides_nothing() -> None:
+@pytest.mark.parametrize("verdict,rendered", [
+    (RailVerdict.DECLINE, "declined"), (RailVerdict.HOLD, "held"), (RailVerdict.PARK, "parked"),
+])
+def test_an_observing_rail_reports_what_it_would_have_done_and_decides_nothing(
+    verdict: RailVerdict, rendered: str,
+) -> None:
     """Gaps-first: a rail is read for a while before it is allowed to stop anything."""
 
     merged = evaluate_rails(
-        (rail("a.new", RailVerdict.DECLINE, mode=RailMode.OBSERVING),), context()
+        (rail("a.new", verdict, mode=RailMode.OBSERVING),), context()
     )
     assert merged.decision is MoveDecision.SHIP
     assert merged.results == ()
-    assert "would have decline" in merged.would_have[0]
+    assert merged.would_have == (f"a.new would have {rendered}: a.new says no",)
     # Its gaps still travel: a gap is a fact about the product, and whether the rule that
     # found it is switched on does not make it less true.
     assert len(merged.gaps) == 1

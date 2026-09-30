@@ -984,7 +984,9 @@ from us and a mismatched pair would write to people who reported something else.
 ### 20.11 Named rules for a move
 
 `rails` registers one callable per named rule and the move types it evaluates. Each result
-contains its registered name, a closed verdict, a reason and materialized gaps. A mismatched
+contains its registered name, a closed verdict, a reason and materialized gaps. PB-177 renders
+observing counterfactuals as "would have declined", "would have held" or "would have parked";
+this changes no decision arithmetic. A mismatched
 result name refuses. Enforcing rules contribute a decision; observing rules retain findings
 without changing that decision. The host selects the mode in its governed registration, not
 from model output. Decline takes precedence over park, and park over hold: approval resumes
