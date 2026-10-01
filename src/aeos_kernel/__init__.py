@@ -73,6 +73,7 @@ from aeos_kernel.evidence import (
     build_decision_packet,
     build_evidence_item,
 )
+from aeos_kernel.execution_lanes import ExecutionLane, MoveTaskLane
 from aeos_kernel.field_hooks import FieldHook, FieldHookRegistry
 from aeos_kernel.gaps import GapRow, GapSeverity, error_gaps, gaps_in_scope
 from aeos_kernel.gates import (
@@ -283,7 +284,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.8.2"
+__version__ = "0.9.0"
 
 __all__ = [
     "BLOCKING_CONDITION_SCHEMA",
@@ -342,6 +343,7 @@ __all__ = [
     "EscalationRules",
     "EvidenceItem",
     "ExecStatus",
+    "ExecutionLane",
     "ExecutionProfile",
     "ExitSet",
     "FamilyProfile",
@@ -386,6 +388,7 @@ __all__ = [
     "MoveFamily",
     "MoveLedgerEntry",
     "MoveRequest",
+    "MoveTaskLane",
     "ObservationCoverage",
     "OutcomeEvidence",
     "OutcomeStatus",

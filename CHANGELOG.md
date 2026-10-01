@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 — candidate, 2026-10-01
 
 - Render observing rail answers as "would have declined", "would have held" and "would have
   parked" (PB-177), preserving all verdicts, reasons, gaps and decision arithmetic.
@@ -29,6 +29,14 @@
   text (`URL:https://xn--…`, `ref=xn--…`); a URL that starts inside a token is parsed as a URL;
   a punycode name part that cannot be decoded refuses as unstable without quoting it. Review round 4: provider text is also inspected in its NFKC form, so a full-width punycode name part or URL is read exactly like its ASCII twin. Review round 5: each percent-decoding round starts from the NFKC form, so a full-width percent escape is decoded like its ASCII twin. Review round 6: the NFKC step never counts as one of the four decoding rounds.
 - The integrated distribution version remains unpublished until the joined Wema release is verified.
+
+- Add ordered execution-lane declarations and fail-closed runtime egress scopes and route identity.
+- Bind encryption-key proof to the current policy, source evidence and permission lane so stale or
+  cross-lane proof cannot authorize a dependent effect.
+- Allow an explicit availability-only module with no Move families or effect authority. Ordinary
+  empty-family modules remain invalid, and dependency loading still applies.
+- Package publication and consuming Wema activation require separate installed-wheel and host
+  verification; this candidate grants neither by itself.
 
 ## 0.8.2 — candidate, 2026-09-23
 
