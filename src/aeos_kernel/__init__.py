@@ -284,7 +284,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 __all__ = [
     "BLOCKING_CONDITION_SCHEMA",
