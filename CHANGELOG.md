@@ -4,6 +4,31 @@
 
 - Render observing rail answers as "would have declined", "would have held" and "would have
   parked" (PB-177), preserving all verdicts, reasons, gaps and decision arithmetic.
+- Add the canonical product policy manifest (PB-195): one strict parser, closed schema,
+  seventeen authority sections, canonical bytes and digest vectors, exact service grants and
+  reader compatibility. The legacy `ProductManifest` is reached through an adapter that adds
+  no value.
+- Add the paid-term fence with one shared normalizer, bounded URL decoding, register
+  validation and the eight flag rows. Results carry reason codes and digests only.
+- Authorize policy commands through `resolve_authority` with exact grants; absent, stale,
+  revoked, conflicting and wrong-class grants refuse.
+- Keep a decimal-string coverage minimum as a real release bar, and block when the minimum
+  cannot be read instead of dropping the check.
+- Review round 1: split claim templates and FCRA posture into a product/legal section; require
+  an authority class for every command except `propose_manifest`, whose proposal approves
+  nothing, including revocation and the new `withdraw_latest_service_grant_set`; accept a register only as its own signed bytes named by
+  the manifest, including an approved empty register; decode scheme-less provider URLs and
+  percent-encoded provider text; refuse an unparseable URL without quoting it; compare the
+  coverage minimum exactly.
+- Review round 2: a grant-withdrawing revocation needs both the whole-manifest grant and the
+  security/role withdrawal grant; `evaluate_paid_fence` takes the typed manifest and reads its
+  flags, register bindings and forbidden phrases only from it, refusing a manifest that
+  disagrees with its own bytes; provider URLs inside brackets or quotes, URLs encoded whole,
+  and mapping keys are inspected; no refusal chains an exception that quotes the input.
+- Review round 3: a punycode name part is read as its Unicode name wherever it sits in provider
+  text (`URL:https://xn--…`, `ref=xn--…`); a URL that starts inside a token is parsed as a URL;
+  a punycode name part that cannot be decoded refuses as unstable without quoting it. Review round 4: provider text is also inspected in its NFKC form, so a full-width punycode name part or URL is read exactly like its ASCII twin. Review round 5: each percent-decoding round starts from the NFKC form, so a full-width percent escape is decoded like its ASCII twin. Review round 6: the NFKC step never counts as one of the four decoding rounds.
+- The integrated distribution version remains unpublished until the joined Wema release is verified.
 
 ## 0.8.2 — candidate, 2026-09-23
 

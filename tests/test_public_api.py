@@ -15,6 +15,8 @@ def test_public_version_and_exports_are_stable() -> None:
     assert "DecisionEngine" in aeos_kernel.__all__
     assert "GraphSnapshot" in aeos_kernel.__all__
     assert "authorize_effect" in aeos_kernel.__all__
+    for name in ("load_canonical_manifest", "evaluate_paid_fence", "authorize_policy_command"):
+        assert name in aeos_kernel.__all__
 
 
 def test_every_runtime_protocol_has_a_named_kernel_consumer() -> None:

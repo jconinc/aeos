@@ -1,0 +1,107 @@
+{
+  "schema_version": "aeos.product-manifest.v1",
+  "product_instance_id": "0190F2A4-1B2C-7D3E-8F40-5A6B7C8D9E0F",
+  "portfolio_phase_revision_id": "0190f2a4-1b2c-7d3e-8f40-000000000001",
+  "manifest_version": "example-2026.09.27",
+  "effective_interval": {
+    "starts_at": "2026-10-01T00:00:00Z",
+    "ends_before": null,
+    "decision_ref": "example://decision/interval-1"
+  },
+  "service_principal_grants": [
+    {"purpose": "readback", "principal_id": "example-reader-1", "principal_class": "product_policy_read_client"},
+    {"purpose": "paid_effect", "principal_id": "example-worker-1", "principal_class": "marketing_effects_worker"},
+    {"purpose": "readback", "principal_id": "example-reader-1", "principal_class": "product_policy_read_client"}
+  ],
+  "modules_enabled": ["practice", "care", "care"],
+  "tone_profile": {
+    "voice": "Plain, warm, exact — Example voice.",
+    "forbidden_phrases": ["guaranteed cure", "Example Phrase"],
+    "allowed_claim_templates": ["example://claims/template-b", "example://claims/template-a"]
+  },
+  "fcra_posture": "outside_fcra",
+  "credential_scopes": {
+    "example_mail": ["send", "draft", "send"]
+  },
+  "budget_caps": {
+    "model_calls": {"amount": "+012.500", "unit": "usd", "window": "month", "currency": "USD"},
+    "probes": {"amount": "40", "unit": "probe", "window": "week"}
+  },
+  "authority": {
+    "wedge": true,
+    "measurement_window_days": 28,
+    "target_query_classes": [
+      {"id": "how_to_plan", "question": "How do I plan care for a parent?"},
+      {"id": "what_to_bring", "question": "What should I bring to an appointment?"}
+    ],
+    "answer_engines": [{"id": "engine_b"}, {"id": "engine_a"}],
+    "citation_rate_floor": "0.250",
+    "earned_citations_floor": 3,
+    "source_diversity_min": 2,
+    "probe_budget": {
+      "probes_per_engine_per_query_class_per_window": 4,
+      "permitted_model_refs": ["example-model-b", "example-model-a"]
+    },
+    "owned_audience": {
+      "lawful_basis_policy": "example://policy/lawful-basis",
+      "suppression_list_ref": "example://suppression/list-1",
+      "double_opt_in": true
+    },
+    "paid_fence": {
+      "allow_brand_terms": true,
+      "allow_category_terms": true,
+      "allow_third_party_operator_terms": false,
+      "brand_term_register_ref": "example://terms/brand",
+      "brand_term_register_digest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "brand_term_register_version": "brand-1",
+      "category_term_register_ref": "example://terms/category",
+      "category_term_register_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "category_term_register_version": "category-1",
+      "operator_term_register_ref": "example://terms/operator",
+      "operator_term_register_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "operator_term_register_version": "operator-1"
+    }
+  },
+  "commercial": {
+    "unit_economics": {"contribution_window_days": 90, "contribution_margin_floor_minor": "-0500"},
+    "renewal_attention": {"review_lead_days": 30},
+    "deliverability": {
+      "minimum_sent": 200,
+      "complaint_rate_stop": "0.0010",
+      "bounce_rate_stop": "0.05",
+      "window_days": 7
+    },
+    "quote": {"second_signature_above_minor": "+250000"}
+  },
+  "content_policy": {"review_age_days": 180},
+  "correction_policy": {
+    "clock": "business_days",
+    "acknowledge_within_days": 2,
+    "resolve_within_days": 10,
+    "an_overdue_correction_stops_publication": true
+  },
+  "source_bindings": {
+    "mailbox_registry": {
+      "version": "example-registry-1",
+      "digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  },
+  "compatibility": {
+    "min_reader": "1.0.0",
+    "max_reader": "1.9.0",
+    "required_capabilities": ["canonical_manifest_bytes_v1", "aeos.product-manifest.v1"]
+  },
+  "gating": {
+    "seed_approval_count": 3,
+    "judgment_confidence_gate": "0.80",
+    "park_ttl_hours": 72,
+    "graduation_count": 25,
+    "stale_claim_days": 30
+  },
+  "liability_class": "B",
+  "approval_policy_ref": "example://approval/policy-1",
+  "release_policy": {"coverage_thresholds": {"min_overall": "1.0"}},
+  "wlg_sync_policy": {},
+  "task_generation_policy": {"max_open": 5},
+  "family_overrides": {}
+}

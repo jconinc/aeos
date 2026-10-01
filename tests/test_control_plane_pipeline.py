@@ -1324,3 +1324,27 @@ def test_a_wlg_built_product_still_supplies_exactly_its_four() -> None:
     )
     assert snapshot.triple_gate_pass is True
     assert set(snapshot.gate_status) == set(WLG_GATE_COMPONENTS)
+
+
+def test_a_decimal_string_coverage_minimum_still_holds_the_bar() -> None:
+    # A canonical product manifest carries fractions as decimal strings; "1" must still bind.
+    result = readiness_now(
+        coverage=coverage(covered=9, uncovered=("REQ-FICTION-009",)),
+        family_coverage_thresholds={"min_overall": "1"},
+    )
+    assert any("at least 100% required" in reason for reason in result.blocking_reasons)
+
+
+def test_a_positive_minimum_too_small_for_a_float_still_blocks_zero_coverage() -> None:
+    tiny = "0." + "0" * 400 + "1"
+    assert float(tiny) == 0.0
+    result = readiness_now(
+        coverage=coverage(covered=0, uncovered=tuple(f"REQ-FICTION-{n:03}" for n in range(10))),
+        family_coverage_thresholds={"min_overall": tiny},
+    )
+    assert any(reason.startswith("coverage is 0%") for reason in result.blocking_reasons)
+
+
+def test_an_unreadable_coverage_minimum_blocks_instead_of_vanishing() -> None:
+    with pytest.raises(ContractError, match="coverage minimum is not a number"):
+        readiness_now(family_coverage_thresholds={"min_overall": "all of it"})

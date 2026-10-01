@@ -1,5 +1,4 @@
 # Wema integration contract
-
 **Contracts:** `wema.article@2`, `wema.review@1`
 **Wema source inspected:** `76e7c0f4fb1df28a9b77a02e1743eec83cd5a249`
 
@@ -173,3 +172,23 @@ next step and is routed to John until an exact package exists. The later package
 founder's five-card Today frontier. No Desk password, MFA code, session cookie, graph credential,
 provider credential, or raw source export is retained by either handoff. The Codex process never
 receives Wema or Memgraph credentials, and no model runs on the production host.
+
+## Product policy manifest
+
+Wema stores manifest revisions, decisions, heads, command receipts and paid permits in its own
+tables, and calls AEOS for every rule that is not persistence:
+
+- `load_canonical_manifest` validates each proposed payload and gives the canonical bytes and
+  digest Wema stores; Wema re-derives the digest on every read and refuses a mismatch.
+- `authorize_policy_command` decides each command from the grant records Wema supplies. Wema
+  holds no confirmed grants until the owner decisions exist, so every command refuses with
+  `policy_authority_missing`.
+- `authorize_policy_command` also requires each grant's authority class: the section's owner for
+  a section decision, the product owner to revoke, the release owner to activate or roll back,
+  the portfolio owner for phase commands, and the security/role owner to withdraw service
+  grants. A revocation that also withdraws grants needs both grants.
+- `evaluate_paid_fence` runs identically in the planner and the final worker. Wema builds its
+  flags with `PaidFenceFlags.from_manifest`, so each register must be the signed artifact whose
+  digest and version the current manifest names. Wema adds the permit row, locks and provider
+  reconciliation; permit reuse, unknown provider outcomes and in-flight revocation are tested
+  there.

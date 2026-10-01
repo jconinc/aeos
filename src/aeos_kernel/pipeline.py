@@ -10,9 +10,11 @@ why the gate and the "why is this blocked" answer can never drift apart.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
+from fractions import Fraction
 from typing import Any
 
 from aeos_kernel._validation import digest, immutable_json_object, required, utc
@@ -252,6 +254,32 @@ class CoverageSnapshot:
                     )
                 )
         return tuple(conditions)
+
+
+_UNREADABLE = object()
+
+
+def _exact_coverage(coverage: CoverageSnapshot) -> Fraction:
+    if not coverage.total_requirements:
+        return Fraction(0)
+    return Fraction(coverage.covered_requirements, coverage.total_requirements)
+
+
+def _coverage_minimum(value: Any) -> Fraction | object | None:
+    """Read ``min_overall`` as a number or a canonical decimal string such as ``"1"``.
+
+    A canonical product manifest carries fractions as decimal strings, so a string must count.
+    The value is kept exact: a positive minimum too small for a float must still block zero
+    coverage. An unreadable value refuses evaluation rather than silently dropping the bar.
+    """
+
+    if value is None:
+        return None
+    if isinstance(value, int | float) and not isinstance(value, bool):
+        return Fraction(value)
+    if isinstance(value, str) and re.fullmatch(r"\d+(?:\.\d+)?", value):
+        return Fraction(value)
+    return _UNREADABLE
 
 
 #: The four components a WLG-built product's gate reports. Named so a WLG consumer has one
@@ -523,12 +551,10 @@ def evaluate_release_readiness(
     else:
         thresholds = dict(family_coverage_thresholds)
         thresholds.update(manifest.release_rule("coverage_thresholds", {}) or {})
-        minimum = thresholds.pop("min_overall", None)
-        if (
-            isinstance(minimum, int | float)
-            and not isinstance(minimum, bool)
-            and coverage.coverage_pct < float(minimum)
-        ):
+        minimum = _coverage_minimum(thresholds.pop("min_overall", None))
+        if minimum is _UNREADABLE:
+            raise ContractError("the coverage minimum is not a number this gate can read")
+        elif isinstance(minimum, Fraction) and _exact_coverage(coverage) < minimum:
             add(
                 "coverage_below_minimum",
                 (),
