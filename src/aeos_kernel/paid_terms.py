@@ -29,6 +29,7 @@ from aeos_kernel.product_policy import (
     decode_strict_json,
     load_canonical_manifest,
 )
+from aeos_kernel.product_policy_v2 import CanonicalProductManifestV2, load_canonical_manifest_v2
 
 NORMALIZATION_VERSION: Final = "paid_term_normalize_v1"
 REGISTER_SCHEMA_VERSION: Final = "aeos.paid-term-register.v1"
@@ -489,10 +490,12 @@ def validate_registers(
     return normalized
 
 
-def _manifest_fence(manifest: CanonicalProductManifest) -> tuple[PaidFenceFlags, list[str]]:
+def _manifest_fence(
+    manifest: CanonicalProductManifest | CanonicalProductManifestV2,
+) -> tuple[PaidFenceFlags, list[str]]:
     """The flags, register bindings and forbidden phrases of a manifest proven by its bytes."""
 
-    if _reloaded(manifest.canonical_bytes) != manifest:
+    if _reloaded(manifest) != manifest:
         raise PaidTermError(
             PaidFenceReason.MANIFEST_INTEGRITY, "the product policy does not match its bytes"
         )
@@ -503,16 +506,20 @@ def _manifest_fence(manifest: CanonicalProductManifest) -> tuple[PaidFenceFlags,
     )
 
 
-def _reloaded(canonical_bytes: bytes) -> CanonicalProductManifest | None:
+def _reloaded(
+    manifest: CanonicalProductManifest | CanonicalProductManifestV2,
+) -> CanonicalProductManifest | CanonicalProductManifestV2 | None:
     try:
-        return load_canonical_manifest(canonical_bytes)
+        if isinstance(manifest, CanonicalProductManifestV2):
+            return load_canonical_manifest_v2(manifest.canonical_bytes)
+        return load_canonical_manifest(manifest.canonical_bytes)
     except ContractError:
         return None
 
 
 def evaluate_paid_fence(
     *,
-    manifest: CanonicalProductManifest,
+    manifest: CanonicalProductManifest | CanonicalProductManifestV2,
     registers: Mapping[TermClass, TermRegister],
     surfaces: PaidSurfaces,
 ) -> PaidFenceDecision:

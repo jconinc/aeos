@@ -1,0 +1,10 @@
+{
+  "algorithm": "canonical_manifest_bytes_v2",
+  "canonical_bytes": "canonical_manifest_v2.canonical",
+  "grant_set_sha256": "019f588957022357771ce730c5c44e5e754805786f1b98c2bfc7ce06ea319cac",
+  "input": "canonical_manifest_v2.json",
+  "manifest_sha256": "0ab53c67e36cdff10e81fdc4bb056484a44c344d3ecd6131c7338e931d21f6af",
+  "provenance": "John-approved PB-195 v2 C14 correction-sweep amendment; Wema correction-sweep consumer.",
+  "schema": "product_manifest_v2.schema.json",
+  "schema_version": "aeos.product-manifest.v2"
+}

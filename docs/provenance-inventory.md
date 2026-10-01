@@ -90,6 +90,7 @@ graph, provider output, or mutable test artifact.
 | Wema worker/domain/outbox/idempotency/kill-switch infrastructure | Authorized operations and operational recovery | Implements effect authorizer/executor and receipts. |
 | Wema analytics/event/market-policy registries | Permitted aggregate observations and suppression/evidence floors | Implements outcome source. AEOS never silently activates collection. |
 | Wema public review checklist and saved-feedback projection | Release-bound closed choices and bounded notes; explicitly advisory rather than approval | `wema.review@1` consumes the minimized projection without reviewer identity or model use and emits at most one operator follow-up. |
+| John-approved PB-195 v2 C14 correction-sweep amendment | **New contract**, not an extraction. It adds a separate closed product-manifest v2 schema, canonical input/bytes/digest vector, exact correction-sweep source binding, dedicated service grant and exclusive `support:correction_sweep` capability. V1 resources and reader history remain unchanged. | Wema correction-sweep consumer. It must independently install and declare the source-binding, queue-admission and worker-revalidation capabilities before effectful use; package resources and kernel tests prove the interchange contract only. |
 
 ## Genuinely new AEOS behavior
 

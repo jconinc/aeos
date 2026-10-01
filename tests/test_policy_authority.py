@@ -16,6 +16,7 @@ from aeos_kernel.policy_authority import (
     authorize_policy_command,
     command_section,
 )
+from aeos_kernel.product_policy_v2 import SCHEMA_VERSION_V2
 
 NOW = datetime(2026, 9, 27, 12, tzinfo=UTC)
 PRODUCT = "0190f2a4-1b2c-7d3e-8f40-5a6b7c8d9e0f"
@@ -111,6 +112,25 @@ def test_a_section_decision_needs_the_sections_authority_class() -> None:
     assert decide(wrong).status is PolicyAuthorityStatus.CLASS_MISMATCH
     no_ref = grant(value={"authority_class": "finance_owner"})
     assert decide(no_ref).status is PolicyAuthorityStatus.MISSING
+
+
+def test_v2_sweep_section_requires_its_exact_owner_and_v1_stays_closed() -> None:
+    scope = {"section": "source_sweep_calendar"}
+    with pytest.raises(ContractError):
+        command_section("record_manifest_decision", scope["section"])
+    correct = grant(
+        args=scope,
+        value={"authority_class": "calendar_policy_owner", "decision_ref": "example://calendar"},
+    )
+    assert decide(correct, section=scope["section"], schema_version=SCHEMA_VERSION_V2).authorized
+    wrong = grant(
+        args=scope,
+        value={"authority_class": "finance_owner", "decision_ref": "example://wrong"},
+    )
+    assert (
+        decide(wrong, section=scope["section"], schema_version=SCHEMA_VERSION_V2).status
+        is PolicyAuthorityStatus.CLASS_MISMATCH
+    )
 
 
 def test_conflicting_equal_grants_and_foreign_tenants_refuse() -> None:

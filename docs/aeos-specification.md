@@ -762,18 +762,30 @@ product-specific policy enters the control plane; rails read it through
 never hard-code a threshold. `liability_class` must agree between profile and manifest, and
 it selects which launch bars the product's gate manifest must carry.
 
-The canonical product policy manifest (`product_policy.py`, schema
-`aeos.product-manifest.v1`, reader `1.0.0`) is the approved, immutable document a host stores
-for one product in one portfolio phase. `load_canonical_manifest` is the only parser: it
-refuses duplicate JSON keys, non-UTF-8 input, floats, unknown fields and a product, phase or
-version that differs from the stored identity. Every payload leaf belongs to exactly one of
-sixteen sections, and each section names the one authority class whose decision approves it.
-`canonical_manifest_bytes_v1` fixes set order, decimal and integer spelling, lowercase UUIDs and
-digests, so equal meaning gives equal bytes and one SHA-256 digest; the packaged
-`schemas/product_policy/` vectors freeze those bytes. `grants_principal(purpose, principal_id,
-principal_class)` matches an exact service grant and never infers one from ownership or class.
-`as_product_manifest` carries the release-policy values into `ProductManifest` without adding
-any. `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
+The canonical product policy manifest v1 (`product_policy.py`, schema
+`aeos.product-manifest.v1`, reader `1.0.0`) is the historical, immutable document a host stores
+for one product in one portfolio phase. `load_canonical_manifest` is its only parser: it refuses
+duplicate JSON keys, non-UTF-8 input, floats, unknown fields and a product, phase or version that
+differs from the stored identity. Every payload leaf belongs to exactly one of sixteen sections,
+and each section names the one authority class whose decision approves it. `canonical_manifest_bytes_v1`
+fixes set order, decimal and integer spelling, lowercase UUIDs and digests, so equal meaning gives
+equal bytes and one SHA-256 digest; the packaged `schemas/product_policy/` vectors freeze those
+bytes. `grants_principal(purpose, principal_id, principal_class)` matches an exact service grant
+and never infers one from ownership or class. `as_product_manifest` carries the release-policy
+values into `ProductManifest` without adding any.
+
+John's approved PB-195 v2 C14 correction-sweep amendment adds a distinct current schema
+`aeos.product-manifest.v2`, `product_policy_v2.py`, and reader `2.0.0`; it does not reinterpret
+v1 bytes, parsing, grants, or history. The closed v2 resource
+`schemas/product_policy/product_manifest_v2.schema.json` adds `correction_sweep` and its
+`source_bindings.correction_sweep` record. Its fixed package vector names input, canonical bytes,
+manifest SHA-256 and service-grant-set SHA-256. The Wema correction-sweep consumer can use a v2
+revision only after it supplies every declared source-binding, queue-admission and worker-
+revalidation capability. The dedicated `support:correction_sweep` scope contains exactly
+`run_correction_sweep`; neither mailbox scopes nor ownership infer that capability or its
+dedicated `correction_sweep_service` grant.
+
+`paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result
 that carries only reason codes and digests, never raw copy, terms or URLs.
 `policy_authority.py` authorizes a policy command only through `resolve_authority` and an

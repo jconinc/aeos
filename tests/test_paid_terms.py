@@ -30,6 +30,7 @@ from aeos_kernel.product_policy import (
     decode_strict_json,
     load_canonical_manifest,
 )
+from aeos_kernel.product_policy_v2 import load_canonical_manifest_v2
 
 BRAND = "Fictional Brandname"
 CATEGORY = "respite planner"
@@ -119,6 +120,26 @@ def fence(flags: tuple[bool, bool, bool], surfaces: PaidSurfaces, **kwargs: Any)
         registers=held,
         surfaces=surfaces,
     )
+
+
+def test_v2_manifest_uses_same_paid_fence_and_verifies_v2_bytes() -> None:
+    raw = resources.files("aeos_kernel.schemas").joinpath("product_policy")
+    payload = decode_strict_json(raw.joinpath("canonical_manifest_v2.json").read_bytes())
+    held = registers()
+    for term_class, binding in bind(held).items():
+        paid_fence = payload["authority"]["paid_fence"]
+        paid_fence[f"{PREFIX[term_class]}_term_register_digest"] = binding.digest
+        paid_fence[f"{PREFIX[term_class]}_term_register_version"] = binding.version
+    v2_policy = load_canonical_manifest_v2(payload)
+    surfaces = PaidSurfaces(negative_keywords=(OPERATOR,))
+
+    allowed = evaluate_paid_fence(manifest=v2_policy, registers=held, surfaces=surfaces)
+    assert allowed.allowed
+    assert allowed.manifest_digest == v2_policy.manifest_digest
+
+    tampered = dataclasses.replace(v2_policy, manifest_digest="0" * 64)
+    refused = evaluate_paid_fence(manifest=tampered, registers=held, surfaces=surfaces)
+    assert not refused.allowed
 
 
 def test_normalization_folds_width_case_punctuation_and_invisible_characters() -> None:

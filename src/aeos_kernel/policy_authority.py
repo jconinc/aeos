@@ -29,9 +29,15 @@ from aeos_kernel.authority import (
 from aeos_kernel.errors import ContractError
 from aeos_kernel.product_policy import (
     POLICY_SECTIONS,
+    SCHEMA_VERSION,
     SECTION_AUTHORITY_CLASSES,
     SERVICE_GRANT_WITHDRAWAL,
     WHOLE_MANIFEST,
+)
+from aeos_kernel.product_policy_v2 import (
+    POLICY_SECTIONS_V2,
+    SCHEMA_VERSION_V2,
+    SECTION_AUTHORITY_CLASSES_V2,
 )
 
 #: The closed PB-195 command surface.
@@ -102,7 +108,9 @@ class PolicyAuthorityDecision:
         return self.status is PolicyAuthorityStatus.AUTHORIZED
 
 
-def command_section(command: str, section: str | None) -> str:
+def command_section(
+    command: str, section: str | None, *, schema_version: str = SCHEMA_VERSION
+) -> str:
     """The one section label a command is authorized under; callers cannot choose another.
 
     ``revoke_manifest`` is authorized under ``whole_manifest``. When its scope also withdraws the
@@ -112,8 +120,11 @@ def command_section(command: str, section: str | None) -> str:
 
     if command not in POLICY_COMMANDS:
         raise ContractError(f"unknown policy command {command!r}")
+    if schema_version not in {SCHEMA_VERSION, SCHEMA_VERSION_V2}:
+        raise ContractError("unknown product-policy schema version")
     if command == "record_manifest_decision":
-        if section not in POLICY_SECTIONS:
+        sections = POLICY_SECTIONS_V2 if schema_version == SCHEMA_VERSION_V2 else POLICY_SECTIONS
+        if section not in sections:
             raise ContractError("a manifest decision names one policy section")
         return str(section)
     if command == "revoke_manifest" and section == SERVICE_GRANT_WITHDRAWAL:
@@ -131,11 +142,20 @@ def command_section(command: str, section: str | None) -> str:
     return SELECTION_SCOPE
 
 
-def required_authority_class(command: str, section_label: str) -> str | None:
+def required_authority_class(
+    command: str, section_label: str, *, schema_version: str = SCHEMA_VERSION
+) -> str | None:
     """The authority class a grant must carry for this command under this label."""
 
-    if section_label in SECTION_AUTHORITY_CLASSES:
-        return SECTION_AUTHORITY_CLASSES[section_label]
+    classes = (
+        SECTION_AUTHORITY_CLASSES_V2
+        if schema_version == SCHEMA_VERSION_V2
+        else SECTION_AUTHORITY_CLASSES
+    )
+    if schema_version not in {SCHEMA_VERSION, SCHEMA_VERSION_V2}:
+        raise ContractError("unknown product-policy schema version")
+    if section_label in classes:
+        return classes[section_label]
     if section_label == SERVICE_GRANT_WITHDRAWAL:
         return "security_role"
     return COMMAND_AUTHORITY_CLASSES[command]
@@ -159,6 +179,7 @@ def authorize_policy_command(
     section: str | None,
     principal_id: str,
     at: datetime,
+    schema_version: str = SCHEMA_VERSION,
 ) -> PolicyAuthorityDecision:
     """Resolve one exact grant for one command, or return the typed reason there is none.
 
@@ -168,7 +189,7 @@ def authorize_policy_command(
     decision in ``grant_withdrawal``; the first refusal of either is returned instead.
     """
 
-    label = command_section(command, section)
+    label = command_section(command, section, schema_version=schema_version)
     exact = tuple(record for record in records if _exact(record))
 
     def one(scope_label: str) -> PolicyAuthorityDecision:
@@ -178,7 +199,7 @@ def authorize_policy_command(
             "section": scope_label,
             "principal_id": principal_id,
         }
-        return _resolve(exact, vertical_id, tenant_id, scope, command, at)
+        return _resolve(exact, vertical_id, tenant_id, scope, command, at, schema_version)
 
     if command == "revoke_manifest" and label == SERVICE_GRANT_WITHDRAWAL:
         whole = one(WHOLE_MANIFEST)
@@ -198,6 +219,7 @@ def _resolve(
     scope: dict[str, str],
     command: str,
     at: datetime,
+    schema_version: str,
 ) -> PolicyAuthorityDecision:
     resolution = resolve_authority(
         exact, vertical_id=vertical_id, tenant_id=tenant_id, scope=scope, at=at
@@ -219,7 +241,9 @@ def _resolve(
         or not decision_ref
     ):
         return PolicyAuthorityDecision(PolicyAuthorityStatus.MISSING)
-    required_class = required_authority_class(command, scope["section"])
+    required_class = required_authority_class(
+        command, scope["section"], schema_version=schema_version
+    )
     if required_class is not None and authority_class != required_class:
         return PolicyAuthorityDecision(
             PolicyAuthorityStatus.CLASS_MISMATCH, authority_class, record.authority_id
