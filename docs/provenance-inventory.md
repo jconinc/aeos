@@ -1,7 +1,7 @@
 # AEOS provenance and extraction inventory
 
-**Inventory version:** 7
-**Recorded:** 13 September 2026
+**Inventory version:** 8
+**Recorded:** 5 October 2026
 
 ## Source snapshots
 
@@ -91,6 +91,7 @@ graph, provider output, or mutable test artifact.
 | Wema analytics/event/market-policy registries | Permitted aggregate observations and suppression/evidence floors | Implements outcome source. AEOS never silently activates collection. |
 | Wema public review checklist and saved-feedback projection | Release-bound closed choices and bounded notes; explicitly advisory rather than approval | `wema.review@1` consumes the minimized projection without reviewer identity or model use and emits at most one operator follow-up. |
 | John-approved PB-195 v2 C14 correction-sweep amendment | **New contract**, not an extraction. It adds a separate closed product-manifest v2 schema, canonical input/bytes/digest vector, exact correction-sweep source binding, dedicated service grant and exclusive `support:correction_sweep` capability. V1 resources and reader history remain unchanged. | Wema correction-sweep consumer. It must independently install and declare the source-binding, queue-admission and worker-revalidation capabilities before effectful use; package resources and kernel tests prove the interchange contract only. |
+| E3 v3 product-security contract | **New contract**, not an extraction. It adds a closed `base` or `correction_sweep` profile and separately owned security policy projection with parser-generated fictional vectors. V1/v2 resources and readers remain unchanged. | Wema product-policy admission can consume the explicit security projection only after host-side authority, persistence and activation checks. The kernel carries no production value, approval, activation or effect. |
 
 ## Genuinely new AEOS behavior
 
@@ -137,7 +138,7 @@ consequence. This observation does not change the extraction pins or accept new 
 | Project-neutral decision compiler | Deterministic, cardinality-not-entailment, authority precedence, citation, cross-scope, stale, model-consensus, budget and boundary tests in `test_engine.py` and `test_contract_red_plants.py` |
 | Host-owned effect boundary | Registered-operation, exact attestation, capacity, digest, kill-switch, provider, parameter, boundary and cost red plants |
 | Wema consumer shape | Article packet, immutable-revision effect and exact `OwnedAction` column tests in `test_adapters.py` |
-| Published package contract | V1 historical and v2 current JSON Schema resources, schema strictness tests, strict mypy, wheel content inspection and `py.typed` marker |
+| Published package contract | V1/v2 retained and v3 current JSON Schema resources, schema strictness tests, strict mypy, wheel content inspection and `py.typed` marker |
 
 Release evidence is recorded only after the complete quiet `make verify`, reproducible wheel
 inspection and exact consumer repin. This inventory does not claim MultiAgent graph transaction

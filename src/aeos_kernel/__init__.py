@@ -200,6 +200,14 @@ from aeos_kernel.product_policy import (
     load_canonical_manifest,
     manifest_digest,
 )
+from aeos_kernel.product_policy_v3 import (
+    READER_CAPABILITIES_V3,
+    READER_VERSION_V3,
+    SCHEMA_VERSION_V3,
+    CanonicalProductManifestV3,
+    canonical_manifest_bytes_v3,
+    load_canonical_manifest_v3,
+)
 from aeos_kernel.rails import (
     MergedRails,
     Rail,
@@ -284,13 +292,16 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 
 __all__ = [
     "BLOCKING_CONDITION_SCHEMA",
     "EVIDENCE_RANK",
     "PLACEHOLDER_TARGET_IDS",
     "POLICY_COMMANDS",
+    "READER_CAPABILITIES_V3",
+    "READER_VERSION_V3",
+    "SCHEMA_VERSION_V3",
     "SCORING_PROMPT",
     "SCORING_SYSTEM_PROMPT",
     "WLG_GATE_COMPONENTS",
@@ -314,6 +325,7 @@ __all__ = [
     "CalibrationState",
     "Candidate",
     "CanonicalProductManifest",
+    "CanonicalProductManifestV3",
     "Channel",
     "ChannelKind",
     "ChannelState",
@@ -489,6 +501,7 @@ __all__ = [
     "candidate_set_digest",
     "canonical_json",
     "canonical_manifest_bytes_v1",
+    "canonical_manifest_bytes_v3",
     "classify_drift",
     "commit_boundary_refusal",
     "content_digest",
@@ -509,6 +522,7 @@ __all__ = [
     "launch_blockers",
     "launch_refusal",
     "load_canonical_manifest",
+    "load_canonical_manifest_v3",
     "load_modules",
     "load_term_register",
     "manifest_digest",

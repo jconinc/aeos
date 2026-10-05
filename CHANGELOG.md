@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.0 — candidate, 2026-10-05
+
+- Add the v3 product-policy manifest contract: explicit `base` or `correction_sweep` profile,
+  separately owned closed security section, canonical parser-generated fictional vectors and a
+  published structural schema. Historical v1/v2 readers and bytes remain unchanged. The package
+  records no production policy value, security approval, activation or host effect.
+
 ## 0.10.0 — candidate, 2026-10-01
 
 - Render observing rail answers as "would have declined", "would have held" and "would have

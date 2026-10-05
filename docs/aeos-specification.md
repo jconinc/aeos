@@ -1,7 +1,7 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.10.0
-**Date:** 1 October 2026
+**Version:** 0.11.0
+**Date:** 5 October 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
 **Proven source:** MultiAgentCommunication decision machinery at
@@ -552,7 +552,7 @@ parameters and postconditions; new packets carry adapter version 2 and require c
 - Semantic versioning applies to the Python API and interchange contracts.
 - Published schema IDs include major versions, for example
   `https://aeos.local/schemas/v2/decision-packet.schema.json`. V1 resources remain published for
-  historical readers; v2 is the current writer contract.
+  historical readers; v3 is the current writer contract and v1/v2 remain published.
 - Readers reject unknown major versions. Additive optional fields may be introduced in a minor
   release. Changed meaning or required fields require a new major schema.
 - Canonical serialization recipes are part of the contract and have known-answer vectors.
@@ -618,8 +618,8 @@ their host-defined compensation path; package rollback does not pretend to rever
 
 AEOS is complete for this goal only when:
 
-- this repository is independently versioned and publishes a stable typed package and current v2
-  schemas while preserving the historical v1 resources;
+- this repository is independently versioned and publishes a stable typed package and current v3
+  schemas while preserving the historical v1/v2 resources;
 - the provenance inventory accounts for every extracted or deliberately excluded source behavior;
 - MultiAgentCommunication runs through a compatible adapter with selected original tests green;
 - Wema uses AEOS through API/worker adapters and not through the Desk or localhost coordinator;
@@ -774,7 +774,7 @@ bytes. `grants_principal(purpose, principal_id, principal_class)` matches an exa
 and never infers one from ownership or class. `as_product_manifest` carries the release-policy
 values into `ProductManifest` without adding any.
 
-John's approved PB-195 v2 C14 correction-sweep amendment adds a distinct current schema
+John's approved PB-195 v2 C14 correction-sweep amendment adds a distinct schema
 `aeos.product-manifest.v2`, `product_policy_v2.py`, and reader `2.0.0`; it does not reinterpret
 v1 bytes, parsing, grants, or history. The closed v2 resource
 `schemas/product_policy/product_manifest_v2.schema.json` adds `correction_sweep` and its
@@ -784,6 +784,15 @@ revision only after it supplies every declared source-binding, queue-admission a
 revalidation capability. The dedicated `support:correction_sweep` scope contains exactly
 `run_correction_sweep`; neither mailbox scopes nor ownership infer that capability or its
 dedicated `correction_sweep_service` grant.
+
+The v3 contract (`aeos.product-manifest.v3`, `product_policy_v3.py`, reader `3.0.0`)
+adds an explicit `base` or `correction_sweep` profile and one closed `security` section. The
+section names selected transport hosts, untrusted-source classes, go-live mode, encryption
+requirements, key rotation and audit retention; it belongs only to `security_role`. Its parser
+projects `ProductSecurity` without choosing a value or inferring an approval. Published base and
+sweep vectors are fictional canonical examples, and are not product policy, authorization,
+activation or a host effect. V1 and v2 bytes, readers and authority sections remain historical
+contracts.
 
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result

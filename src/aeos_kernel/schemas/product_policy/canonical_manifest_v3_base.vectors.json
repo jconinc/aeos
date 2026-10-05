@@ -1,0 +1,11 @@
+{
+  "algorithm": "canonical_manifest_bytes_v3",
+  "canonical_bytes": "canonical_manifest_v3_base.canonical",
+  "grant_set_sha256": "7ec0e9a1ec2c41abcb082cff9907b0d536e0c2fbc6eb637421db5b7d49523d25",
+  "input": "canonical_manifest_v3_base.json",
+  "manifest_profile": "base",
+  "manifest_sha256": "cb1d1390b44ccae2deb82f4e2412854c55c8377cae7ec601ed58bea50de0020c",
+  "provenance": "Fictional v3 base profile; no product policy value, approval or activation.",
+  "schema": "product_manifest_v3.schema.json",
+  "schema_version": "aeos.product-manifest.v3"
+}
