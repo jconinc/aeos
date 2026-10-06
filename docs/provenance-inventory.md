@@ -386,3 +386,11 @@ grants, base/sweep confusion and old readers while retaining security and sectio
 `test_product_policy_v4_artifacts.py` checks both packaged fictional profiles and canonical
 digests against the structural schema. Historical resource/parser controls remain unchanged.
 No vector supplies real financial policy, a source qualification, authority or activation.
+
+
+C12 paid consumer integration exposed that `paid_terms._reloaded` dispatched inherited v3/v4
+values as v2. It now reconstructs the exact v4, v3, v2 or v1 canonical version before the
+existing complete-value equality check. No manifest bytes, policy flags or grant matrices
+change. `test_versioned_paid_fence_checks_complete_manifest_bytes` covers both v3/v4 profiles,
+real register decisions and altered canonical bytes, manifest digest and grant-set digest
+refusals; the existing v1/v2 paid-term suite remains the compatibility control.

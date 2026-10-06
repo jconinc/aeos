@@ -31,6 +31,8 @@ from aeos_kernel.product_policy import (
     load_canonical_manifest,
 )
 from aeos_kernel.product_policy_v2 import load_canonical_manifest_v2
+from aeos_kernel.product_policy_v3 import load_canonical_manifest_v3
+from aeos_kernel.product_policy_v4 import load_canonical_manifest_v4
 
 BRAND = "Fictional Brandname"
 CATEGORY = "respite planner"
@@ -555,3 +557,31 @@ def test_a_manifest_that_disagrees_with_its_bytes_is_refused() -> None:
     )
     assert refused.reason_code == "paid_term_class_disallowed"
     assert refused.manifest_digest == honest.manifest_digest
+
+
+@pytest.mark.parametrize("version", [3, 4])
+@pytest.mark.parametrize("profile", ["base", "correction_sweep"])
+def test_versioned_paid_fence_checks_complete_manifest_bytes(version: int, profile: str) -> None:
+    """C12/E3: shared paid fence must retain security/sweep/threshold version integrity."""
+    raw = resources.files("aeos_kernel.schemas").joinpath("product_policy")
+    suffix = "json" if version == 3 else "canonical"
+    payload = decode_strict_json(
+        raw.joinpath(f"canonical_manifest_v{version}_{profile}.{suffix}").read_bytes()
+    )
+    held = registers()
+    for term_class, binding in bind(held).items():
+        fence = payload["authority"]["paid_fence"]
+        fence[f"{PREFIX[term_class]}_term_register_digest"] = binding.digest
+        fence[f"{PREFIX[term_class]}_term_register_version"] = binding.version
+    loader = load_canonical_manifest_v3 if version == 3 else load_canonical_manifest_v4
+    policy = loader(payload)
+    surfaces = PaidSurfaces(negative_keywords=(OPERATOR,))
+    result = evaluate_paid_fence(manifest=policy, registers=held, surfaces=surfaces)
+    assert result.allowed and result.manifest_digest == policy.manifest_digest
+    for tampered in (
+        dataclasses.replace(policy, manifest_digest="0" * 64),
+        dataclasses.replace(policy, canonical_bytes=policy.canonical_bytes + b" "),
+        dataclasses.replace(policy, grant_set_digest="0" * 64),
+    ):
+        refused = evaluate_paid_fence(manifest=tampered, registers=held, surfaces=surfaces)
+        assert not refused.allowed and refused.reason_code == "manifest_integrity_failed"
