@@ -1,6 +1,6 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.13.0
+**Version:** 0.14.0
 **Date:** 6 October 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
@@ -1088,3 +1088,15 @@ and its existing Desk/CLI read exposes both coverage and missing results. These 
 are authored for the joined AEOS business candidate; runtime controls have not run in this lane.
 This is not a substitute for the broader per-move security policy, append-only audit chain,
 provider delivery proof, privacy discharge or complete cross-product operational report.
+
+### Prospective WLG service purposes (manifest v6)
+
+Manifest `aeos.product-manifest.v6` composes the unchanged v5 policy contract with
+`wlg_capture_admission` / `wlg_capture_service` and `wlg_operation_admission` /
+`wlg_operation_service`. The principal ID and class must be explicitly granted for
+that exact purpose; readback and capture grants never imply operation permission.
+The approval sections and their authority classes remain the selected v5 profile.
+V6 requires its reader capabilities and, when either WLG grant is present, the host
+capability `wlg_native_source_admission_v1`. Native source ownership, protected host
+admission, current project fences and final effect authority remain host obligations.
+Historical v1–v5 manifests retain their original closed purposes and canonical bytes.

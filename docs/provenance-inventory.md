@@ -409,3 +409,12 @@ Focused `tests/test_product_policy_v5.py` covers closed bindings, compatibility,
 refusal, section ownership, exact digest effects and both packaged fictional profiles. The
 paid fence reloads the complete v5 canonical bytes. Source controls do not grant live values,
 activation, publication or completion of the host measurement loop.
+
+### WLG service-purpose successor, 2026-10-06
+
+PB-219/PB-226 completion requires native capture and operation to have distinct
+service authority. `product_policy_v6.py` adds only those explicit purpose/class
+pairs to the immutable v5 composition; policy authority and paid-fence reload
+retain the full v6 bytes. The packaged schema and both fictional profile vectors
+are shipped alongside focused grant isolation and host-capability controls.
+No live principal grant, source owner, native project or policy adoption is created.

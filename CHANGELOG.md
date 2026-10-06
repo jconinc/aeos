@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.0 — candidate, 2026-10-06
+
+- Add prospective manifest v6 with distinct WLG capture and operation service grants.
+- Preserve v1–v5 canonical bytes and their closed purpose unions. V6 retains the v5
+  sections, profiles, security, commercial thresholds and explicit measurement binding.
+- Require the host native-source admission capability when a WLG service grant is present.
+  Parsing a grant does not authorize a native project, source owner or external effect.
+
 ## 0.13.0 — candidate, 2026-10-06
 
 - Add the closed v5 manifest source binding for an adopted Support measurement policy,
