@@ -365,6 +365,23 @@ Wema rows require explicit legacy handling in the later consumer rollout; derivi
 IDs from their prose is prohibited. No Wema database, network, model or provider operation is
 introduced into the project-neutral kernel.
 
+### Native WLG convergence and module stages — PB-235
+
+Classification: **New**, extending the existing readiness and Run contracts at source
+`cd0c835` (0.14.0), `src/aeos_kernel/pipeline.py:evaluate_release_readiness`,
+`src/aeos_kernel/release_conditions.py` and `src/aeos_kernel/gates.py:Run`.
+The retained Wema WLG completion contract supplies native scope and convergence semantics.
+
+| Source/requirement | Adaptation | Named consumer and evidence |
+| --- | --- | --- |
+| PB-235 native gap census and convergence; existing PB-199 readiness query | Frozen `WlgConvergenceScope` and `WlgConvergenceEvidence` feed the original evaluator before verdict selection; closed @2 conditions add native blockers while the versioned codec preserves archived @1 readings. | Wema's `wlg_readiness_repository` and `wema_worker.handlers.product_control_plane` persist the native source and evaluate C21 readiness. `tests/test_wlg_readiness.py`, `test_release_conditions.py` and `test_control_plane_pipeline.py` cover independent blockers, scope stability, source mismatches, malformed evidence and archived codec compatibility. |
+| Governed WLG Run stages; existing module-scoped `Run` | `WLGStage` is selected only for `prod_wlg`; other modules retain their original `Stage`. | Wema's WLG pipeline and operation handlers consume the typed Run representation. `tests/test_wlg_readiness.py` covers the closed module-stage vocabularies. |
+
+Root's focused 141 tests, strict types and Ruff pass. The bounded independent review is retained
+in Wema completion task `PACKET07-NATIVE-KERNEL-CHANGED-CLAIM-REVIEW.md`. The host still owns
+native source authentication, complete census capture, durable comparison, stage authority,
+artifact installation and live delivery. This contribution does not establish those outcomes.
+
 ### Observing-answer grammar (PB-177)
 
 Accepted PB-177 requires the grammar-only `DECLINE -> declined`, `HOLD -> held`, and

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.15.0 — candidate, 2026-10-06
+
+- Supply complete typed native WLG convergence to the existing readiness evaluator before
+  choosing its verdict. Add the closed @2 blocker contract and versioned condition codec;
+  preserve archived @1 decoding and the ordinary coverage, validation and launch bars.
+- Block carried new gaps, unresolved comparisons, open targets, incomplete commit intervals
+  and unresolved prior obligations. Scope identity binds the native project, Run, rulepack,
+  policy, schema and population without incorporating reading IDs.
+- Add module-specific WLG Run stages while preserving the stages of other modules.
+- Wema owns native evidence authentication, durable comparison and authorized effects;
+  packaging this candidate establishes none of those host outcomes.
+
 ## 0.14.0 — candidate, 2026-10-06
 
 - Add prospective manifest v6 with distinct WLG capture and operation service grants.

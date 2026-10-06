@@ -1,6 +1,6 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.14.0
+**Version:** 0.15.0
 **Date:** 6 October 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
@@ -993,9 +993,41 @@ reconstructed as current `ReleaseReadiness` objects; a host must preserve them a
 and withhold current comparison/effect claims until it has valid current inputs. There is no
 text parser or permissive missing-condition mode. Consumer migration and rollout are required
 before publishing and selecting this changed constructor. Durable sequencing, comparison,
-carry, rail authority and final host effect fences remain host responsibilities. PB-235's
-native gap census and `validation_new_gap` condition require their separate @2 contract;
-this @1 producer neither accepts that kind nor claims native repair convergence.
+carry, rail authority and final host effect fences remain host responsibilities.
+
+Version 0.15 adds the PB-235 native convergence input under `aeos.release-conditions@2`.
+The evaluator receives a frozen `WlgConvergenceEvidence` before choosing readiness. Its
+resolved scope binds the product, native binding and project, Run and stage version, rulepack,
+policy, native schema, registry and population. The scope digest includes the condition schema
+and excludes changing reading IDs, so later cuts of the same scope remain comparable. Evidence
+also names the current validation reading, bundle and census digest, their complete predecessor
+except at explicit genesis, the convergence digest, comparison state, carried gap keys, target
+closure, commit-interval completeness and unresolved prior obligations. Evidence must match
+the product, binding and validation snapshot of the ordinary readiness inputs.
+
+Supplying this evidence selects @2; omitting it retains the @1 evaluator contract. All @1
+conditions remain available in @2, with these additional zero-parameter conditions:
+
+| Condition kind | Trigger |
+| --- | --- |
+| `validation_new_gap` | A carried native gap remains; reason: "A new validation problem appeared after the repair." |
+| `validation_convergence_unavailable` | The native comparison is not comparable, including explicit genesis |
+| `validation_targets_open` | The selected targets are not closed |
+| `validation_commit_interval_incomplete` | The intervening native commits are incomplete |
+| `validation_prior_obligations_open` | Prior-scope obligations remain unresolved |
+
+Their keys remain canonical `[kind]`; source IDs, digests, counts and wording do not enter
+condition identity. Native inputs add blockers without suppressing original coverage, rule,
+warning, gate or launch-bar blockers. The codec encodes an exact `{schema, conditions}` document
+and decodes archived @1 and current @2 documents, refusing an unknown version or a condition
+outside that version. `ReleaseReadiness.condition_schema` records the selected version.
+The host authenticates and persists the native cut, resolves comparisons and fences effects;
+the kernel does not fetch native state or mutate it.
+
+Runs for `prod_wlg` use `WLGStage`: `onboarding`, `building`, `release_candidate`, `launched`.
+Other modules retain `Stage`: `seed`, `validate`, `scale`, `sustain`. Construction refuses a
+stage from the other module's vocabulary. Host-authorized WLG gate and stage operations remain
+separate from this typed Run representation.
 
 `reconcile_tasks` compares the task mirror against observed build state and surfaces
 divergence; a task the build system stopped reporting is unknown, not complete. Task

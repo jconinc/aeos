@@ -89,6 +89,7 @@ from aeos_kernel.gates import (
     SignalPredicate,
     Stage,
     StopRule,
+    WLGStage,
     evaluate_gate,
     latest_signal,
     re_measure_after_repair,
@@ -176,6 +177,8 @@ from aeos_kernel.pipeline import (
     ReleaseReadiness,
     TaskBatch,
     ValidationSnapshot,
+    WlgConvergenceEvidence,
+    WlgConvergenceScope,
     WLGProjectBinding,
     active_binding,
     binding_required_refusal,
@@ -272,7 +275,13 @@ from aeos_kernel.registry import (
     retire_blocked_by_shared_assets,
     validate_family_profile,
 )
-from aeos_kernel.release_conditions import BLOCKING_CONDITION_SCHEMA, BlockingCondition
+from aeos_kernel.release_conditions import (
+    BLOCKING_CONDITION_SCHEMA,
+    BLOCKING_CONDITION_SCHEMA_V2,
+    BlockingCondition,
+    decode_blocking_conditions,
+    encode_blocking_conditions,
+)
 from aeos_kernel.rubric import (
     CalibrationState,
     EscalationRules,
@@ -316,10 +325,11 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.14.0"
+__version__ = "0.15.0"
 
 __all__ = [
     "BLOCKING_CONDITION_SCHEMA",
+    "BLOCKING_CONDITION_SCHEMA_V2",
     "EVIDENCE_RANK",
     "PLACEHOLDER_TARGET_IDS",
     "POLICY_COMMANDS",
@@ -520,6 +530,9 @@ __all__ = [
     "ValidationScope",
     "ValidationSnapshot",
     "WLGProjectBinding",
+    "WLGStage",
+    "WlgConvergenceEvidence",
+    "WlgConvergenceScope",
     "active_binding",
     "admit_move",
     "assert_shareable",
@@ -545,10 +558,12 @@ __all__ = [
     "commit_boundary_refusal",
     "content_digest",
     "decide_move",
+    "decode_blocking_conditions",
     "decode_strict_json",
     "drain_order",
     "drain_partially",
     "duplicate_of",
+    "encode_blocking_conditions",
     "error_gaps",
     "evaluate_gate",
     "evaluate_paid_fence",

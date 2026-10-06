@@ -31,6 +31,15 @@ class Stage(StrEnum):
     SUSTAIN = "sustain"
 
 
+class WLGStage(StrEnum):
+    """The governed build module's stages, independent of marketing stages."""
+
+    ONBOARDING = "onboarding"
+    BUILDING = "building"
+    RELEASE_CANDIDATE = "release_candidate"
+    LAUNCHED = "launched"
+
+
 class RunStatus(StrEnum):
     """What the run is doing. Parked is a status, never a stage."""
 
@@ -294,14 +303,15 @@ class Run:
     run_id: str
     product_slug: str
     module_key: str
-    stage: Stage
+    stage: Stage | WLGStage
     status: RunStatus
     started_at: datetime
 
     def __post_init__(self) -> None:
         for name in ("run_id", "product_slug", "module_key"):
             required(str(getattr(self, name)), name)
-        if not isinstance(self.stage, Stage):
+        expected_stage = WLGStage if self.module_key == "prod_wlg" else Stage
+        if not isinstance(self.stage, expected_stage):
             raise ContractError("run stage is not recognized")
         if not isinstance(self.status, RunStatus):
             raise ContractError("run status is not recognized")

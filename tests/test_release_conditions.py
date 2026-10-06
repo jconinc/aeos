@@ -114,7 +114,6 @@ def test_closed_condition_identity_ignores_display_text(kind: str, params: tuple
 @pytest.mark.parametrize(
     ("kind", "params", "reason"),
     [
-        ("validation_new_gap", (), "Future schema is not @1"),
         ("unknown", (), "Unknown"),
         (True, (), "Invalid kind"),
         ("coverage_below_minimum", ("70%",), "Counts are not parameters"),

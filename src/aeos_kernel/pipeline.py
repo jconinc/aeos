@@ -11,18 +11,23 @@ why the gate and the "why is this blocked" answer can never drift apart.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
 from fractions import Fraction
-from typing import Any
+from typing import Any, Literal
 
 from aeos_kernel._validation import digest, immutable_json_object, required, utc
 from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.errors import ContractError
 from aeos_kernel.gaps import GapRow, GapSeverity
 from aeos_kernel.registry import LiabilityClass, ProductManifest, ReleaseState
-from aeos_kernel.release_conditions import BlockingCondition, validate_blocking_conditions
+from aeos_kernel.release_conditions import (
+    BLOCKING_CONDITION_SCHEMA,
+    BLOCKING_CONDITION_SCHEMA_V2,
+    BlockingCondition,
+    validate_blocking_conditions,
+)
 
 
 class BindingStatus(StrEnum):
@@ -476,6 +481,86 @@ class ProductGateManifest:
 
 
 @dataclass(frozen=True, slots=True)
+class WlgConvergenceScope:
+    """Comparable native scope; changing reading IDs does not change the scope."""
+
+    product_slug: str
+    binding_key: str
+    project_id: str
+    run_id: str
+    run_stage_version: int
+    rulepack_digest: str
+    policy_version: str
+    native_schema_version: int
+    registry_digest: str
+    population_digest: str
+
+    def __post_init__(self) -> None:
+        for name in ("product_slug", "binding_key", "project_id", "run_id", "policy_version"):
+            required(getattr(self, name), name)
+        for name in ("rulepack_digest", "registry_digest", "population_digest"):
+            digest(getattr(self, name), name)
+        for name in ("run_stage_version", "native_schema_version"):
+            if type(getattr(self, name)) is not int or getattr(self, name) <= 0:
+                raise ContractError("WLG convergence scope versions must be positive integers")
+
+    @property
+    def scope_digest(self) -> str:
+        return stable_fingerprint({"condition_schema": BLOCKING_CONDITION_SCHEMA_V2,
+                                   "wlg_scope": asdict(self)})
+
+
+@dataclass(frozen=True, slots=True)
+class WlgConvergenceEvidence:
+    """Authenticated complete native convergence, supplied before readiness evaluation."""
+
+    scope: WlgConvergenceScope
+    current_validation_snapshot_id: str
+    current_bundle_id: str
+    current_census_digest: str
+    prior_validation_snapshot_id: str | None
+    prior_bundle_id: str | None
+    prior_census_digest: str | None
+    convergence_digest: str
+    comparison_state: Literal["comparable", "genesis", "incomparable", "prior_scope_unresolved"]
+    carried_gap_keys: tuple[str, ...]
+    targets_closed: bool
+    commit_interval_complete: bool
+    prior_scope_unresolved: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.scope, WlgConvergenceScope):
+            raise ContractError("WLG convergence needs a resolved scope")
+        required(self.current_validation_snapshot_id, "current_validation_snapshot_id")
+        required(self.current_bundle_id, "current_bundle_id")
+        digest(self.current_census_digest, "current_census_digest")
+        digest(self.convergence_digest, "convergence_digest")
+        if self.comparison_state not in {
+            "comparable", "genesis", "incomparable", "prior_scope_unresolved",
+        }:
+            raise ContractError("WLG convergence comparison state is not recognized")
+        prior = (self.prior_validation_snapshot_id, self.prior_bundle_id, self.prior_census_digest)
+        if self.comparison_state == "genesis":
+            if any(value is not None for value in prior):
+                raise ContractError("WLG genesis cannot invent a predecessor")
+        elif any(value is None for value in prior):
+            raise ContractError("ordinary WLG convergence needs its complete predecessor")
+        if self.prior_validation_snapshot_id is not None:
+            required(self.prior_validation_snapshot_id, "prior_validation_snapshot_id")
+        if self.prior_bundle_id is not None:
+            required(self.prior_bundle_id, "prior_bundle_id")
+        if self.prior_census_digest is not None:
+            digest(self.prior_census_digest, "prior_census_digest")
+        for keys in (self.carried_gap_keys, self.prior_scope_unresolved):
+            if not isinstance(keys, tuple) or tuple(sorted(set(keys))) != keys:
+                raise ContractError("WLG gap keys must be a unique sorted tuple")
+            for key in keys:
+                digest(key, "WLG gap key")
+        if type(self.targets_closed) is not bool or type(self.commit_interval_complete) is not bool:
+            raise ContractError("WLG target and commit completeness must be booleans")
+
+
+@dataclass(frozen=True, slots=True)
 class ReleaseReadiness:
     """One product's releasability, and the exact reasons when it is not."""
 
@@ -488,6 +573,7 @@ class ReleaseReadiness:
     gate_manifest_id: str
     blocking_conditions: tuple[BlockingCondition, ...]
     regime_id: str = ""
+    condition_schema: str = BLOCKING_CONDITION_SCHEMA
 
     def __post_init__(self) -> None:
         required(self.product_slug, "product_slug")
@@ -498,7 +584,8 @@ class ReleaseReadiness:
             raise ContractError("a green readiness carries no blocking reasons")
         if self.readiness is not Readiness.GREEN and not self.blocking_reasons:
             raise ContractError("a readiness that is not green must say why")
-        validate_blocking_conditions(self.blocking_reasons, self.blocking_conditions)
+        validate_blocking_conditions(self.blocking_reasons, self.blocking_conditions,
+                                     schema=self.condition_schema)
 
     @property
     def is_green(self) -> bool:
@@ -515,6 +602,7 @@ class ReleaseReadiness:
             "validation_snapshot_id": self.validation_snapshot_id,
             "gate_manifest_id": self.gate_manifest_id,
             "regime_id": self.regime_id,
+            "condition_schema": self.condition_schema,
         }
 
 
@@ -527,6 +615,7 @@ def evaluate_release_readiness(
     family_coverage_thresholds: dict[str, Any],
     now: datetime,
     regime_id: str = "",
+    wlg_convergence: WlgConvergenceEvidence | None = None,
 ) -> ReleaseReadiness:
     """The single query. Everything absent is unknown, and unknown never reads as ready."""
 
@@ -535,6 +624,7 @@ def evaluate_release_readiness(
     conditions: dict[str, BlockingCondition] = {}
     parked = False
     max_errors = int(manifest.release_rule("max_open_error_gaps", 0) or 0)
+    schema = BLOCKING_CONDITION_SCHEMA if wlg_convergence is None else BLOCKING_CONDITION_SCHEMA_V2
 
     def add(kind: str, params: tuple[str, ...], reason: str) -> None:
         condition = BlockingCondition(kind, params, reason)
@@ -614,6 +704,31 @@ def evaluate_release_readiness(
                 f"{validation.error_gap_count} build error gap(s); at most {max_errors} permitted",
             )
 
+    if wlg_convergence is not None:
+        if (not isinstance(wlg_convergence, WlgConvergenceEvidence)
+            or wlg_convergence.scope.product_slug != manifest.product_slug
+            or (validation is not None and (
+                wlg_convergence.current_validation_snapshot_id != validation.snapshot_id
+                or wlg_convergence.scope.binding_key != validation.binding_id
+                or validation.product_slug != manifest.product_slug))
+            or (coverage is not None and (
+                wlg_convergence.scope.binding_key != coverage.binding_id
+                or coverage.product_slug != manifest.product_slug))):
+            raise ContractError("WLG convergence does not describe the current readiness sources")
+        if wlg_convergence.carried_gap_keys:
+            add("validation_new_gap", (), "A new validation problem appeared after the repair.")
+        if wlg_convergence.comparison_state != "comparable":
+            add("validation_convergence_unavailable", (),
+                "The validation results cannot be compared within the current build scope.")
+        if not wlg_convergence.targets_closed:
+            add("validation_targets_open", (), "The repair has not closed every original problem.")
+        if not wlg_convergence.commit_interval_complete:
+            add("validation_commit_interval_incomplete", (),
+                "The complete record of committed repairs is unavailable.")
+        if wlg_convergence.prior_scope_unresolved:
+            add("validation_prior_obligations_open", (),
+                "Unresolved validation problems remain from the earlier build scope.")
+
     if gate_manifest is None:
         add(
             "gate_manifest_missing",
@@ -647,6 +762,7 @@ def evaluate_release_readiness(
         validation_snapshot_id=validation.snapshot_id if validation else "",
         gate_manifest_id=gate_manifest.manifest_id if gate_manifest else "",
         regime_id=regime_id,
+        condition_schema=schema,
     )
 
 
