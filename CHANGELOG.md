@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.0 — candidate, 2026-10-05
+
+- Add the v4 product-policy contract composing PB-211’s closed decimal-string CAC/LTV
+  thresholds and precise commercial purpose grants with the existing v3 security and
+  base/correction-sweep profiles. The commercial owner retains the existing commercial
+  terms section. V1–v3 readers, bytes and approval maps remain unchanged. Packaged vectors
+  are fictional; this package records no financial approval, source authority or activation.
+
 ## 0.11.0 — candidate, 2026-10-05
 
 - Add the v3 product-policy manifest contract: explicit `base` or `correction_sweep` profile,

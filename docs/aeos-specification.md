@@ -1,6 +1,6 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.11.0
+**Version:** 0.12.0
 **Date:** 5 October 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
@@ -793,6 +793,20 @@ projects `ProductSecurity` without choosing a value or inferring an approval. Pu
 sweep vectors are fictional canonical examples, and are not product policy, authorization,
 activation or a host effect. V1 and v2 bytes, readers and authority sections remain historical
 contracts.
+
+The v4 contract (`aeos.product-manifest.v4`, `product_policy_v4.py`, reader `4.0.0`)
+composes that same profile and security policy with required
+`commercial.cac_ltv_thresholds`: `max_cac_usd` is a nonnegative decimal string;
+`min_ltv_cac_ratio` and `payback_months_max` are positive decimal strings. The block extends
+the existing `commercial_terms` section owned by `commercial_owner`; it creates no new
+approval section. Required capabilities include `commercial_thresholds_v1` and the v4 schema
+and canonical-byte capabilities as well as the inherited profile/security capabilities.
+The precise additional pairs are `commercial_scale_admission` /
+`commercial_scale_admission_service` (policy read only) and `commercial_paid_effect` /
+`commercial_paid_effect_worker`. Neither inherited paid-purpose grant nor sweep capability
+implies either pair, and the base profile cannot grant correction sweep. V1–v3 parsers and
+bytes remain unchanged. Values and grants require host authority; this contract supplies no
+financial values, qualified-source decision, cap, payback-canon amendment or live approval.
 
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result

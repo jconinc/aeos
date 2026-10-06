@@ -40,6 +40,7 @@ from aeos_kernel.product_policy_v2 import (
     SECTION_AUTHORITY_CLASSES_V2,
 )
 from aeos_kernel.product_policy_v3 import SCHEMA_VERSION_V3, section_authority_classes_v3
+from aeos_kernel.product_policy_v4 import SCHEMA_VERSION_V4, section_authority_classes_v4
 
 #: The closed PB-195 command surface.
 POLICY_COMMANDS: Final = (
@@ -121,13 +122,20 @@ def command_section(
 
     if command not in POLICY_COMMANDS:
         raise ContractError(f"unknown policy command {command!r}")
-    if schema_version not in {SCHEMA_VERSION, SCHEMA_VERSION_V2, SCHEMA_VERSION_V3}:
+    if schema_version not in {
+        SCHEMA_VERSION,
+        SCHEMA_VERSION_V2,
+        SCHEMA_VERSION_V3,
+        SCHEMA_VERSION_V4,
+    }:
         raise ContractError("unknown product-policy schema version")
     if command == "record_manifest_decision":
         sections = POLICY_SECTIONS_V2 if schema_version == SCHEMA_VERSION_V2 else POLICY_SECTIONS
         if schema_version == SCHEMA_VERSION_V3:
             # The storing host also checks the selected revision's exact profile.
             sections = tuple(section_authority_classes_v3("correction_sweep"))
+        if schema_version == SCHEMA_VERSION_V4:
+            sections = tuple(section_authority_classes_v4("correction_sweep"))
         if section not in sections:
             raise ContractError("a manifest decision names one policy section")
         return str(section)
@@ -158,7 +166,14 @@ def required_authority_class(
     )
     if schema_version == SCHEMA_VERSION_V3:
         classes = section_authority_classes_v3("correction_sweep")
-    if schema_version not in {SCHEMA_VERSION, SCHEMA_VERSION_V2, SCHEMA_VERSION_V3}:
+    if schema_version == SCHEMA_VERSION_V4:
+        classes = section_authority_classes_v4("correction_sweep")
+    if schema_version not in {
+        SCHEMA_VERSION,
+        SCHEMA_VERSION_V2,
+        SCHEMA_VERSION_V3,
+        SCHEMA_VERSION_V4,
+    }:
         raise ContractError("unknown product-policy schema version")
     if section_label in classes:
         return classes[section_label]

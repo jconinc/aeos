@@ -1,6 +1,6 @@
 # AEOS provenance and extraction inventory
 
-**Inventory version:** 8
+**Inventory version:** 9
 **Recorded:** 5 October 2026
 
 ## Source snapshots
@@ -373,3 +373,16 @@ Accepted PB-177 requires the grammar-only `DECLINE -> declined`, `HOLD -> held`,
 The production consumer is Wema
 `wema_commercial_guidance.aeos_rails`; `tests/test_control_plane_rails.py` covers all
 three restrictive answers and the unchanged observing decision/gaps.
+
+## Additive evidence at AEOS 0.12.0
+
+`product_policy_v4.py` implements the accepted PB-211 threshold/purpose prerequisite,
+composed with the unchanged v3 profile/security contract. It is new neutral contract code,
+not copied Wema persistence. The authoritative packet is PB-211 (SHA-256
+`1067cca052077e5377b7f31e4a3f555fe2971996d30a218e04b974a569a4a723`), retained by Wema's
+assembled C12 reconciliation receipt. Existing payback-canon authority holds remain host-owned.
+The focused `test_product_policy_v4.py` controls reject invalid/absent thresholds, imprecise
+grants, base/sweep confusion and old readers while retaining security and section coverage.
+`test_product_policy_v4_artifacts.py` checks both packaged fictional profiles and canonical
+digests against the structural schema. Historical resource/parser controls remain unchanged.
+No vector supplies real financial policy, a source qualification, authority or activation.

@@ -1,0 +1,10 @@
+{
+  "schema_version": "aeos.product-manifest.v4",
+  "manifest_profile": "base",
+  "provenance": "Fictional v4 base profile; no product policy value, approval or activation.",
+  "input": "canonical_manifest_v4_base.json",
+  "canonical_bytes": "canonical_manifest_v4_base.canonical",
+  "schema": "product_manifest_v4.schema.json",
+  "manifest_sha256": "154fe76efb367b21fb2a8ecaec177cff68c02f345dd765343924087f868e50ff",
+  "grant_set_sha256": "920f424a34f1d96a767c0f125b354dec593b100e5884457546db780e79bcadb9"
+}
