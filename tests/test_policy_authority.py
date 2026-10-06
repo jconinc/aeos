@@ -175,6 +175,7 @@ EXPECTED_COMMAND_CLASSES = {
     "rollback_manifest": "release_owner",
     "deactivate_manifest": "release_owner",
     "withdraw_latest_service_grant_set": "security_role",
+    "install_onboarding_source_index": None,
 }
 
 
@@ -233,6 +234,29 @@ def test_a_proposal_needs_only_its_exact_grant() -> None:
         decide(proposal, command="activate_manifest", section=None).status
         is PolicyAuthorityStatus.MISSING
     )
+
+
+def test_source_index_install_requires_its_exact_digest_principal_and_scope() -> None:
+    """PB-238 source installation approves neither source words nor an onboarding."""
+    subject = "sha256:" + "a" * 64
+    command = "install_onboarding_source_index"
+    source = grant(args={"subject_id": subject, "command": command,
+                         "section": "onboarding_source_index"},
+                   value={"authority_class": "example_installer",
+                          "decision_ref": "example://source-index-install"})
+    args = {"subject_id": subject, "command": command, "section": None}
+    assert command_section(command, None) == "onboarding_source_index"
+    assert decide(source, **args).authorized
+    wrong_digest = decide(source, **{**args, "subject_id": "sha256:" + "b" * 64})
+    assert wrong_digest.status is PolicyAuthorityStatus.MISSING
+    wrong_principal = decide(source, **args, principal_id="someone-else")
+    assert wrong_principal.status is PolicyAuthorityStatus.MISSING
+    proposal = decide(source, command="propose_manifest", subject_id=subject, section=None)
+    assert proposal.status is PolicyAuthorityStatus.MISSING
+    unrelated_grant = command_grant("propose_manifest", "manifest_proposal", "source_owner")
+    assert decide(unrelated_grant, **args).status is PolicyAuthorityStatus.MISSING
+    with pytest.raises(ContractError):
+        command_section(command, "onboarding_source_index")
 
 
 def test_a_grant_withdrawing_revocation_needs_both_exact_grants() -> None:

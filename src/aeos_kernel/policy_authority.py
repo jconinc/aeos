@@ -58,11 +58,13 @@ POLICY_COMMANDS: Final = (
     "rollback_manifest",
     "deactivate_manifest",
     "withdraw_latest_service_grant_set",
+    "install_onboarding_source_index",
 )
 #: The scope label a command other than a section decision or revocation is authorized under.
 PHASE_SCOPE: Final = "portfolio_phase"
 SELECTION_SCOPE: Final = "manifest_selection"
 PROPOSAL_SCOPE: Final = "manifest_proposal"
+ONBOARDING_SOURCE_SCOPE: Final = "onboarding_source_index"
 #: The authority class each command requires outside a section decision, from PB-195 R5's held
 #: human decisions: the portfolio owner holds phase and transition authority, the product owner
 #: replacement and revocation, the release owner activation generation and rollback candidate,
@@ -82,6 +84,7 @@ COMMAND_AUTHORITY_CLASSES: Final[Mapping[str, str | None]] = MappingProxyType(
         "rollback_manifest": "release_owner",
         "deactivate_manifest": "release_owner",
         "withdraw_latest_service_grant_set": "security_role",
+        "install_onboarding_source_index": None,
     }
 )
 SCOPE_KEYS: Final = frozenset({"subject_id", "command", "section", "principal_id"})
@@ -153,6 +156,8 @@ def command_section(
         return SERVICE_GRANT_WITHDRAWAL
     if command == "propose_manifest":
         return PROPOSAL_SCOPE
+    if command == "install_onboarding_source_index":
+        return ONBOARDING_SOURCE_SCOPE
     if command.endswith("_phase"):
         return PHASE_SCOPE
     return SELECTION_SCOPE
