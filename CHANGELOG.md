@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.0 — candidate, 2026-10-06
+
+- Add the closed v5 manifest source binding for an adopted Support measurement policy,
+  under the existing Support owner section and explicit host source capability.
+- Preserve v1–v4 bytes, approvals, purposes and values; reload full v5 bytes in the paid fence.
+- Publish fictional base/sweep vectors and focused compatibility/refusal controls.
+
 ## 0.12.0 — candidate, 2026-10-05
 
 - Add the v4 product-policy contract composing PB-211’s closed decimal-string CAC/LTV

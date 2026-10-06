@@ -1,0 +1,1011 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aeos.local/schemas/product_policy/product_manifest_v5.schema.json",
+  "title": "AEOS canonical product manifest v5",
+  "description": "V4 commercial thresholds composed with explicit v3 security and base/correction_sweep profiles; values and grants require host authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "product_instance_id",
+    "portfolio_phase_revision_id",
+    "manifest_version",
+    "effective_interval",
+    "service_principal_grants",
+    "modules_enabled",
+    "tone_profile",
+    "fcra_posture",
+    "credential_scopes",
+    "budget_caps",
+    "authority",
+    "commercial",
+    "content_policy",
+    "correction_policy",
+    "source_bindings",
+    "compatibility",
+    "gating",
+    "liability_class",
+    "approval_policy_ref",
+    "release_policy",
+    "wlg_sync_policy",
+    "task_generation_policy",
+    "family_overrides",
+    "manifest_profile",
+    "security"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "aeos.product-manifest.v5"
+    },
+    "product_instance_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "portfolio_phase_revision_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "manifest_version": {
+      "$ref": "#/$defs/reference"
+    },
+    "effective_interval": {
+      "$ref": "#/$defs/interval"
+    },
+    "service_principal_grants": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/service-grant"
+      }
+    },
+    "modules_enabled": {
+      "$ref": "#/$defs/identifier-set"
+    },
+    "tone_profile": {
+      "$ref": "#/$defs/tone-profile"
+    },
+    "fcra_posture": {
+      "enum": [
+        "outside_fcra",
+        "accepts_cra"
+      ]
+    },
+    "credential_scopes": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/identifier-set"
+      }
+    },
+    "budget_caps": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/budget-cap"
+      }
+    },
+    "authority": {
+      "$ref": "#/$defs/authority"
+    },
+    "commercial": {
+      "$ref": "#/$defs/commercial"
+    },
+    "content_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "review_age_days"
+      ],
+      "properties": {
+        "review_age_days": {
+          "$ref": "#/$defs/positive"
+        }
+      }
+    },
+    "correction_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clock",
+        "acknowledge_within_days",
+        "resolve_within_days",
+        "an_overdue_correction_stops_publication"
+      ],
+      "properties": {
+        "clock": {
+          "enum": [
+            "calendar_days",
+            "business_days"
+          ]
+        },
+        "acknowledge_within_days": {
+          "$ref": "#/$defs/nonnegative"
+        },
+        "resolve_within_days": {
+          "$ref": "#/$defs/nonnegative"
+        },
+        "an_overdue_correction_stops_publication": {
+          "type": "boolean"
+        }
+      }
+    },
+    "source_bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mailbox_registry",
+        "support_measure_policy"
+      ],
+      "properties": {
+        "mailbox_registry": {
+          "$ref": "#/$defs/source-binding"
+        },
+        "correction_sweep": {
+          "$ref": "#/$defs/source-binding"
+        },
+        "support_measure_policy": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/source-binding"
+            }
+          ]
+        }
+      }
+    },
+    "compatibility": {
+      "$ref": "#/$defs/compatibility"
+    },
+    "gating": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seed_approval_count",
+        "judgment_confidence_gate",
+        "park_ttl_hours",
+        "graduation_count",
+        "stale_claim_days"
+      ],
+      "properties": {
+        "seed_approval_count": {
+          "$ref": "#/$defs/nonnegative"
+        },
+        "judgment_confidence_gate": {
+          "$ref": "#/$defs/unit-decimal-positive"
+        },
+        "park_ttl_hours": {
+          "$ref": "#/$defs/positive"
+        },
+        "graduation_count": {
+          "$ref": "#/$defs/positive"
+        },
+        "stale_claim_days": {
+          "$ref": "#/$defs/positive"
+        }
+      }
+    },
+    "liability_class": {
+      "enum": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "approval_policy_ref": {
+      "$ref": "#/$defs/reference"
+    },
+    "release_policy": {
+      "$ref": "#/$defs/companion"
+    },
+    "wlg_sync_policy": {
+      "$ref": "#/$defs/companion"
+    },
+    "task_generation_policy": {
+      "$ref": "#/$defs/companion"
+    },
+    "family_overrides": {
+      "$ref": "#/$defs/companion"
+    },
+    "correction_sweep": {
+      "$ref": "#/$defs/correction-sweep"
+    },
+    "manifest_profile": {
+      "enum": [
+        "base",
+        "correction_sweep"
+      ]
+    },
+    "security": {
+      "$ref": "#/$defs/security"
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.:-]{0,127}$"
+    },
+    "identifier-set": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/identifier"
+      }
+    },
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^\\S(?:.*\\S)?$"
+    },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "positive": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nonnegative": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "decimal": {
+      "type": "string",
+      "pattern": "^\\+?\\d+(?:\\.\\d+)?$"
+    },
+    "unit-decimal": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/decimal"
+        },
+        {
+          "pattern": "^(?:0|1|0?\\.\\d+|1\\.0+)$"
+        }
+      ]
+    },
+    "unit-decimal-positive": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/unit-decimal"
+        },
+        {
+          "not": {
+            "enum": [
+              "0",
+              "0.0"
+            ]
+          }
+        }
+      ]
+    },
+    "interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "starts_at",
+        "ends_before",
+        "decision_ref"
+      ],
+      "properties": {
+        "starts_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "ends_before": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision_ref": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    },
+    "service-grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "purpose",
+        "principal_id",
+        "principal_class"
+      ],
+      "properties": {
+        "purpose": {
+          "$ref": "#/$defs/identifier"
+        },
+        "principal_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@/+-]{0,199}$"
+        },
+        "principal_class": {
+          "$ref": "#/$defs/identifier"
+        }
+      }
+    },
+    "tone-profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "voice",
+        "forbidden_phrases",
+        "allowed_claim_templates"
+      ],
+      "properties": {
+        "voice": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "forbidden_phrases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allowed_claim_templates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        }
+      }
+    },
+    "budget-cap": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "amount",
+            "unit",
+            "window"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/$defs/decimal"
+            },
+            "unit": {
+              "$ref": "#/$defs/identifier"
+            },
+            "window": {
+              "$ref": "#/$defs/identifier"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "amount",
+            "unit",
+            "window",
+            "currency"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/$defs/decimal"
+            },
+            "unit": {
+              "$ref": "#/$defs/identifier"
+            },
+            "window": {
+              "$ref": "#/$defs/identifier"
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            }
+          }
+        }
+      ]
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wedge",
+        "measurement_window_days",
+        "target_query_classes",
+        "answer_engines",
+        "citation_rate_floor",
+        "earned_citations_floor",
+        "source_diversity_min",
+        "probe_budget",
+        "owned_audience",
+        "paid_fence"
+      ],
+      "properties": {
+        "wedge": {
+          "type": "boolean"
+        },
+        "measurement_window_days": {
+          "$ref": "#/$defs/positive"
+        },
+        "target_query_classes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "question"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/identifier"
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "answer_engines": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/identifier"
+              }
+            }
+          }
+        },
+        "citation_rate_floor": {
+          "$ref": "#/$defs/unit-decimal"
+        },
+        "earned_citations_floor": {
+          "$ref": "#/$defs/nonnegative"
+        },
+        "source_diversity_min": {
+          "$ref": "#/$defs/positive"
+        },
+        "probe_budget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "probes_per_engine_per_query_class_per_window",
+            "permitted_model_refs"
+          ],
+          "properties": {
+            "probes_per_engine_per_query_class_per_window": {
+              "$ref": "#/$defs/positive"
+            },
+            "permitted_model_refs": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/reference"
+              }
+            }
+          }
+        },
+        "owned_audience": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "lawful_basis_policy",
+            "suppression_list_ref",
+            "double_opt_in"
+          ],
+          "properties": {
+            "lawful_basis_policy": {
+              "$ref": "#/$defs/reference"
+            },
+            "suppression_list_ref": {
+              "$ref": "#/$defs/reference"
+            },
+            "double_opt_in": {
+              "type": "boolean"
+            }
+          }
+        },
+        "paid_fence": {
+          "$ref": "#/$defs/paid-fence"
+        }
+      }
+    },
+    "paid-fence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allow_brand_terms",
+        "allow_category_terms",
+        "allow_third_party_operator_terms",
+        "brand_term_register_ref",
+        "brand_term_register_digest",
+        "brand_term_register_version",
+        "category_term_register_ref",
+        "category_term_register_digest",
+        "category_term_register_version",
+        "operator_term_register_ref",
+        "operator_term_register_digest",
+        "operator_term_register_version"
+      ],
+      "properties": {
+        "allow_brand_terms": {
+          "type": "boolean"
+        },
+        "allow_category_terms": {
+          "type": "boolean"
+        },
+        "allow_third_party_operator_terms": {
+          "type": "boolean"
+        },
+        "brand_term_register_ref": {
+          "$ref": "#/$defs/reference"
+        },
+        "brand_term_register_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "brand_term_register_version": {
+          "$ref": "#/$defs/reference"
+        },
+        "category_term_register_ref": {
+          "$ref": "#/$defs/reference"
+        },
+        "category_term_register_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "category_term_register_version": {
+          "$ref": "#/$defs/reference"
+        },
+        "operator_term_register_ref": {
+          "$ref": "#/$defs/reference"
+        },
+        "operator_term_register_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "operator_term_register_version": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    },
+    "commercial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_economics",
+        "renewal_attention",
+        "quote",
+        "deliverability",
+        "cac_ltv_thresholds"
+      ],
+      "properties": {
+        "unit_economics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contribution_margin_floor_minor",
+            "contribution_window_days"
+          ],
+          "properties": {
+            "contribution_margin_floor_minor": {
+              "type": "string",
+              "pattern": "^[+-]?\\d+$"
+            },
+            "contribution_window_days": {
+              "$ref": "#/$defs/positive"
+            }
+          }
+        },
+        "renewal_attention": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "review_lead_days"
+          ],
+          "properties": {
+            "review_lead_days": {
+              "$ref": "#/$defs/positive"
+            }
+          }
+        },
+        "quote": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "second_signature_above_minor"
+          ],
+          "properties": {
+            "second_signature_above_minor": {
+              "type": "string",
+              "pattern": "^\\+?\\d+$"
+            }
+          }
+        },
+        "deliverability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bounce_rate_stop",
+            "complaint_rate_stop",
+            "minimum_sent",
+            "window_days"
+          ],
+          "properties": {
+            "bounce_rate_stop": {
+              "$ref": "#/$defs/unit-decimal"
+            },
+            "complaint_rate_stop": {
+              "$ref": "#/$defs/unit-decimal"
+            },
+            "minimum_sent": {
+              "$ref": "#/$defs/positive"
+            },
+            "window_days": {
+              "$ref": "#/$defs/positive"
+            }
+          }
+        },
+        "cac_ltv_thresholds": {
+          "$ref": "#/$defs/cac-ltv-thresholds"
+        }
+      }
+    },
+    "source-binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "digest"
+      ],
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/reference"
+        },
+        "digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_reader",
+        "max_reader",
+        "required_capabilities"
+      ],
+      "properties": {
+        "min_reader": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+        },
+        "max_reader": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+        },
+        "required_capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/identifier"
+          }
+        }
+      }
+    },
+    "companion": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/companion-value"
+      }
+    },
+    "companion-value": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/companion-value"
+          }
+        },
+        {
+          "$ref": "#/$defs/companion"
+        }
+      ]
+    },
+    "calendar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "version",
+        "digest",
+        "iana_time_zone",
+        "working_days",
+        "holidays",
+        "dst_fold_rule",
+        "dst_gap_rule"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "#/$defs/reference"
+        },
+        "version": {
+          "$ref": "#/$defs/reference"
+        },
+        "digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "iana_time_zone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "working_days": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ]
+          }
+        },
+        "holidays": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "dst_fold_rule": {
+          "enum": [
+            "earlier",
+            "later",
+            "refuse"
+          ]
+        },
+        "dst_gap_rule": {
+          "enum": [
+            "next_valid",
+            "previous_valid",
+            "refuse"
+          ]
+        }
+      }
+    },
+    "correction-sweep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "version",
+        "effective_interval",
+        "source_policy_revisions",
+        "fact_authority_rule",
+        "privacy_policy_refs",
+        "retention_policy_ref",
+        "access_policy_ref",
+        "legal_hold_policy_ref",
+        "incident_policy_ref",
+        "correction_owner_policy_revision",
+        "calendar",
+        "lookback_months",
+        "lookback_algorithm_version"
+      ],
+      "properties": {
+        "policy_id": {
+          "$ref": "#/$defs/reference"
+        },
+        "version": {
+          "$ref": "#/$defs/reference"
+        },
+        "effective_interval": {
+          "$ref": "#/$defs/interval"
+        },
+        "source_policy_revisions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "fact_authority_rule": {
+          "$ref": "#/$defs/reference"
+        },
+        "privacy_policy_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "retention_policy_ref": {
+          "$ref": "#/$defs/reference"
+        },
+        "access_policy_ref": {
+          "$ref": "#/$defs/reference"
+        },
+        "legal_hold_policy_ref": {
+          "$ref": "#/$defs/reference"
+        },
+        "incident_policy_ref": {
+          "$ref": "#/$defs/reference"
+        },
+        "correction_owner_policy_revision": {
+          "$ref": "#/$defs/reference"
+        },
+        "calendar": {
+          "$ref": "#/$defs/calendar"
+        },
+        "lookback_months": {
+          "$ref": "#/$defs/positive"
+        },
+        "lookback_algorithm_version": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    },
+    "host-target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheme",
+        "host",
+        "port",
+        "purpose"
+      ],
+      "properties": {
+        "scheme": {
+          "enum": [
+            "http",
+            "https"
+          ]
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "port": {
+          "$ref": "#/$defs/positive"
+        },
+        "purpose": {
+          "$ref": "#/$defs/identifier"
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selected_hosts",
+        "untrusted_sources",
+        "go_live_mode",
+        "at_rest_required",
+        "in_transit_required",
+        "key_rotation_days",
+        "audit_retention_days"
+      ],
+      "properties": {
+        "selected_hosts": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/host-target"
+              }
+            }
+          ]
+        },
+        "untrusted_sources": {
+          "$ref": "#/$defs/identifier-set"
+        },
+        "go_live_mode": {
+          "enum": [
+            "staging",
+            "live"
+          ]
+        },
+        "at_rest_required": {
+          "type": "boolean"
+        },
+        "in_transit_required": {
+          "type": "boolean"
+        },
+        "key_rotation_days": {
+          "$ref": "#/$defs/positive"
+        },
+        "audit_retention_days": {
+          "$ref": "#/$defs/positive"
+        }
+      }
+    },
+    "cac-ltv-thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_cac_usd",
+        "min_ltv_cac_ratio",
+        "payback_months_max"
+      ],
+      "properties": {
+        "max_cac_usd": {
+          "$ref": "#/$defs/decimal"
+        },
+        "min_ltv_cac_ratio": {
+          "type": "string",
+          "pattern": "^\\+?(?:\\d*[1-9]\\d*(?:\\.\\d+)?|0+\\.\\d*[1-9]\\d*)$"
+        },
+        "payback_months_max": {
+          "type": "string",
+          "pattern": "^\\+?(?:\\d*[1-9]\\d*(?:\\.\\d+)?|0+\\.\\d*[1-9]\\d*)$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "manifest_profile": {
+            "const": "correction_sweep"
+          }
+        },
+        "required": [
+          "manifest_profile"
+        ]
+      },
+      "then": {
+        "required": [
+          "correction_sweep"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "correction_sweep"
+          ]
+        }
+      }
+    }
+  ]
+}

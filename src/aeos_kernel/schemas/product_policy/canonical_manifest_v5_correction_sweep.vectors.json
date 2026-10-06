@@ -1,0 +1,10 @@
+{
+  "schema_version": "aeos.product-manifest.v5",
+  "manifest_profile": "correction_sweep",
+  "provenance": "Fictional v5 correction_sweep profile; no product policy value, approval or activation.",
+  "input": "canonical_manifest_v5_correction_sweep.json",
+  "canonical_bytes": "canonical_manifest_v5_correction_sweep.canonical",
+  "schema": "product_manifest_v5.schema.json",
+  "manifest_sha256": "86a96c4441a01e87b343519648d75aeaba33cc37151666bac008cbbdc762e5b4",
+  "grant_set_sha256": "a12fcbc58c5287e939889d25ecf874d2f06203d3b52068e33d56fe24c7a8184e"
+}

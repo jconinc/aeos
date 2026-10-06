@@ -1,7 +1,7 @@
 # AEOS — adaptive evidence operating system
 
-**Version:** 0.12.0
-**Date:** 5 October 2026
+**Version:** 0.13.0
+**Date:** 6 October 2026
 **Status:** authoritative implementation specification for this repository  
 **First vertical:** Wema  
 **Proven source:** MultiAgentCommunication decision machinery at
@@ -807,6 +807,16 @@ The precise additional pairs are `commercial_scale_admission` /
 implies either pair, and the base profile cannot grant correction sweep. V1–v3 parsers and
 bytes remain unchanged. Values and grants require host authority; this contract supplies no
 financial values, qualified-source decision, cap, payback-canon amendment or live approval.
+
+The v5 contract (`aeos.product-manifest.v5`, `product_policy_v5.py`, reader `5.0.0`)
+adds an explicit `source_bindings.support_measure_policy` under the existing
+`source_bindings` section owned by `support_owner`. The binding is either null, meaning
+no adopted measurement policy, or a closed version/digest pair. A non-null binding
+requires the host capability `support_measure_policy_source_v1`; the kernel does not
+parse a host's policy body, adopt targets or infer a complete source inventory. V5 retains
+v4's profile, security, commercial values and exact purpose grants. The host authenticates
+the complete body against that binding and the native manifest approval/selection receipt.
+No parallel adoption Move or authority ledger is implied. V1–v4 readers and bytes stay frozen.
 
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result

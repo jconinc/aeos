@@ -394,3 +394,18 @@ existing complete-value equality check. No manifest bytes, policy flags or grant
 change. `test_versioned_paid_fence_checks_complete_manifest_bytes` covers both v3/v4 profiles,
 real register decisions and altered canonical bytes, manifest digest and grant-set digest
 refusals; the existing v1/v2 paid-term suite remains the compatibility control.
+
+## Additive source contract at AEOS 0.13.0
+
+PB-224 (SHA-256 `ee83161d63a84341d61c26fa46e13950f432c96ae7f4918c325c838085515650`)
+requires immutable, adopted measurement policy and a complete source inventory. This is new
+neutral contract code composed with `product_policy_v4.py` at
+`b83fd78e86a195521feb9be4b2803d2b99ac0df8`; no host records or effects are extracted.
+The v5 parser adds only an explicit null or version/digest source binding. Named production
+consumer: Wema's `wema_db.support_measure_policy_adoption`; it uses the existing signed manifest
+sections and sealed native ProductPolicyCommandReceipt rather than inventing an adoption Move.
+The host validates all policy values, SLA references, effective intervals and source coverage.
+Focused `tests/test_product_policy_v5.py` covers closed bindings, compatibility, old-reader
+refusal, section ownership, exact digest effects and both packaged fictional profiles. The
+paid fence reloads the complete v5 canonical bytes. Source controls do not grant live values,
+activation, publication or completion of the host measurement loop.
