@@ -818,6 +818,19 @@ v4's profile, security, commercial values and exact purpose grants. The host aut
 the complete body against that binding and the native manifest approval/selection receipt.
 No parallel adoption Move or authority ledger is implied. V1–v4 readers and bytes stay frozen.
 
+The v7 contract (`aeos.product-manifest.v7`, `product_policy_v7.py`, reader `7.0.0`)
+composes v6's distinct WLG grants with `authority.score_formula` under the existing
+`authority_targets` section. PB-187's six closed components each have decimal-string
+`lower_anchor`, `target` and positive `weight`; target exceeds the anchor and weights sum
+exactly to one independently of ambient decimal precision. Precision is exactly four and
+rounding is `half_even`. The five native citation types have nonnegative decimal-string
+authority weights. The parser supplies no value, owner mapping or permission. The host
+must separately adopt PB-187's exact formula approver mapping before using approved values
+for computation or activation. Section ownership remains the existing `authority_owner`
+class; that class alone does not resolve the source's named owner requirements. No section,
+grant or purpose is added. Prior parsers and vectors remain unchanged; both v7 profiles
+are fictional examples. Paid-fence verification reloads the complete versioned bytes.
+
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result
 that carries only reason codes and digests, never raw copy, terms or URLs.

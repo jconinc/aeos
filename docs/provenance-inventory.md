@@ -435,3 +435,16 @@ pairs to the immutable v5 composition; policy authority and paid-fence reload
 retain the full v6 bytes. The packaged schema and both fictional profile vectors
 are shipped alongside focused grant isolation and host-capability controls.
 No live principal grant, source owner, native project or policy adoption is created.
+
+### Authority formula successor, 2026-10-07
+
+PB-187's exact six-component score and five native citation types require a typed formula
+in the product manifest. This is a new neutral contract composed with immutable v6;
+no Wema model, query, owner decision or production value is extracted. Named consumer:
+Wema `wema_db.product_policy_versions`, followed by its Authority measurement producer.
+`product_policy_v7.py` binds the closed formula into the existing `authority_targets`
+section, retaining every prior purpose/class and full paid-fence integrity verification.
+`tests/test_product_policy_v7.py` covers exact decimal arithmetic, closed-schema refusal,
+section ownership, immutable prior grants, reader incompatibility and both packaged
+fictional vectors. The host's exact PB-187 formula approver mapping remains separately
+required; this parser and the inherited owner class do not invent that mapping or approval.

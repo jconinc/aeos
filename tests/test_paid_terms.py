@@ -559,7 +559,7 @@ def test_a_manifest_that_disagrees_with_its_bytes_is_refused() -> None:
     assert refused.manifest_digest == honest.manifest_digest
 
 
-@pytest.mark.parametrize("version", [3, 4, 5])
+@pytest.mark.parametrize("version", [3, 4, 5, 6, 7])
 @pytest.mark.parametrize("profile", ["base", "correction_sweep"])
 def test_versioned_paid_fence_checks_complete_manifest_bytes(version: int, profile: str) -> None:
     """C12/E3: shared paid fence must retain security/sweep/threshold version integrity."""
@@ -574,9 +574,12 @@ def test_versioned_paid_fence_checks_complete_manifest_bytes(version: int, profi
         fence[f"{PREFIX[term_class]}_term_register_digest"] = binding.digest
         fence[f"{PREFIX[term_class]}_term_register_version"] = binding.version
     from aeos_kernel.product_policy_v5 import load_canonical_manifest_v5
+    from aeos_kernel.product_policy_v6 import load_canonical_manifest_v6
+    from aeos_kernel.product_policy_v7 import load_canonical_manifest_v7
 
     loader = {3: load_canonical_manifest_v3, 4: load_canonical_manifest_v4,
-              5: load_canonical_manifest_v5}[version]
+              5: load_canonical_manifest_v5, 6: load_canonical_manifest_v6,
+              7: load_canonical_manifest_v7}[version]
     policy = loader(payload)
     surfaces = PaidSurfaces(negative_keywords=(OPERATOR,))
     result = evaluate_paid_fence(manifest=policy, registers=held, surfaces=surfaces)

@@ -1,0 +1,278 @@
+{
+  "approval_policy_ref": "example://approval/policy-1",
+  "authority": {
+    "answer_engines": [
+      {
+        "id": "engine_a"
+      },
+      {
+        "id": "engine_b"
+      }
+    ],
+    "citation_rate_floor": "0.25",
+    "earned_citations_floor": 3,
+    "measurement_window_days": 28,
+    "owned_audience": {
+      "double_opt_in": true,
+      "lawful_basis_policy": "example://policy/lawful-basis",
+      "suppression_list_ref": "example://suppression/list-1"
+    },
+    "paid_fence": {
+      "allow_brand_terms": true,
+      "allow_category_terms": true,
+      "allow_third_party_operator_terms": false,
+      "brand_term_register_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "brand_term_register_ref": "example://terms/brand",
+      "brand_term_register_version": "brand-1",
+      "category_term_register_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "category_term_register_ref": "example://terms/category",
+      "category_term_register_version": "category-1",
+      "operator_term_register_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "operator_term_register_ref": "example://terms/operator",
+      "operator_term_register_version": "operator-1"
+    },
+    "probe_budget": {
+      "permitted_model_refs": [
+        "example-model-a",
+        "example-model-b"
+      ],
+      "probes_per_engine_per_query_class_per_window": 4
+    },
+    "source_diversity_min": 2,
+    "target_query_classes": [
+      {
+        "id": "how_to_plan",
+        "question": "How do I plan care for a parent?"
+      },
+      {
+        "id": "what_to_bring",
+        "question": "What should I bring to an appointment?"
+      }
+    ],
+    "wedge": true,
+    "score_formula": {
+      "version": "fictional-authority-formula-v1",
+      "components": {
+        "earned_citation_count": {
+          "lower_anchor": "0",
+          "target": "100",
+          "weight": "0.2"
+        },
+        "source_diversity_count": {
+          "lower_anchor": "0",
+          "target": "100",
+          "weight": "0.2"
+        },
+        "answer_engine_citation_rate": {
+          "lower_anchor": "0",
+          "target": "100",
+          "weight": "0.2"
+        },
+        "owned_audience_size": {
+          "lower_anchor": "0",
+          "target": "100",
+          "weight": "0.1"
+        },
+        "brand_search_index": {
+          "lower_anchor": "0",
+          "target": "100",
+          "weight": "0.1"
+        },
+        "platform_presence_count": {
+          "lower_anchor": "0",
+          "target": "100",
+          "weight": "0.2"
+        }
+      },
+      "precision": 4,
+      "rounding": "half_even",
+      "citation_authority_weights": {
+        "journalist": "1",
+        "answer_engine": "1",
+        "directory": "1",
+        "backlink": "1",
+        "trade_press": "1"
+      }
+    }
+  },
+  "budget_caps": {
+    "model_calls": {
+      "amount": "12.5",
+      "currency": "USD",
+      "unit": "usd",
+      "window": "month"
+    },
+    "probes": {
+      "amount": "40",
+      "unit": "probe",
+      "window": "week"
+    }
+  },
+  "commercial": {
+    "cac_ltv_thresholds": {
+      "max_cac_usd": "0",
+      "min_ltv_cac_ratio": "3",
+      "payback_months_max": "12"
+    },
+    "deliverability": {
+      "bounce_rate_stop": "0.05",
+      "complaint_rate_stop": "0.001",
+      "minimum_sent": 200,
+      "window_days": 7
+    },
+    "quote": {
+      "second_signature_above_minor": "250000"
+    },
+    "renewal_attention": {
+      "review_lead_days": 30
+    },
+    "unit_economics": {
+      "contribution_margin_floor_minor": "-500",
+      "contribution_window_days": 90
+    }
+  },
+  "compatibility": {
+    "max_reader": "7.9.0",
+    "min_reader": "7.0.0",
+    "required_capabilities": [
+      "aeos.product-manifest.v1",
+      "aeos.product-manifest.v3",
+      "aeos.product-manifest.v4",
+      "aeos.product-manifest.v5",
+      "aeos.product-manifest.v6",
+      "aeos.product-manifest.v7",
+      "authority_score_formula_v1",
+      "canonical_manifest_bytes_v1",
+      "canonical_manifest_bytes_v3",
+      "canonical_manifest_bytes_v4",
+      "canonical_manifest_bytes_v5",
+      "canonical_manifest_bytes_v6",
+      "canonical_manifest_bytes_v7",
+      "commercial_thresholds_v1",
+      "product_security_v3",
+      "support_measure_policy_binding_v1",
+      "support_measure_policy_source_v1",
+      "wlg_native_source_admission_v1",
+      "wlg_service_principal_grants_v1"
+    ]
+  },
+  "content_policy": {
+    "review_age_days": 180
+  },
+  "correction_policy": {
+    "acknowledge_within_days": 2,
+    "an_overdue_correction_stops_publication": true,
+    "clock": "business_days",
+    "resolve_within_days": 10
+  },
+  "credential_scopes": {
+    "example_mail": [
+      "draft",
+      "send"
+    ]
+  },
+  "effective_interval": {
+    "decision_ref": "example://decision/interval-1",
+    "ends_before": null,
+    "starts_at": "2026-10-01T00:00:00Z"
+  },
+  "family_overrides": {},
+  "fcra_posture": "outside_fcra",
+  "gating": {
+    "graduation_count": 25,
+    "judgment_confidence_gate": "0.8",
+    "park_ttl_hours": 72,
+    "seed_approval_count": 3,
+    "stale_claim_days": 30
+  },
+  "liability_class": "B",
+  "manifest_profile": "base",
+  "manifest_version": "example-2026.09.27",
+  "modules_enabled": [
+    "care",
+    "practice"
+  ],
+  "portfolio_phase_revision_id": "0190f2a4-1b2c-7d3e-8f40-000000000001",
+  "product_instance_id": "0190f2a4-1b2c-7d3e-8f40-5a6b7c8d9e0f",
+  "release_policy": {
+    "coverage_thresholds": {
+      "min_overall": "1.0"
+    }
+  },
+  "schema_version": "aeos.product-manifest.v7",
+  "security": {
+    "at_rest_required": true,
+    "audit_retention_days": 90,
+    "go_live_mode": "staging",
+    "in_transit_required": true,
+    "key_rotation_days": 30,
+    "selected_hosts": [
+      {
+        "host": "example.org",
+        "port": 443,
+        "purpose": "model_call",
+        "scheme": "https"
+      }
+    ],
+    "untrusted_sources": [
+      "model_output"
+    ]
+  },
+  "service_principal_grants": [
+    {
+      "principal_class": "commercial_paid_effect_worker",
+      "principal_id": "fictional:commercial_paid_effect",
+      "purpose": "commercial_paid_effect"
+    },
+    {
+      "principal_class": "commercial_scale_admission_service",
+      "principal_id": "fictional:commercial_scale_admission",
+      "purpose": "commercial_scale_admission"
+    },
+    {
+      "principal_class": "marketing_effects_worker",
+      "principal_id": "example-worker-1",
+      "purpose": "paid_effect"
+    },
+    {
+      "principal_class": "product_policy_read_client",
+      "principal_id": "example-reader-1",
+      "purpose": "readback"
+    },
+    {
+      "principal_class": "wlg_capture_service",
+      "principal_id": "fictional:wlg_capture_admission",
+      "purpose": "wlg_capture_admission"
+    },
+    {
+      "principal_class": "wlg_operation_service",
+      "principal_id": "fictional:wlg_operation_admission",
+      "purpose": "wlg_operation_admission"
+    }
+  ],
+  "source_bindings": {
+    "mailbox_registry": {
+      "digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "version": "example-registry-1"
+    },
+    "support_measure_policy": {
+      "digest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "version": "fictional-measure-1"
+    }
+  },
+  "task_generation_policy": {
+    "max_open": 5
+  },
+  "tone_profile": {
+    "allowed_claim_templates": [
+      "example://claims/template-b",
+      "example://claims/template-a"
+    ],
+    "forbidden_phrases": [
+      "guaranteed cure",
+      "Example Phrase"
+    ],
+    "voice": "Plain, warm, exact \u2014 Example voice."
+  },
+  "wlg_sync_policy": {}
+}
