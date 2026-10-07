@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.0 — candidate, 2026-10-07
+
+- Add additive manifest v7 with the closed six-component Authority score formula,
+  exact decimal weights, fixed precision and rounding, and registered citation weights.
+- Bind the formula to the existing Authority targets section; preserve historical v1–v6
+  bytes, approval sections, purpose unions and service grants.
+- Publish fictional base and correction-sweep schema vectors. Parsing supplies no adopted
+  live formula, approver mapping, measurement source or computation authority.
+
 ## 0.15.0 — candidate, 2026-10-06
 
 - Supply complete typed native WLG convergence to the existing readiness evaluator before

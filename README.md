@@ -43,10 +43,15 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
 
-The current package candidate is `0.15.0` with v2 decision interchange schemas and the v1 immutable
+The current package candidate is `0.16.0` with v2 decision interchange schemas and the v1 immutable
 graph-snapshot contract. Historical v1 decision resources remain readable, but hosts must
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
+
+The 0.16.0 candidate adds manifest v7 with the exact Authority score formula under the
+existing Authority targets section. It preserves v1–v6 bytes, purposes and approval sections.
+Fictional vectors establish parsing and compatibility; adopted formula values, the exact live
+approver mapping, authenticated measurements and effects remain the host's responsibility.
 
 The 0.15.0 candidate adds versioned native WLG convergence inputs to the existing release
 readiness query. Its `aeos.release-conditions@2` result retains every ordinary release bar and
