@@ -333,7 +333,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.15.0"
+__version__ = "0.16.0"
 
 __all__ = [
     "BLOCKING_CONDITION_SCHEMA",
