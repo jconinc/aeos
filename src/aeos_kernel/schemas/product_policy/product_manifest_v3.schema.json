@@ -647,6 +647,120 @@
               "$ref": "#/$defs/positive"
             }
           }
+        },
+        "paid_pilot_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "product_id",
+            "qualification_criteria",
+            "eligible_offers",
+            "currency",
+            "minimum_net_collected_minor",
+            "distinct_by",
+            "partial_refund_rule",
+            "reconciliation_max_age_seconds",
+            "coverage_start",
+            "policy_digest"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": "PaidPilotPolicy@1"
+            },
+            "product_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "qualification_criteria": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "ref",
+                  "version",
+                  "digest"
+                ],
+                "properties": {
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^\\S+$"
+                  },
+                  "version": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^\\S+$"
+                  },
+                  "digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              }
+            },
+            "eligible_offers": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sku",
+                  "offer_id"
+                ],
+                "properties": {
+                  "sku": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "pattern": "^\\S+$"
+                  },
+                  "offer_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120,
+                    "pattern": "^\\S+$"
+                  }
+                }
+              }
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "minimum_net_collected_minor": {
+              "$ref": "#/$defs/positive"
+            },
+            "distinct_by": {
+              "enum": [
+                "client_account",
+                "opportunity",
+                "pilot_engagement"
+              ]
+            },
+            "partial_refund_rule": {
+              "enum": [
+                "exclude_any_refund",
+                "net_threshold"
+              ]
+            },
+            "reconciliation_max_age_seconds": {
+              "$ref": "#/$defs/positive"
+            },
+            "coverage_start": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "policy_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
         }
       }
     },

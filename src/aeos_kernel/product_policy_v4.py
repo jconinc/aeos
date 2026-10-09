@@ -184,12 +184,12 @@ class CanonicalProductManifestV4(CanonicalProductManifestV3):
 
     def section(self, name: str) -> dict[str, Any]:
         from aeos_kernel.errors import ContractError
-        from aeos_kernel.product_policy import _at
+        from aeos_kernel.product_policy import _section
 
         paths = section_paths_v4(self.manifest_profile)
         if name not in paths:
             raise ContractError(f"unknown policy section {name!r}")
-        return {path: _at(self.payload, path) for path in paths[name]}
+        return _section(self.payload, paths[name])
 
 
 def canonical_manifest_bytes_v4(

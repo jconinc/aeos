@@ -141,6 +141,7 @@ SECTION_PATHS: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
             "commercial.unit_economics",
             "commercial.renewal_attention",
             "commercial.quote",
+            "commercial.paid_pilot_policy",
         ),
         "deliverability": ("commercial.deliverability",),
         "content_policy": ("content_policy",),
@@ -865,7 +866,7 @@ class CanonicalProductManifest:
 
         if name not in SECTION_PATHS:
             raise ContractError(f"unknown policy section {name!r}")
-        return {path: _at(self.payload, path) for path in SECTION_PATHS[name]}
+        return _section(self.payload, SECTION_PATHS[name])
 
     def as_product_manifest(self, product_slug: str) -> ProductManifest:
         """Adapt to the control plane's ``ProductManifest`` without inventing any value."""
@@ -900,6 +901,19 @@ def _at(payload: Mapping[str, Any], path: str) -> Any:
     for part in path.split("."):
         value = value[part]
     return thaw_json(value)
+
+
+def _section(payload: Mapping[str, Any], paths: Iterable[str]) -> dict[str, Any]:
+    """Each path's value; only the optional paid-pilot policy, when absent, is left out."""
+
+    values: dict[str, Any] = {}
+    for path in paths:
+        try:
+            values[path] = _at(payload, path)
+        except KeyError:
+            if path != "commercial.paid_pilot_policy":
+                raise
+    return values
 
 
 def load_canonical_manifest(

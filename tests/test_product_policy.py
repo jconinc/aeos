@@ -394,7 +394,12 @@ EXPECTED_SECTIONS = {
     "paid_fence": ("brand_owner", ("authority.paid_fence",)),
     "commercial_terms": (
         "commercial_owner",
-        ("commercial.unit_economics", "commercial.renewal_attention", "commercial.quote"),
+        (
+            "commercial.unit_economics",
+            "commercial.renewal_attention",
+            "commercial.quote",
+            "commercial.paid_pilot_policy",
+        ),
     ),
     "deliverability": ("delivery_owner", ("commercial.deliverability",)),
     "content_policy": ("content_policy_owner", ("content_policy",)),
@@ -425,7 +430,8 @@ def test_each_section_has_its_literal_owner_and_paths() -> None:
 def test_every_policy_path_belongs_to_exactly_one_approval_section() -> None:
     covered = [path for paths in SECTION_PATHS.values() for path in paths]
     assert len(covered) == len(set(covered))
-    assert set(covered) == set(policy_leaf_paths(load_canonical_manifest(payload()).payload))
+    leaves = policy_leaf_paths(load_canonical_manifest(payload()).payload)
+    assert set(covered) == {*leaves, "commercial.paid_pilot_policy"}
     assert set(SECTION_PATHS) == set(SECTION_AUTHORITY_CLASSES) == set(POLICY_SECTIONS)
     assert "whole_manifest" not in POLICY_SECTIONS
 

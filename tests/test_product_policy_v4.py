@@ -58,7 +58,7 @@ def test_v4_roundtrip_keeps_security_sweep_and_exact_section_coverage(profile: s
     assert load_canonical_manifest_v4(policy.canonical_bytes) == policy
     paths = [path for section in section_paths_v4(profile).values() for path in section]
     assert len(paths) == len(set(paths))
-    assert set(paths) == set(policy_leaf_paths_v4(policy.payload))
+    assert set(paths) == {*policy_leaf_paths_v4(policy.payload), "commercial.paid_pilot_policy"}
     assert section_authority_classes_v4(profile)["commercial_terms"] == "commercial_owner"
     assert section_authority_classes_v4(profile)["product_security"] == "security_role"
     assert policy.product_security("fictional").manifest_digest == policy.manifest_digest

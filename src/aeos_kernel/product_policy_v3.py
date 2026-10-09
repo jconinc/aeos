@@ -21,13 +21,13 @@ from aeos_kernel.product_policy import (
     SECTION_AUTHORITY_CLASSES,
     SECTION_PATHS,
     ManifestReason,
-    _at,
     _boolean,
     _enum,
     _fail,
     _identifier,
     _object,
     _positive,
+    _section,
     _serialize,
     _set_of,
     _string,
@@ -189,7 +189,7 @@ class CanonicalProductManifestV3(CanonicalProductManifestV2):
         paths = section_paths_v3(self.manifest_profile)
         if name not in paths:
             raise ContractError(f"unknown policy section {name!r}")
-        return {path: _at(self.payload, path) for path in paths[name]}
+        return _section(self.payload, paths[name])
 
     def product_security(self, product_slug: str) -> ProductSecurity:
         return _product_security(

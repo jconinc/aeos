@@ -327,7 +327,7 @@ def test_v2_section_ownership_covers_each_leaf_once() -> None:
     covered = [path for paths in SECTION_PATHS_V2.values() for path in paths]
     assert len(covered) == len(set(covered))
     manifest = load_canonical_manifest_v2(payload_v2())
-    assert set(covered) == set(policy_leaf_paths_v2(manifest.payload))
+    assert set(covered) == {*policy_leaf_paths_v2(manifest.payload), "commercial.paid_pilot_policy"}
     assert set(POLICY_SECTIONS_V2) == set(SECTION_AUTHORITY_CLASSES_V2) == set(SECTION_PATHS_V2)
     assert SECTION_PATHS_V2["source_bindings"] == SECTION_PATHS["source_bindings"]
 

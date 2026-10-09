@@ -18,11 +18,11 @@ from aeos_kernel.errors import ContractError
 from aeos_kernel.product_policy import (
     READER_CAPABILITIES,
     ManifestReason,
-    _at,
     _fail,
     _identifier,
     _object,
     _principal_id,
+    _section,
     _serialize,
     _set_of,
     _version_key,
@@ -146,7 +146,7 @@ class CanonicalProductManifestV6(CanonicalProductManifestV5):
         paths = section_paths_v6(self.manifest_profile)
         if name not in paths:
             raise ContractError(f"unknown policy section {name!r}")
-        return {path: _at(self.payload, path) for path in paths[name]}
+        return _section(self.payload, paths[name])
 
 
 def canonical_manifest_bytes_v6(

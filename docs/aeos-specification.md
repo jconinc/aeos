@@ -831,6 +831,19 @@ class; that class alone does not resolve the source's named owner requirements. 
 grant or purpose is added. Prior parsers and vectors remain unchanged; both v7 profiles
 are fictional examples. Paid-fence verification reloads the complete versioned bytes.
 
+Package 0.17.0 lets every manifest version, v1–v7, carry an optional, closed
+`commercial.paid_pilot_policy` (`PaidPilotPolicy@1`); the v2–v7 schemas describe it. Leaving it
+out is the only way to say there is no policy: null, `{}` and empty lists are refused. A supplied
+policy is complete. Nothing defaults, there is no floor, and `commercial.pilot_floor` is not a
+policy field. The parser refuses a `product_id` that differs from `product_instance_id`
+(`manifest_identity_mismatch`) and a `policy_digest` that is not the SHA-256 of the rest of the
+policy's canonical bytes; the JSON Schema does not check either. The policy is a leaf of the
+existing `commercial_terms` section owned by `commercial_owner`, and `section` leaves it out
+when it is absent. No stored revision can carry it, so none is reinterpreted: without it, every
+vector and section view is byte-identical to 0.16.0. A 0.16 reader refuses a Manifest that
+carries it as an unknown field, so a host writes one only after all its readers run 0.17.0.
+Parsing adopts no policy value, approval or pilot floor.
+
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result
 that carries only reason codes and digests, never raw copy, terms or URLs.

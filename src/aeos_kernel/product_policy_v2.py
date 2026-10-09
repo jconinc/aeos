@@ -31,7 +31,6 @@ from aeos_kernel.product_policy import (
     ManifestContractError,
     ManifestReason,
     ServiceGrant,
-    _at,
     _boolean,
     _budget_cap,
     _check_paid_pilot_product,
@@ -49,6 +48,7 @@ from aeos_kernel.product_policy import (
     _positive,
     _principal_id,
     _reference,
+    _section,
     _semver,
     _serialize,
     _set_of,
@@ -453,7 +453,7 @@ class CanonicalProductManifestV2:
     def section(self, name: str) -> dict[str, Any]:
         if name not in SECTION_PATHS_V2:
             raise ContractError(f"unknown policy section {name!r}")
-        return {path: _at(self.payload, path) for path in SECTION_PATHS_V2[name]}
+        return _section(self.payload, SECTION_PATHS_V2[name])
 
     def as_product_manifest(self, product_slug: str) -> ProductManifest:
         """Carry the v1 host-facing control-plane fields without defaulting any value."""

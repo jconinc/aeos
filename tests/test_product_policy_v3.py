@@ -60,7 +60,7 @@ def test_closed_profiles_preserve_policy_and_approval_coverage(profile: str) -> 
         assert policy.correction_sweep
     paths = [path for section in section_paths_v3(profile).values() for path in section]
     assert len(paths) == len(set(paths))
-    assert set(paths) == set(policy_leaf_paths_v3(policy.payload))
+    assert set(paths) == {*policy_leaf_paths_v3(policy.payload), "commercial.paid_pilot_policy"}
     assert policy.section("product_security") == {"security": policy.payload["security"]}
     security = policy.product_security("example")
     assert security.manifest_digest == policy.manifest_digest

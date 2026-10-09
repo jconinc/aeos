@@ -50,7 +50,7 @@ def test_canonical_bound_policy_keeps_complete_sections_and_requires_host(profil
     assert policy.cac_ltv_thresholds == payload["commercial"]["cac_ltv_thresholds"]
     if profile == "correction_sweep":
         assert policy.correction_sweep == payload["correction_sweep"]
-    assert set(policy_leaf_paths_v5(policy.payload)) == {
+    assert {*policy_leaf_paths_v5(policy.payload), "commercial.paid_pilot_policy"} == {
         path for paths in section_paths_v5(profile).values() for path in paths
     }
     assert command_section("record_manifest_decision", "source_bindings",
