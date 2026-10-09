@@ -34,6 +34,7 @@ from aeos_kernel.product_policy import (
     _at,
     _boolean,
     _budget_cap,
+    _check_paid_pilot_product,
     _clock,
     _companion,
     _enum,
@@ -297,6 +298,7 @@ def normalize_manifest_payload_v2(payload: Mapping[str, Any]) -> dict[str, Any]:
     compatibility = normalized["compatibility"]
     if _version_key(compatibility["max_reader"]) < _version_key(compatibility["min_reader"]):
         _fail("manifest.compatibility.max_reader", "must not be earlier than min_reader")
+    _check_paid_pilot_product(normalized)
     missing_capabilities = (READER_CAPABILITIES_V2 | REQUIRED_SWEEP_HOST_CAPABILITIES_V2) - set(
         compatibility["required_capabilities"]
     )

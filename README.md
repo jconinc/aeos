@@ -43,10 +43,15 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
 
-The current package candidate is `0.16.0` with v2 decision interchange schemas and the v1 immutable
+The current package candidate is `0.17.0` with v2 decision interchange schemas and the v1 immutable
 graph-snapshot contract. Historical v1 decision resources remain readable, but hosts must
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
+
+The 0.17.0 candidate accepts an optional, closed `commercial.paid_pilot_policy`
+(`PaidPilotPolicy@1`) in every manifest version. Absence keeps every existing manifest valid and
+byte-identical; a supplied policy must be complete, name the manifest's own product and carry its
+verified canonical digest. Adopting the policy and its values remains the host's responsibility.
 
 The 0.16.0 candidate adds manifest v7 with the exact Authority score formula under the
 existing Authority targets section. It preserves v1–v6 bytes, purposes and approval sections.

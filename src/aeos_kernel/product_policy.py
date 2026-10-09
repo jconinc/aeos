@@ -175,6 +175,7 @@ CORRECTION_CLOCKS: Final = frozenset({"calendar_days", "business_days"})
 
 _UUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 _SHA256 = re.compile(r"[0-9a-fA-F]{64}")
+_LOWERCASE_SHA256 = re.compile(r"[0-9a-f]{64}")
 _IDENTIFIER = re.compile(r"[a-z][a-z0-9_.:-]{0,127}")
 _PRINCIPAL = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:@/+-]{0,199}")
 _TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
@@ -308,19 +309,26 @@ def _semver(value: Any, path: str) -> str:
 
 
 def _object(
-    fields: Mapping[str, Validator], *, nullable: frozenset[str] = frozenset()
+    fields: Mapping[str, Validator],
+    *,
+    nullable: frozenset[str] = frozenset(),
+    optional: frozenset[str] = frozenset(),
 ) -> Validator:
+    """A closed object. An absent ``optional`` key stays absent; it is never null-filled."""
+
     def validate(value: Any, path: str) -> dict[str, Any]:
         if not isinstance(value, Mapping):
             return dict(_fail(path, "must be an object"))
         unknown = sorted(set(value) - set(fields))
-        missing = sorted(set(fields) - set(value))
+        missing = sorted(set(fields) - set(value) - optional)
         if unknown:
             _fail(f"{path}.{unknown[0]}", "is not a field of this schema")
         if missing:
             _fail(f"{path}.{missing[0]}", "is required")
         result: dict[str, Any] = {}
         for key, validator in fields.items():
+            if key not in value:
+                continue
             child = value[key]
             result[key] = (
                 None if child is None and key in nullable else validator(child, f"{path}.{key}")
@@ -417,6 +425,24 @@ def _grant(value: Any, path: str) -> dict[str, str]:
 def _clock(value: Any, path: str) -> str:
     if value not in CORRECTION_CLOCKS:
         _fail(path, "must be calendar_days or business_days")
+    return str(value)
+
+
+def _token(max_length: int) -> Validator:
+    """A nonempty string with no whitespace or control character, as a SKU or source ref is."""
+
+    def validate(value: Any, path: str) -> str:
+        text = _string(value, path, max_length=max_length)
+        if any(char.isspace() or not char.isprintable() for char in text):
+            _fail(path, "must not contain whitespace or control characters")
+        return text
+
+    return validate
+
+
+def _lowercase_sha256(value: Any, path: str) -> str:
+    if not isinstance(value, str) or not _LOWERCASE_SHA256.fullmatch(value):
+        _fail(path, "must be a lowercase SHA-256 hex digest")
     return str(value)
 
 
@@ -524,6 +550,57 @@ _AUTHORITY = _object(
         "paid_fence": _PAID_FENCE,
     }
 )
+_PAID_PILOT_POLICY_FIELDS = _object(
+    {
+        "schema_version": _enum({"PaidPilotPolicy@1"}),
+        "product_id": _uuid,
+        "qualification_criteria": _ordered(
+            _object({"ref": _token(200), "version": _token(200), "digest": _lowercase_sha256}),
+            identity=lambda row: (row["ref"], row["version"]),
+            nonempty=True,
+        ),
+        "eligible_offers": _ordered(
+            _object({"sku": _token(120), "offer_id": _token(120)}),
+            identity=lambda row: row["sku"],
+            nonempty=True,
+        ),
+        "currency": _currency,
+        "minimum_net_collected_minor": _positive,
+        "distinct_by": _enum({"client_account", "opportunity", "pilot_engagement"}),
+        "partial_refund_rule": _enum({"exclude_any_refund", "net_threshold"}),
+        "reconciliation_max_age_seconds": _positive,
+        "coverage_start": _timestamp,
+        "policy_digest": _lowercase_sha256,
+    }
+)
+
+
+def _paid_pilot_policy(value: Any, path: str) -> dict[str, Any]:
+    """``PaidPilotPolicy@1``: complete when present; nothing defaults or is inferred.
+
+    ``policy_digest`` is the SHA-256 of the canonical bytes of the normalized policy without
+    that one key. ``commercial.pilot_floor`` is not part of the policy or of this schema.
+    """
+
+    policy = dict(_PAID_PILOT_POLICY_FIELDS(value, path))
+    content = {key: item for key, item in policy.items() if key != "policy_digest"}
+    if policy["policy_digest"] != hashlib.sha256(_serialize(content)).hexdigest():
+        _fail(f"{path}.policy_digest", "is not the digest of the canonical policy")
+    return policy
+
+
+def _check_paid_pilot_product(normalized: Mapping[str, Any]) -> None:
+    """A supplied paid-pilot policy names exactly the Manifest's own product."""
+
+    policy = normalized["commercial"].get("paid_pilot_policy")
+    if policy is not None and policy["product_id"] != normalized["product_instance_id"]:
+        _fail(
+            "manifest.commercial.paid_pilot_policy.product_id",
+            "differs from product_instance_id",
+            ManifestReason.IDENTITY_MISMATCH,
+        )
+
+
 _COMMERCIAL = _object(
     {
         "unit_economics": _object(
@@ -542,7 +619,9 @@ _COMMERCIAL = _object(
             }
         ),
         "quote": _object({"second_signature_above_minor": _unsigned_minor}),
-    }
+        "paid_pilot_policy": _paid_pilot_policy,
+    },
+    optional=frozenset({"paid_pilot_policy"}),
 )
 _PAYLOAD = _object(
     {
@@ -625,6 +704,7 @@ def normalize_manifest_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     compatibility = normalized["compatibility"]
     if _version_key(compatibility["max_reader"]) < _version_key(compatibility["min_reader"]):
         _fail("manifest.compatibility.max_reader", "must not be earlier than min_reader")
+    _check_paid_pilot_product(normalized)
     return normalized
 
 

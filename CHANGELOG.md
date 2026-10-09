@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.17.0 — candidate, 2026-10-09
+
+- Accept an optional, closed `commercial.paid_pilot_policy` (`PaidPilotPolicy@1`) in v1–v7
+  manifests. Absence stays valid and keeps every published vector byte-identical.
+- A supplied policy is complete: exact product, ordered qualification-criteria refs, versions and
+  digests, eligible SKU/offer pairs, currency, positive minimum net minor units, `distinct_by`,
+  partial-refund rule, positive reconciliation age, coverage start and a verified SHA-256 of its
+  canonical bytes. Nothing defaults; null, empty lists, repeats and `commercial.pilot_floor` are
+  refused. Parsing supplies no adopted policy value, approval or pilot floor.
+
 ## 0.16.0 — candidate, 2026-10-07
 
 - Add additive manifest v7 with the closed six-component Authority score formula,
