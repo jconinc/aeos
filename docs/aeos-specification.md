@@ -844,6 +844,22 @@ vector and section view is byte-identical to 0.16.0. A 0.16 reader refuses a Man
 carries it as an unknown field, so a host writes one only after all its readers run 0.17.0.
 Parsing adopts no policy value, approval or pilot floor.
 
+The v8 contract (`aeos.product-manifest.v8`, `product_policy_v8.py`, reader `8.0.0`) composes
+v7 with two adopted Wema records. The existing `authority.probe_budget` object, in the
+`budget` section owned by `finance_owner`, gains five required, nullable answer-engine
+spending limits: `window_days` (positive integer) and `per_call_ceiling_minor`,
+`window_ceiling_minor`, `daily_ceiling_minor` and `monthly_ceiling_minor` (positive
+canonical minor-unit strings). Either all five are null, meaning not approved, or all five
+are set; when set, the per-call limit is at most the window and daily limits and the daily
+limit is at most the monthly limit. The `authority_targets` section, owned by
+`authority_owner`, gains `authority.brand_search_methodology` (an identifier) and
+`authority.platform_set` (`{id, platform_keys}`, a non-empty sorted set of identifiers), each
+null while not approved. The parser supplies no amount, provider, method or platform, and
+grants no spending authority: the host admits a model call only against an active, approved
+Manifest and its own gateway limits, and checks a method or set name against its own
+registry. No section, grant or purpose is added. V1–v7 parsers, schemas and vectors stay
+unchanged and refuse a v8 Manifest; both v8 profiles are fictional examples.
+
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result
 that carries only reason codes and digests, never raw copy, terms or URLs.
