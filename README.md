@@ -48,6 +48,10 @@ graph-snapshot contract. Historical v1 decision resources remain readable, but h
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
 
+The 0.17.0 candidate also adds manifest v8, which carries the answer-engine probe spending
+ceilings and the Authority signal methods as nullable, unapproved-by-default fields. Parsing never
+approves a value, chooses a provider or grants spending authority.
+
 The 0.17.0 candidate accepts an optional, closed `commercial.paid_pilot_policy`
 (`PaidPilotPolicy@1`) in every manifest version. Absence keeps every existing manifest valid and
 byte-identical; a supplied policy must be complete, name the manifest's own product and carry its

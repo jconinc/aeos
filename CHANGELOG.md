@@ -2,6 +2,12 @@
 
 ## 0.17.0 — candidate, 2026-10-09
 
+- Add additive manifest v8. The `budget` section's `authority.probe_budget` gains `window_days`
+  and four minor-unit spending ceilings, each required and nullable; all null means not approved,
+  and a partial group or an inconsistent ceiling is refused. `authority_targets` gains
+  `authority.brand_search_methodology` and `authority.platform_set`, each null while not approved.
+- v1–v7 parsers, schemas and vectors are unchanged and refuse a v8 manifest; the paid fence reloads
+  v8 bytes. Parsing supplies no amount, provider, method, platform or spending authority.
 - Accept an optional, closed `commercial.paid_pilot_policy` (`PaidPilotPolicy@1`) in v1–v7
   manifests. Absence stays valid and keeps every published vector byte-identical.
 - A supplied policy is complete: exact product, ordered qualification-criteria refs, versions and
