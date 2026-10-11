@@ -81,9 +81,8 @@ def test_v9_vectors_round_trip(profile: str) -> None:
 
 def test_vectors_cover_an_approved_zero_and_not_approved() -> None:
     assert load_canonical_manifest_v9(candidate("base")).probe_spending == ZEROS
-    assert load_canonical_manifest_v9(candidate("correction_sweep")).probe_spending == dict.fromkeys(
-        PROBE_SPENDING_KEYS
-    )
+    sweep = load_canonical_manifest_v9(candidate("correction_sweep"))
+    assert sweep.probe_spending == dict.fromkeys(PROBE_SPENDING_KEYS)
 
 
 #: The ordering rules make some zeros imply others: per-call is at most window and daily, and
@@ -123,21 +122,23 @@ def test_all_null_is_still_not_approved() -> None:
     schema().validate(payload)
 
 
+V8_ZERO = "must be a positive amount in minor units"
+
 REFUSED = {
-    "window_days_zero": ({"window_days": 0}, "positive"),
-    "negative_amount": ({"daily_ceiling_minor": "-1"}, ""),
-    "non_numeric": ({"monthly_ceiling_minor": "free"}, ""),
-    "decimal_amount": ({"window_ceiling_minor": "0.5"}, ""),
-    "number_not_string": ({"per_call_ceiling_minor": 0}, ""),
+    "window_days_zero": ({"window_days": 0}, "must be at least 1"),
+    "negative_amount": ({"daily_ceiling_minor": "-1"}, "must not be negative"),
+    "non_numeric": ({"monthly_ceiling_minor": "free"}, "must be an integer string"),
+    "decimal_amount": ({"window_ceiling_minor": "0.5"}, "must be an integer string"),
+    "number_not_string": ({"per_call_ceiling_minor": 0}, "must be an integer string"),
 }
 
 
 @pytest.mark.parametrize("name", REFUSED)
 def test_v9_still_refuses_invalid_limits(name: str) -> None:
-    change, _ = REFUSED[name]
+    change, message = REFUSED[name]
     payload = candidate(**ZEROS)
     payload["authority"]["probe_budget"].update(change)
-    with pytest.raises(ContractError):
+    with pytest.raises(ContractError, match=message):
         load_canonical_manifest_v9(payload)
     with pytest.raises(ValidationError):
         schema().validate(payload)
@@ -158,7 +159,10 @@ def test_v9_refuses_a_mix_of_null_and_set(key: str, mode: str) -> None:
     ("limits", "message"),
     [
         ({"per_call_ceiling_minor": "1"}, "exceeds window_ceiling_minor"),
-        ({"per_call_ceiling_minor": "1", "window_ceiling_minor": "5"}, "exceeds daily_ceiling_minor"),
+        (
+            {"per_call_ceiling_minor": "1", "window_ceiling_minor": "5"},
+            "exceeds daily_ceiling_minor",
+        ),
         ({"daily_ceiling_minor": "1", "per_call_ceiling_minor": "0", "monthly_ceiling_minor": "0"},
          "exceeds monthly_ceiling_minor"),
     ],
@@ -170,11 +174,11 @@ def test_v9_keeps_the_ordering_rules(limits: dict[str, Any], message: str) -> No
 
 def test_v8_still_refuses_zero_and_v9_manifest_is_not_v8() -> None:
     zeros = candidate(**ZEROS)
-    with pytest.raises(ContractError):
+    with pytest.raises(ContractError, match=V8_ZERO):
         load_canonical_manifest_v8(as_v8(zeros))
-    with pytest.raises(ContractError):
+    with pytest.raises(ContractError, match="is not a v9 schema"):
         load_canonical_manifest_v9(as_v8(zeros))
-    with pytest.raises(ContractError):
+    with pytest.raises(ContractError, match=V8_ZERO):
         load_canonical_manifest_v8(zeros)
     v8_schema = Draft202012Validator(json.loads(
         SCHEMAS.joinpath("product_manifest_v8.schema.json").read_text()

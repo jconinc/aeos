@@ -112,9 +112,11 @@ def normalize_manifest_payload_v9(payload: Mapping[str, Any]) -> dict[str, Any]:
     authority = payload.get("authority")
     if not isinstance(authority, Mapping):
         _fail("manifest.authority", "must be an object")
-    budget = cast(Mapping[str, Any], authority).get("probe_budget")
+    authority = cast(Mapping[str, Any], authority)
+    budget = authority.get("probe_budget")
     if not isinstance(budget, Mapping):
         _fail("manifest.authority.probe_budget", "must be an object")
+    budget = cast(Mapping[str, Any], budget)
     spending = normalize_probe_spending_v2(
         {key: item for key, item in budget.items() if key in PROBE_SPENDING_KEYS}
     )
