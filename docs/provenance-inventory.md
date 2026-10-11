@@ -93,6 +93,7 @@ graph, provider output, or mutable test artifact.
 | John-approved PB-195 v2 C14 correction-sweep amendment | **New contract**, not an extraction. It adds a separate closed product-manifest v2 schema, canonical input/bytes/digest vector, exact correction-sweep source binding, dedicated service grant and exclusive `support:correction_sweep` capability. V1 resources and reader history remain unchanged. | Wema correction-sweep consumer. It must independently install and declare the source-binding, queue-admission and worker-revalidation capabilities before effectful use; package resources and kernel tests prove the interchange contract only. |
 | E3 v3 product-security contract | **New contract**, not an extraction. It adds a closed `base` or `correction_sweep` profile and separately owned security policy projection with parser-generated fictional vectors. V1/v2 resources and readers remain unchanged. | Wema product-policy admission can consume the explicit security projection only after host-side authority, persistence and activation checks. The kernel carries no production value, approval, activation or effect. |
 | Qualified paid-pilot source contract (brief 03a, addendum to brief 03 §B, Wema `8979774c2`) | **New contract**, not an extraction. It adds the optional, closed `commercial.paid_pilot_policy` (`PaidPilotPolicy@1`) to manifests v1–v7 and the v2–v7 schemas as a leaf of the existing `commercial_terms` section. Absence keeps every published vector and section view byte-identical to 0.16.0. | Wema's `CommercialPaidPilotPolicyAdoption@1` revisions, written through the existing manifest/Commercial writer. The kernel checks shape, product identity and digest only; the pilot definition, minimum and eligible offers remain Commercial-owner decisions. |
+| Wema Authority evidence-sources amendment of 10 October 2026, revision 2 (rule 2A r2, decision 138) | **New contract**, not an extraction. Manifest v9 lets the four probe spending money keys be an approved "0"; nothing else changes. |
 | Wema Authority evidence-sources amendment of 10 October 2026 (adopted probe spending record 2A and brand/platform record BP §8.6) | **New contract**, not an extraction. Manifest v8 adds five required, nullable probe spending limits to `authority.probe_budget` (`budget` section) and `authority.brand_search_methodology` and `authority.platform_set` to `authority_targets`. V1–v7 resources stay byte-identical. | Wema's Manifest revisions, written through the existing manifest writer. The kernel checks shape and ceiling order only; amounts, the provider, the method and the platform set remain owner decisions. |
 
 ## Genuinely new AEOS behavior
@@ -463,3 +464,14 @@ prior purpose, class and grant. `tests/test_product_policy_v8.py` covers all-nul
 limits, ceiling order, minor-unit refusal, closed-schema refusal, section ownership, reader
 incompatibility, unchanged v7 vectors and both packaged fictional vectors. Approved values
 remain owner decisions; this parser does not invent them.
+
+### Approved probe spending limit of zero, 2026-10-11
+
+Wema's probe spending record, revision 2 (rule 2A r2, adopted as decision 138), lets a finance
+owner approve a limit of 0, meaning free checks only. Because "0" changes meaning, this is a new
+neutral contract composed with immutable v8; no Wema amount is extracted. Named consumer: Wema
+`wema_db.product_policy_versions`, followed by its answer-engine probe admission.
+`product_policy_v9.py` accepts "0" for the four money keys and leaves every other rule as in v8.
+`tests/test_product_policy_v9.py` covers each key at 0, the refusals that remain (window_days 0,
+a negative or non-numeric amount, a partly set group, a ceiling-order violation), v8 still
+refusing "0", and both packaged fictional vectors. Approved values remain owner decisions.

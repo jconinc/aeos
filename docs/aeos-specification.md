@@ -860,6 +860,17 @@ Manifest and its own gateway limits, and checks a method or set name against its
 registry. No section, grant or purpose is added. V1–v7 parsers, schemas and vectors stay
 unchanged and refuse a v8 Manifest; both v8 profiles are fictional examples.
 
+The v9 contract (`aeos.product-manifest.v9`, `product_policy_v9.py`, reader `9.0.0`, new
+capability `authority_probe_spending_v2`) composes v8 and changes one rule: the four money
+keys of `authority.probe_budget` (`per_call_ceiling_minor`, `window_ceiling_minor`,
+`daily_ceiling_minor`, `monthly_ceiling_minor`) accept the canonical minor-unit string `"0"`
+as well as positive amounts. `"0"` is an approved limit meaning free checks only; null still
+means not approved. `window_days` stays a positive integer, the five keys are still all null or
+all set, and the ordering rules are unchanged. v8 still refuses `"0"`, and a v8 reader never
+meets a limit of 0 because any Manifest carrying one uses the v9 schema version. Nothing else
+in the Manifest changes, and there is no daily count cap key: a host counts the approved
+Manifest's existing `authority.target_query_classes`. Both v9 profiles are fictional examples.
+
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result
 that carries only reason codes and digests, never raw copy, terms or URLs.

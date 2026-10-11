@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.18.0 — candidate, 2026-10-11
+
+- Add additive manifest v9 (`aeos.product-manifest.v9`, reader capability
+  `authority_probe_spending_v2`). The four `authority.probe_budget` money keys accept the
+  minor-unit string `"0"`, an approved limit meaning free checks only. `window_days` stays
+  positive, null still means not approved, the five keys stay all null or all set, and the
+  ceiling order is unchanged.
+- v1–v8 parsers, schemas and vectors are unchanged; v8 still refuses `"0"` and a v8 Manifest
+  is not a v9 Manifest. The paid fence reloads v9 bytes. There is no daily count cap key.
+
 ## 0.17.0 — candidate, 2026-10-09
 
 - Add additive manifest v8. The `budget` section's `authority.probe_budget` gains `window_days`

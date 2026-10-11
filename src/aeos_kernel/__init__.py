@@ -251,6 +251,14 @@ from aeos_kernel.product_policy_v8 import (
     canonical_manifest_bytes_v8,
     load_canonical_manifest_v8,
 )
+from aeos_kernel.product_policy_v9 import (
+    READER_CAPABILITIES_V9,
+    READER_VERSION_V9,
+    SCHEMA_VERSION_V9,
+    CanonicalProductManifestV9,
+    canonical_manifest_bytes_v9,
+    load_canonical_manifest_v9,
+)
 from aeos_kernel.rails import (
     MergedRails,
     Rail,
@@ -341,7 +349,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.17.0"
+__version__ = "0.18.0"
 
 __all__ = [
     "BLOCKING_CONDITION_SCHEMA",
@@ -355,18 +363,21 @@ __all__ = [
     "READER_CAPABILITIES_V6",
     "READER_CAPABILITIES_V7",
     "READER_CAPABILITIES_V8",
+    "READER_CAPABILITIES_V9",
     "READER_VERSION_V3",
     "READER_VERSION_V4",
     "READER_VERSION_V5",
     "READER_VERSION_V6",
     "READER_VERSION_V7",
     "READER_VERSION_V8",
+    "READER_VERSION_V9",
     "SCHEMA_VERSION_V3",
     "SCHEMA_VERSION_V4",
     "SCHEMA_VERSION_V5",
     "SCHEMA_VERSION_V6",
     "SCHEMA_VERSION_V7",
     "SCHEMA_VERSION_V8",
+    "SCHEMA_VERSION_V9",
     "SCORING_PROMPT",
     "SCORING_SYSTEM_PROMPT",
     "WLG_GATE_COMPONENTS",
@@ -396,6 +407,7 @@ __all__ = [
     "CanonicalProductManifestV6",
     "CanonicalProductManifestV7",
     "CanonicalProductManifestV8",
+    "CanonicalProductManifestV9",
     "Channel",
     "ChannelKind",
     "ChannelState",
@@ -580,6 +592,7 @@ __all__ = [
     "canonical_manifest_bytes_v6",
     "canonical_manifest_bytes_v7",
     "canonical_manifest_bytes_v8",
+    "canonical_manifest_bytes_v9",
     "classify_drift",
     "commit_boundary_refusal",
     "content_digest",
@@ -608,6 +621,7 @@ __all__ = [
     "load_canonical_manifest_v6",
     "load_canonical_manifest_v7",
     "load_canonical_manifest_v8",
+    "load_canonical_manifest_v9",
     "load_modules",
     "load_term_register",
     "manifest_digest",

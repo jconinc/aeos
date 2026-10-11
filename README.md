@@ -52,6 +52,10 @@ The 0.17.0 candidate also adds manifest v8, which carries the answer-engine prob
 ceilings and the Authority signal methods as nullable, unapproved-by-default fields. Parsing never
 approves a value, chooses a provider or grants spending authority.
 
+The 0.18.0 candidate adds manifest v9, which lets the four probe spending ceilings be an approved
+`"0"` (free checks only). It is a new schema version because "0" changes meaning; v8 still
+refuses it, and null still means not approved.
+
 The 0.17.0 candidate accepts an optional, closed `commercial.paid_pilot_policy`
 (`PaidPilotPolicy@1`) in every manifest version. Absence keeps every existing manifest valid and
 byte-identical; a supplied policy must be complete, name the manifest's own product and carry its

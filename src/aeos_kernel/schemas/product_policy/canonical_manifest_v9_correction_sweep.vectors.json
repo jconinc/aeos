@@ -1,0 +1,7 @@
+{
+  "schema": "product_manifest_v9.schema.json",
+  "input": "canonical_manifest_v9_correction_sweep.json",
+  "canonical_bytes": "canonical_manifest_v9_correction_sweep.canonical",
+  "manifest_sha256": "cbf45fa8e1c25de98473ae377f349fb259f84f35c17c2b024551ffd7b61fe26e",
+  "grant_set_sha256": "3f174bc0138e2c3f4cae5719588c9f6237514bde54b0f5c4b853622e5c6dcdc9"
+}
