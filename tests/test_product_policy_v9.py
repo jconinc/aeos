@@ -178,7 +178,7 @@ def test_v8_still_refuses_zero_and_v9_manifest_is_not_v8() -> None:
         load_canonical_manifest_v8(as_v8(zeros))
     with pytest.raises(ContractError, match="is not a v9 schema"):
         load_canonical_manifest_v9(as_v8(zeros))
-    with pytest.raises(ContractError, match=V8_ZERO):
+    with pytest.raises(ContractError, match="is not a v8 schema"):
         load_canonical_manifest_v8(zeros)
     v8_schema = Draft202012Validator(json.loads(
         SCHEMAS.joinpath("product_manifest_v8.schema.json").read_text()
