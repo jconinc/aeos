@@ -46,6 +46,7 @@ from aeos_kernel.product_policy_v6 import SCHEMA_VERSION_V6, section_authority_c
 from aeos_kernel.product_policy_v7 import SCHEMA_VERSION_V7, section_authority_classes_v7
 from aeos_kernel.product_policy_v8 import SCHEMA_VERSION_V8, section_authority_classes_v8
 from aeos_kernel.product_policy_v9 import SCHEMA_VERSION_V9, section_authority_classes_v9
+from aeos_kernel.product_policy_v10 import SCHEMA_VERSION_V10, section_authority_classes_v10
 
 #: The closed PB-195 command surface.
 POLICY_COMMANDS: Final = (
@@ -140,6 +141,7 @@ def command_section(
         SCHEMA_VERSION_V7,
         SCHEMA_VERSION_V8,
         SCHEMA_VERSION_V9,
+        SCHEMA_VERSION_V10,
     }:
         raise ContractError("unknown product-policy schema version")
     if command == "record_manifest_decision":
@@ -159,6 +161,8 @@ def command_section(
             sections = tuple(section_authority_classes_v8("correction_sweep"))
         if schema_version == SCHEMA_VERSION_V9:
             sections = tuple(section_authority_classes_v9("correction_sweep"))
+        if schema_version == SCHEMA_VERSION_V10:
+            sections = tuple(section_authority_classes_v10("correction_sweep"))
         if section not in sections:
             raise ContractError("a manifest decision names one policy section")
         return str(section)
@@ -203,6 +207,8 @@ def required_authority_class(
         classes = section_authority_classes_v8("correction_sweep")
     if schema_version == SCHEMA_VERSION_V9:
         classes = section_authority_classes_v9("correction_sweep")
+    if schema_version == SCHEMA_VERSION_V10:
+        classes = section_authority_classes_v10("correction_sweep")
     if schema_version not in {
         SCHEMA_VERSION,
         SCHEMA_VERSION_V2,
@@ -213,6 +219,7 @@ def required_authority_class(
         SCHEMA_VERSION_V7,
         SCHEMA_VERSION_V8,
         SCHEMA_VERSION_V9,
+        SCHEMA_VERSION_V10,
     }:
         raise ContractError("unknown product-policy schema version")
     if section_label in classes:

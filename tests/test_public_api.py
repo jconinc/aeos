@@ -12,6 +12,20 @@ def test_public_version_and_exports_are_stable() -> None:
     # Package finding: the 0.8.0 wheel previously reported 0.7.2 at runtime.
     project = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text())
     assert aeos_kernel.__version__ == project["project"]["version"]
+    for name in (
+        "READER_CAPABILITIES_V10",
+        "READER_VERSION_V10",
+        "SCHEMA_VERSION_V10",
+        "CanonicalProductManifestV10",
+        "canonical_manifest_bytes_v10",
+        "load_canonical_manifest_v10",
+        "normalize_manifest_payload_v10",
+        "policy_leaf_paths_v10",
+        "purpose_principal_classes_v10",
+        "section_authority_classes_v10",
+        "section_paths_v10",
+    ):
+        assert name in aeos_kernel.__all__ and hasattr(aeos_kernel, name)
     assert "DecisionEngine" in aeos_kernel.__all__
     assert "GraphSnapshot" in aeos_kernel.__all__
     assert "authorize_effect" in aeos_kernel.__all__

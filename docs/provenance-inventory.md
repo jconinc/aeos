@@ -95,6 +95,7 @@ graph, provider output, or mutable test artifact.
 | Qualified paid-pilot source contract (brief 03a, addendum to brief 03 §B, Wema `8979774c2`) | **New contract**, not an extraction. It adds the optional, closed `commercial.paid_pilot_policy` (`PaidPilotPolicy@1`) to manifests v1–v7 and the v2–v7 schemas as a leaf of the existing `commercial_terms` section. Absence keeps every published vector and section view byte-identical to 0.16.0. | Wema's `CommercialPaidPilotPolicyAdoption@1` revisions, written through the existing manifest/Commercial writer. The kernel checks shape, product identity and digest only; the pilot definition, minimum and eligible offers remain Commercial-owner decisions. |
 | Wema Authority evidence-sources amendment of 10 October 2026, revision 2 (rule 2A r2, decision 138) | **New contract**, not an extraction. Manifest v9 lets the four probe spending money keys be an approved "0"; nothing else changes. | Wema's Manifest revisions, written through the existing manifest writer. The kernel checks shape and ceiling order only; whether a limit is 0, an amount or not approved remains the finance owner's decision. |
 | Wema Authority evidence-sources amendment of 10 October 2026 (adopted probe spending record 2A and brand/platform record BP §8.6) | **New contract**, not an extraction. Manifest v8 adds five required, nullable probe spending limits to `authority.probe_budget` (`budget` section) and `authority.brand_search_methodology` and `authority.platform_set` to `authority_targets`. V1–v7 resources stay byte-identical. | Wema's Manifest revisions, written through the existing manifest writer. The kernel checks shape and ceiling order only; amounts, the provider, the method and the platform set remain owner decisions. |
+| Wema Operations O01, operational bindings REQ-SEC-011/034/055 (16 October 2026) | **New contract**, not an extraction. Manifest v10 composes immutable v9 with the closed four-field `security.slo_targets`, moves retention to its sole v10 location and adds the exact read-only operational-objective grant. | Wema canonical Manifest dispatch and operational-objective reader (O02), followed by v11/v12 composition. The kernel supplies no approved values, activation or breach effects. |
 
 ## Genuinely new AEOS behavior
 
@@ -475,3 +476,17 @@ neutral contract composed with immutable v8; no Wema amount is extracted. Named 
 `tests/test_product_policy_v9.py` covers each key at 0, the refusals that remain (window_days 0,
 a negative or non-numeric amount, a partly set group, a ceiling-order violation), v8 still
 refusing "0", and both packaged fictional vectors. Approved values remain owner decisions.
+
+### Operational objective successor, 2026-10-16
+
+Wema Operations O01 and the operational bindings for REQ-SEC-011/034/055 require one canonical
+four-field SLO block and a narrow policy reader. This is a new neutral contract composed with
+`product_policy_v9.py` at `cd9a1df51c52812888436e10f500d4008c737d16`; no host observation, target
+value or approved decision is extracted. Named consumer: Wema `wema_db.product_policy_versions`
+and its O02 operational-objective reader, then the v11/v12 schema successors. The immutable
+v10 normalizer owns the SLO bounds, unique retention location and exact read-only grant;
+`product_security` retains section ownership. `tests/test_product_policy_v10.py` covers canonical
+round trips, bounds, typed refusals, grants, projections, authority and unchanged v9 digests.
+The paid fence reloads all v10 canonical bytes. The wheel carries both fictional profile vectors.
+Installed-package proof and independent acceptance identify the exact wheel separately; source
+controls grant no real policy value, activation, breach action or live delivery.

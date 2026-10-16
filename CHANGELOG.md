@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.19.0 — candidate, 2026-10-16
+
+- Add immutable manifest v10 (`aeos.product-manifest.v10`, reader `10.0.0`) with the closed
+  `security.slo_targets` block: nonnegative integer RPO/RTO minutes, positive integer audit
+  retention days and positive finite delivery-receipt SLA minutes. Retention has one location.
+- The existing `product_security` section owns all four targets. The exact
+  `operational_objectives` / `operational_objectives_reader` grant reads policy only.
+  v1–v9 modules, schemas and vectors remain unchanged; paid-fence reload and policy authority
+  dispatch preserve full v10 bytes. No target, approval, activation or breach effect is supplied.
+
 ## 0.18.0 — candidate, 2026-10-11
 
 - Add additive manifest v9 (`aeos.product-manifest.v9`, reader capability

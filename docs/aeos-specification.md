@@ -871,6 +871,22 @@ meets a limit of 0 because any Manifest carrying one uses the v9 schema version.
 in the Manifest changes, and there is no daily count cap key: a host counts the approved
 Manifest's existing `authority.target_query_classes`. Both v9 profiles are fictional examples.
 
+The v10 contract (`aeos.product-manifest.v10`, `product_policy_v10.py`, reader `10.0.0`)
+composes immutable v9 with the closed `security.slo_targets` object. Its exact four keys are
+`rpo_minutes` and `rto_minutes` (nonnegative JSON integers), `audit_retention_days` (positive
+JSON integer), and `delivery_receipt_sla_minutes` (positive finite JSON number). Booleans,
+nulls, strings, missing or extra keys, wrong units and nonfinite values refuse. The previous
+`security.audit_retention_days` location is forbidden in v10, including when both are supplied;
+only the SLO block is serialized. The existing `product_security` section, owned by
+`security_role`, covers all four leaves. The new exact `operational_objectives` /
+`operational_objectives_reader` grant is read-only: it supplies no manifest approval or breach
+effect authority. The `canonical_manifest_bytes_v10` capability supplements every inherited
+capability. The existing runtime security projection reads retention from the block without
+serializing a prior-version view. V1–v9 readers, schemas and vectors stay unchanged and v9
+refuses a v10 manifest. Both v10 profiles are fictional examples. Named consumer: Wema's
+canonical Manifest dispatch and operational-objective reader (O02); v11/v12 successors compose
+this contract. Approval, numerical policy values, activation and effects remain host-owned.
+
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result
 that carries only reason codes and digests, never raw copy, terms or URLs.
