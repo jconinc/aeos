@@ -887,6 +887,17 @@ refuses a v10 manifest. Both v10 profiles are fictional examples. Named consumer
 canonical Manifest dispatch and operational-objective reader (O02); v11/v12 successors compose
 this contract. Approval, numerical policy values, activation and effects remain host-owned.
 
+The v11 contract (`aeos.product-manifest.v11`, `product_policy_v11.py`, reader `11.0.0`)
+composes immutable v10. Its `security.alert_sla` object belongs to the existing
+`product_security` section and has exactly `window_minutes: 1440` and a closed
+`seconds_by_severity` object with positive finite JSON-number targets for `critical`, `high`,
+`moderate` and `low`. The four inherited SLO fields, section counts and read-only
+`operational_objectives` grant retain their v10 meaning. V11 requires its own
+`canonical_manifest_bytes_v11` capability; prior versions remain byte-identical. The two
+packaged profiles are fictional examples. Wema's current Manifest reader and alert-SLA check
+consume the contract only after its host authority and policy binding are proven; no actual
+target, approval, activation or escalation is supplied here.
+
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result
 that carries only reason codes and digests, never raw copy, terms or URLs.

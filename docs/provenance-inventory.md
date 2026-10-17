@@ -96,6 +96,7 @@ graph, provider output, or mutable test artifact.
 | Wema Authority evidence-sources amendment of 10 October 2026, revision 2 (rule 2A r2, decision 138) | **New contract**, not an extraction. Manifest v9 lets the four probe spending money keys be an approved "0"; nothing else changes. | Wema's Manifest revisions, written through the existing manifest writer. The kernel checks shape and ceiling order only; whether a limit is 0, an amount or not approved remains the finance owner's decision. |
 | Wema Authority evidence-sources amendment of 10 October 2026 (adopted probe spending record 2A and brand/platform record BP §8.6) | **New contract**, not an extraction. Manifest v8 adds five required, nullable probe spending limits to `authority.probe_budget` (`budget` section) and `authority.brand_search_methodology` and `authority.platform_set` to `authority_targets`. V1–v7 resources stay byte-identical. | Wema's Manifest revisions, written through the existing manifest writer. The kernel checks shape and ceiling order only; amounts, the provider, the method and the platform set remain owner decisions. |
 | Wema Operations O01, operational bindings REQ-SEC-011/034/055 (16 October 2026) | **New contract**, not an extraction. Manifest v10 composes immutable v9 with the closed four-field `security.slo_targets`, moves retention to its sole v10 location and adds the exact read-only operational-objective grant. | Wema canonical Manifest dispatch and operational-objective reader (O02), followed by v11/v12 composition. The kernel supplies no approved values, activation or breach effects. |
+| Wema Operations O07, adopted alert-SLA amendment r2 (16 October 2026) | **New contract**, not an extraction. Manifest v11 composes immutable v10 with the closed four-severity `security.alert_sla` block and a fixed 24-hour window. | Wema's current operational-objective reader and alert-SLA monitor; approval, numerical limits and escalation authority remain host-owned. |
 
 ## Genuinely new AEOS behavior
 
@@ -490,3 +491,12 @@ round trips, bounds, typed refusals, grants, projections, authority and unchange
 The paid fence reloads all v10 canonical bytes. The wheel carries both fictional profile vectors.
 Installed-package proof and independent acceptance identify the exact wheel separately; source
 controls grant no real policy value, activation, breach action or live delivery.
+
+### Alert-latency successor, 2026-10-16
+
+Wema Operations O07's adopted r2 shape adds an immutable v11 `security.alert_sla` object to
+`product_policy_v10.py`'s contract. `product_security` retains ownership; the existing
+`operational_objectives` reader purpose remains read-only. The v11 normalizer and schema refuse
+missing, extra, nonpositive or nonfinite targets and retain exact decimal values in canonical
+bytes. Two fictional profile vectors and focused tests cover both profiles and v10 refusal.
+No approved value, active revision, severity route or production effect is supplied by the kernel.

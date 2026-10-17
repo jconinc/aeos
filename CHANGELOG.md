@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.20.0 — candidate, 2026-10-16
+
+- Add immutable manifest v11 (`aeos.product-manifest.v11`, reader `11.0.0`) with a closed
+  `security.alert_sla` object: literal 1440-minute window and positive finite JSON-number
+  second targets for critical, high, moderate and low. The existing `product_security`
+  section and read-only `operational_objectives` grant own and read it.
+- V10 and earlier readers, schemas and vectors remain unchanged. V11 has its own canonical
+  bytes capability and preserves exact decimal targets. The kernel grants no approval,
+  activation, numerical value or escalation effect.
+
 ## 0.19.0 — candidate, 2026-10-16
 
 - Add immutable manifest v10 (`aeos.product-manifest.v10`, reader `10.0.0`) with the closed

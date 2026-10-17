@@ -43,7 +43,7 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
 
-The current package candidate is `0.19.0` with v2 decision interchange schemas and the v1 immutable
+The current package candidate is `0.20.0` with v2 decision interchange schemas and the v1 immutable
 graph-snapshot contract. Historical v1 decision resources remain readable, but hosts must
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
@@ -55,6 +55,9 @@ approves a value, chooses a provider or grants spending authority.
 The 0.19.0 candidate adds manifest v10 with a closed `security.slo_targets` block and a
 read-only operational-objective purpose. Retention moves into that block; v1–v9 retain their
 bytes and readers. Values, approval, activation and breach effects remain host-owned.
+
+The 0.20.0 candidate adds manifest v11 with closed `security.alert_sla` targets for the four
+incident severities over a fixed 24-hour window. It supplies no approved limit or escalation.
 
 The 0.18.0 candidate adds manifest v9, which lets the four probe spending ceilings be an approved
 `"0"` (free checks only). It is a new schema version because "0" changes meaning; v8 still
