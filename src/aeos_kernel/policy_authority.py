@@ -48,6 +48,7 @@ from aeos_kernel.product_policy_v8 import SCHEMA_VERSION_V8, section_authority_c
 from aeos_kernel.product_policy_v9 import SCHEMA_VERSION_V9, section_authority_classes_v9
 from aeos_kernel.product_policy_v10 import SCHEMA_VERSION_V10, section_authority_classes_v10
 from aeos_kernel.product_policy_v11 import SCHEMA_VERSION_V11, section_authority_classes_v11
+from aeos_kernel.product_policy_v12 import SCHEMA_VERSION_V12, section_authority_classes_v12
 
 #: The closed PB-195 command surface.
 POLICY_COMMANDS: Final = (
@@ -144,6 +145,7 @@ def command_section(
         SCHEMA_VERSION_V9,
         SCHEMA_VERSION_V10,
         SCHEMA_VERSION_V11,
+        SCHEMA_VERSION_V12,
     }:
         raise ContractError("unknown product-policy schema version")
     if command == "record_manifest_decision":
@@ -167,6 +169,8 @@ def command_section(
             sections = tuple(section_authority_classes_v10("correction_sweep"))
         if schema_version == SCHEMA_VERSION_V11:
             sections = tuple(section_authority_classes_v11("correction_sweep"))
+        if schema_version == SCHEMA_VERSION_V12:
+            sections = tuple(section_authority_classes_v12("correction_sweep"))
         if section not in sections:
             raise ContractError("a manifest decision names one policy section")
         return str(section)
@@ -215,6 +219,8 @@ def required_authority_class(
         classes = section_authority_classes_v10("correction_sweep")
     if schema_version == SCHEMA_VERSION_V11:
         classes = section_authority_classes_v11("correction_sweep")
+    if schema_version == SCHEMA_VERSION_V12:
+        classes = section_authority_classes_v12("correction_sweep")
     if schema_version not in {
         SCHEMA_VERSION,
         SCHEMA_VERSION_V2,
@@ -227,6 +233,7 @@ def required_authority_class(
         SCHEMA_VERSION_V9,
         SCHEMA_VERSION_V10,
         SCHEMA_VERSION_V11,
+        SCHEMA_VERSION_V12,
     }:
         raise ContractError("unknown product-policy schema version")
     if section_label in classes:

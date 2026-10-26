@@ -39,6 +39,7 @@ from aeos_kernel.product_policy_v8 import CanonicalProductManifestV8, load_canon
 from aeos_kernel.product_policy_v9 import CanonicalProductManifestV9, load_canonical_manifest_v9
 from aeos_kernel.product_policy_v10 import CanonicalProductManifestV10, load_canonical_manifest_v10
 from aeos_kernel.product_policy_v11 import CanonicalProductManifestV11, load_canonical_manifest_v11
+from aeos_kernel.product_policy_v12 import CanonicalProductManifestV12, load_canonical_manifest_v12
 
 NORMALIZATION_VERSION: Final = "paid_term_normalize_v1"
 REGISTER_SCHEMA_VERSION: Final = "aeos.paid-term-register.v1"
@@ -522,6 +523,8 @@ def _reloaded(
         # Derived versions must be dispatched before their base dataclasses. Each reader
         # reconstructs the complete original version; projecting away fields would weaken
         # the equality check that guards flags, grants and canonical bytes.
+        if isinstance(manifest, CanonicalProductManifestV12):
+            return load_canonical_manifest_v12(manifest.canonical_bytes)
         if isinstance(manifest, CanonicalProductManifestV11):
             return load_canonical_manifest_v11(manifest.canonical_bytes)
         if isinstance(manifest, CanonicalProductManifestV10):

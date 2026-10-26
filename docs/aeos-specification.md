@@ -898,6 +898,21 @@ packaged profiles are fictional examples. Wema's current Manifest reader and ale
 consume the contract only after its host authority and policy binding are proven; no actual
 target, approval, activation or escalation is supplied here.
 
+The v12 contract (`aeos.product-manifest.v12`, `product_policy_v12.py`, reader `12.0.0`)
+composes immutable v11. Its `security.serving_surfaces` array belongs to the existing
+`product_security` section and holds exactly one closed declaration for each of
+`public_website`, `application_api` and `operator_desk`, serialized in that order. Each has
+`surface_type` equal to `surface_key`, an absolute HTTPS `endpoint_ref` without credentials,
+query or fragment, `auth_posture: "public"`, an exact decimal `uptime_target_pct` greater than 0
+and at most 100, a positive `uptime_window_seconds` multiple of 300, the literals
+`p95_latency_target_ms: 500`, `p95_window_seconds: 300`, `p95_breach_windows: 3` and
+`probe_interval_seconds: 300`, and nonblank `runtime_ref` and `decision_ref`. Booleans, numeric
+strings, nulls, nonfinite values and missing or extra keys are refused. V12 requires its own
+`canonical_manifest_bytes_v12` capability; prior versions remain byte-identical. The two packaged
+profiles are fictional examples. Wema's serving-surface probe and SLO reader own the exact
+endpoint allowlist and consume the contract only after host authority and runtime binding are
+proven; no actual target, approval or activation is supplied here.
+
 `paid_terms.py` holds the paid class fence: one `paid_term_normalize_v1` normalizer for
 registers and candidate surfaces, the eight brand/category/third-party flag rows, and a result
 that carries only reason codes and digests, never raw copy, terms or URLs.

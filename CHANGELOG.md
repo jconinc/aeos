@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.21.0 — candidate, 2026-10-18
+
+- Add immutable manifest v12 (`aeos.product-manifest.v12`, reader `12.0.0`) with a closed
+  `security.serving_surfaces` array: exactly one public declaration each for `public_website`,
+  `application_api` and `operator_desk`, an absolute HTTPS endpoint, an exact decimal uptime
+  target in (0, 100], a positive uptime window in 300-second slots, literal 500 ms / 300 s / 3
+  latency rules, a 300-second probe interval and nonblank runtime and decision references.
+- V11 and earlier readers, schemas and vectors remain unchanged. V12 has its own canonical
+  bytes capability, serializes declarations in the fixed surface order and keeps the existing
+  `product_security` section and read-only `operational_objectives` grant. The kernel supplies
+  no endpoint allowlist, target value, probe, approval or activation.
+
 ## 0.20.0 — candidate, 2026-10-16
 
 - Add immutable manifest v11 (`aeos.product-manifest.v11`, reader `11.0.0`) with a closed
