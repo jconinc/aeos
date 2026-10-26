@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.22.0 — candidate, 2026-10-26
+
+- Add `aeos_kernel.proposals.run_proposal_review`: host-owned proposal/review payloads,
+  exact source binding, at most four callbacks and one evidence-specific correction.
+  Abstention, unsupported review, hard constraints and unknown outcomes stop the episode.
+  Native call references and safe receipt references survive; hosts retain persistence,
+  durable retry holds, authority and execution. Existing decision/manifest APIs are unchanged.
+
 ## 0.21.0 — candidate, 2026-10-18
 
 - Add immutable manifest v12 (`aeos.product-manifest.v12`, reader `12.0.0`) with a closed

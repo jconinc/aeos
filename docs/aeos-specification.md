@@ -1227,3 +1227,30 @@ V6 requires its reader capabilities and, when either WLG grant is present, the h
 capability `wlg_native_source_admission_v1`. Native source ownership, protected host
 admission, current project fences and final effect authority remain host obligations.
 Historical v1–v5 manifests retain their original closed purposes and canonical bytes.
+
+
+## Bounded proposal review (AM-02, candidate 0.22)
+
+`aeos_kernel.proposals.run_proposal_review` implements revision 4 §3.3 of Wema's
+`docs/specs/reusable-wlg-aeos-assistant.md`. It accepts the existing `DecisionSubject`,
+source head pins and `TrustVerifier`, a context digest and a proposal contract version.
+Hosts supply one author, one pure validator for both rounds and one reviewer. Payloads
+remain host types. Author/reviewer callbacks each dispatch at most one native model call
+and persist its safe result before returning. Native reference uniqueness binds a fresh
+review to the exact validated proposal digest. Current source heads/revision are checked
+before the first callback and before success.
+
+There are at most two author, two reviewer and four total callback attempts, counted
+before host dispatch. Only a repairable deterministic defect or a supported repairable
+decline opens the single correction. Its same `CorrectionContext` reaches all three
+callbacks, with the rejected safe proposal/digest and full objection, or the precise
+validation defect and native call reference when no safe proposal exists. The validator
+supplies defect-specific change evidence; the second reviewer explains its resolution.
+Abstention, unsupported/malformed review, stale input, hard constraints and unknown
+outcomes terminate. Typed `ProposalCallFailure` preserves available reservation identity;
+unexpected infrastructure exceptions propagate, without hidden retry.
+
+Results contain ordered attempt outcomes, safe output/native call references and correction
+count. `review_passed` is content acceptance only. Hosts recheck authority/currentness at
+native admission and own durable cross-run holds; provider cost settlement cannot certify
+a proposal outcome. No storage, provider identity fields or execution permissions are added.

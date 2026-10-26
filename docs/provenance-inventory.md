@@ -512,3 +512,15 @@ endpoint, an out-of-range or nonfinite uptime target, substituted literals and b
 and retain exact decimal targets in canonical bytes. Two fictional profile vectors and focused
 tests cover both profiles, declaration order and v11 refusal. No endpoint allowlist, approved
 value, runtime binding or production effect is supplied by the kernel.
+
+
+## Shared proposal review — candidate 0.22 (26 October 2026)
+
+| Source / named consumers | Classification | Destination and boundary |
+| --- | --- | --- |
+| Wema `f176198b8b64d0887b014c4e04e5b25cb560202e`, `apps/worker/wema_worker/local_signoff_preparation.py::prepare_signoff_answer`; MultiAgentCommunication `5ac7239ec22a2e9ae0f5f634fb4186bac093e04a`, locally modified `claude_coord/wlg/requirement_decision_proposal.py` inspected in revision-4 source manifest | Invert bounded orchestration; host content and persistence remain adapters | `aeos_kernel.proposals.run_proposal_review`; no Wema/graph imports. One correction and four callback attempts replace separate host loops. The WLG consumer intentionally removes its nested retry allowance. |
+
+The 0.21 baseline was recovered from the complete archived O08 source. Rebuilding with
+the original build epoch produces the exact installed 0.21 wheel (the recovery receipt is
+in Wema's `reusable-assistant-impl-20261026` task). Original source commit identity remains
+unavailable; commit `371393f` records the recovered baseline without inventing that identity.
