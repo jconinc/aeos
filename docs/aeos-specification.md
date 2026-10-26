@@ -1254,3 +1254,13 @@ Results contain ordered attempt outcomes, safe output/native call references and
 count. `review_passed` is content acceptance only. Hosts recheck authority/currentness at
 native admission and own durable cross-run holds; provider cost settlement cannot certify
 a proposal outcome. No storage, provider identity fields or execution permissions are added.
+
+### Wema growth adapter AM-01 revision 1 — 26 October 2026
+
+The versioned host contract is `wema.daily_growth@3` (see `docs/wema-integration.md`).
+An explicit host option adds an effect-free no-action candidate for elective work, without
+changing the kernel's existing entailment, evidence, authority or replay rules. No eligible
+route entails waiting with zero calls; one or more routes plus waiting remain unentailed and
+require the existing two reversed-order calls. Host-owned private retention and reconsideration
+must precede dispatch, and waiting cannot skip required protection or promised completion.
+AM-01 is drafted for independent host contract review/adoption before changed behavior activates.

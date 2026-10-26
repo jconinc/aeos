@@ -9,7 +9,7 @@ to prepare one route; it cannot contact a person, publish, spend, or approve the
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from typing import Any
 
@@ -25,7 +25,8 @@ from aeos_kernel.evidence import (
 )
 
 GROWTH_ADAPTER_ID = "wema.daily_growth"
-GROWTH_ADAPTER_VERSION = "2"
+GROWTH_ADAPTER_VERSION = "3"
+GROWTH_NO_ACTION = "no_action"
 GROWTH_ACTION = "prepare_reach_route"
 GROWTH_SOURCE_REF_TYPE = "reach_route"
 GROWTH_DECISION_KIND = "research_reach_route"
@@ -74,6 +75,8 @@ class WemaReachRouteProjection:
     cash_cost_minor: int
     discovery_source: str
     has_active_opportunity: bool = False
+    suppression_reasons: tuple[str, ...] = ()
+    verified_result_count: int | None = None
 
     def safe_payload(self) -> dict[str, Any]:
         return {
@@ -98,6 +101,8 @@ class WemaReachRouteProjection:
             },
             "discovery_source": self.discovery_source,
             "has_active_opportunity": self.has_active_opportunity,
+            "suppression_reasons": list(self.suppression_reasons),
+            "verified_result_count": self.verified_result_count,
         }
 
 
@@ -249,7 +254,7 @@ def build_wema_growth_packet(
         evidence=evidence,
         authority_bundle_digest=authority_bundle_digest,
         policy=policy,
-        allowed_actions=(GROWTH_ACTION,),
+        allowed_actions=(GROWTH_ACTION, GROWTH_NO_ACTION),
         source_head_pins=dict(source_head_pins),
         adapter_id=GROWTH_ADAPTER_ID,
         adapter_version=GROWTH_ADAPTER_VERSION,
@@ -262,6 +267,7 @@ def growth_route_candidates(
     *,
     candidate_route_ids: tuple[str, ...] | None = None,
     claim_ranked_first: bool = True,
+    include_no_action: bool = False,
 ) -> tuple[Candidate, ...]:
     """Map a closed eligible route set for deterministic or model-bound selection.
 
@@ -271,15 +277,16 @@ def growth_route_candidates(
     """
 
     eligible = projection.eligible_routes
-    if not eligible:
-        return ()
     if candidate_route_ids is not None:
-        if not candidate_route_ids or len(set(candidate_route_ids)) != len(candidate_route_ids):
+        if ((not candidate_route_ids and not include_no_action)
+                or len(set(candidate_route_ids)) != len(candidate_route_ids)):
             raise ValueError("growth candidate route IDs must be nonempty and unique")
         by_id = {route.route_id: route for route in eligible}
         if any(route_id not in by_id for route_id in candidate_route_ids):
             raise ValueError("growth candidate route IDs must name currently eligible routes")
         eligible = tuple(by_id[route_id] for route_id in candidate_route_ids)
+    if not eligible:
+        return (_no_action_candidate(entailed=True),) if include_no_action else ()
     selected_id = eligible[0].route_id
     current_highlights = tuple(
         source.highlight
@@ -294,7 +301,7 @@ def growth_route_candidates(
             "Wema results."
         )
     )
-    return tuple(
+    candidates = tuple(
         Candidate(
             candidate_id=f"prepare:{route.route_id}",
             action=GROWTH_ACTION,
@@ -308,9 +315,9 @@ def growth_route_candidates(
                 "whole channel catalogue."
             ),
             uncertainty=(
-                "Source evidence is incomplete."
-                if any(source.status != "current" for source in projection.source_statuses)
-                else "Results remain uncertain until this route is tested and verified."
+                "No verified result is available; route performance is unknown."
+                if route.verified_result_count in (None, 0) else
+                "Verified cumulative results are historical observations, not a causal forecast."
             ),
             proof=EntailmentProof(
                 source_tier="product_policy",
@@ -332,6 +339,35 @@ def growth_route_candidates(
             effect=None,
         )
         for route in eligible
+    )
+    if include_no_action:
+        candidates = tuple(replace(
+            candidate, proof=replace(candidate.proof, claimed_entailed=False),
+        ) for candidate in candidates)
+        return (*candidates, _no_action_candidate())
+    return candidates
+
+
+def _no_action_candidate(*, entailed: bool = False) -> Candidate:
+    return Candidate(
+        candidate_id=GROWTH_NO_ACTION, action=GROWTH_NO_ACTION,
+        title="Wait before preparing another test",
+        explanation=("Keep existing work and decisions. Wait for a relevant change in the current "
+                     "focus, approved material, evidence or unfinished work before reconsidering "
+                     "this elective preparation. Required protection and promised completion "
+                     "continue through their existing workflows."),
+        expected_benefit="Preserve attention and avoid an unsupported or duplicate preparation.",
+        uncertainty=("Waiting may delay useful learning; the available evidence does not remove "
+                     "that uncertainty."),
+        proof=EntailmentProof(
+            source_tier="product_policy",
+            cited_evidence_ids=("growth_selection_policy", "reach_route_portfolio",
+                                "growth_source_statuses", "growth_graph_snapshot"),
+            reason=("No route is currently eligible for elective preparation." if entailed else
+                    "The growth policy permits waiting instead of elective route preparation."),
+            claimed_entailed=entailed,
+        ),
+        effect=None,
     )
 
 

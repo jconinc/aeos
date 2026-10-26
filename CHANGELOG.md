@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.0 — candidate, 2026-10-26
+
+- Extend the Wema growth adapter with opt-in effect-free no action, explicit suppression
+  and verified-result presence. Existing deterministic callers retain their behavior;
+  Wema owns contextual choice, durable recovery and all native effects.
+
 ## 0.22.0 — candidate, 2026-10-26
 
 - Add `aeos_kernel.proposals.run_proposal_review`: host-owned proposal/review payloads,

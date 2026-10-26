@@ -1,5 +1,5 @@
 # Wema integration contract
-**Contracts:** `wema.article@2`, `wema.review@1`
+**Contracts:** `wema.article@2`, `wema.review@1`, `wema.daily_growth@3`
 **Wema source inspected:** `76e7c0f4fb1df28a9b77a02e1743eec83cd5a249`
 
 ## Ownership
@@ -161,11 +161,24 @@ is reconciled against the current article/version and idempotency identity befor
 Wema's authenticated local runner may pull the closed Reach route projection and independent
 research-source states and publish their safe relationship projection to Wema's isolated local
 Memgraph store. The graph returns one ranked candidate set. A locally authenticated Codex CLI
-chooses within only that set through AEOS's `ModelGateway`; AEOS requires the same answer from the
+chooses within that set plus the registered effect-free `no_action` through AEOS's `ModelGateway`; AEOS requires the same answer from the
 forward and reversed presentations and retains both structured calls. Wema then reconstructs the
 route ranking, active-opportunity set, source receipts and graph digest and replays those calls
-through the kernel before accepting the packet. The `wema.daily_growth@2` adapter records one
-advice-only recommendation and its cited alternatives.
+through the kernel before accepting the packet. The `wema.daily_growth@3` adapter records one
+advice-only recommendation and its cited alternatives. AM-01 revision 1 is drafted in Wema's
+maintained marketing preparation contract for independent review/adoption before activation.
+The host opts into no action explicitly; unchanged deterministic adapter callers retain their
+ranked-first behavior. In model mode no route, including a lone eligible route, is entailed.
+Routes plus waiting therefore always receive two calls. An empty host-eligible route set entails
+no action with zero calls. No action carries no effect and must never map into an action/import/
+package/mutation request. Wema's private journal owns its retention and reconsideration.
+
+Route projections carry explicit suppression reasons and optional valid verified-result counts:
+`None` is unknown, zero is no observed valid result, and a positive count supports measured
+aggregates, including zero metric values. The host supplies applicable prior decisions and
+outcome limitations in its existing business evidence. The host's `wema.growth-result@2`
+projection carries comparison, benefit/uncertainty, native next step/postcondition and semantic
+reconsideration; it neither changes the kernel recommendation schema nor grants execution.
 
 The recommendation is operator preparation, not founder approval. It appears in Reach as the best
 next step and is routed to John until an exact package exists. The later package alone may enter the

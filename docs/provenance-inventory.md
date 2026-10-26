@@ -524,3 +524,14 @@ The 0.21 baseline was recovered from the complete archived O08 source. Rebuildin
 the original build epoch produces the exact installed 0.21 wheel (the recovery receipt is
 in Wema's `reusable-assistant-impl-20261026` task). Original source commit identity remains
 unavailable; commit `371393f` records the recovered baseline without inventing that identity.
+
+## Wema growth AM-01 revision 1 — 26 October 2026
+
+Source consumer: Wema base `7f32dfb3f`, commercial-guidance growth builder and existing private
+journal/API replay seams; AEOS base `32c71b8`. Reusable-assistant revision 4 §§3.1–3.2 requires
+the explicit opt-in no-action candidate in `src/aeos_kernel/adapters/wema_growth.py`, adapter
+version 3. This is host-specific behavior over the unchanged DecisionEngine, not new kernel
+orchestration. `tests/test_adapters.py` checks no-action zero-call entailment and two-call
+route/wait consensus; Wema focused submission tests cover current facts and exact call replay.
+The host retains persistence, unknown-outcome recovery and daily effect limits. AM-01 contract
+adoption and joined/runtime evidence remain separate from these source changes.

@@ -776,3 +776,51 @@ def test_wema_mail_packet_and_card_carry_no_message_text() -> None:
     # Words a message would carry and a projection cannot: the adapter has no field for them.
     for forbidden in ("dear", "hi there", "regards", "from:"):
         assert forbidden not in serialized, forbidden
+
+
+def test_am01_no_action_is_effect_free_and_zero_route_entails_waiting() -> None:
+    projection = WemaGrowthProjection(
+        analysis_day=date(2026, 9, 3), route_catalog_version="routes@1",
+        ranking_policy_version="ranking@1", routes=(), source_statuses=(),
+        graph_snapshot_digest="d" * 64, graph_generation=1,
+    )
+    packet = build_wema_growth_packet(
+        tenant_id="wema", projection=projection, authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_release": "a" * 40},
+        policy=policy(model=True, human=False, intensity=DecisionIntensity.ADVISORY),
+        observed_at=NOW,
+    )
+    candidates = growth_route_candidates(projection, candidate_route_ids=(), include_no_action=True)
+    assert len(candidates) == 1 and candidates[0].effect is None
+    recommendation = DecisionEngine(verifier=AcceptingVerifier(revision=projection.digest),
+                                    clock=FixedClock()).decide(packet, candidates)
+    assert recommendation.selected_candidate_id == "no_action"
+    assert recommendation.model_calls == ()
+
+
+def test_am01_one_route_and_waiting_require_two_calls_and_neither_is_entailed() -> None:
+    projection = WemaGrowthProjection(
+        analysis_day=date(2026, 9, 3), route_catalog_version="routes@1",
+        ranking_policy_version="ranking@1", routes=(_growth_route("first", 1),), source_statuses=(),
+        graph_snapshot_digest="d" * 64, graph_generation=1,
+    )
+    packet = build_wema_growth_packet(
+        tenant_id="wema", projection=projection, authority_bundle_digest="c" * 64,
+        source_head_pins={"wema_release": "a" * 40},
+        policy=policy(model=True, human=False, intensity=DecisionIntensity.ADVISORY),
+        observed_at=NOW,
+    )
+    candidates = growth_route_candidates(
+        projection, candidate_route_ids=("first",), include_no_action=True,
+    )
+    assert not any(candidate.proof.claimed_entailed for candidate in candidates)
+    model = ScriptedModel(
+        ["no_action", "no_action"], citations=candidates[0].proof.cited_evidence_ids,
+    )
+    recommendation = DecisionEngine(
+        verifier=AcceptingVerifier(revision=projection.digest),
+        clock=FixedClock(), model_gateway=model,
+    ).decide(packet, candidates)
+    assert recommendation.selected_candidate_id == "no_action"
+    assert len(model.requests) == 2
+    assert model.requests[0].candidate_order == tuple(reversed(model.requests[1].candidate_order))
