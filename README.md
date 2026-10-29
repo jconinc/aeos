@@ -43,7 +43,7 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
 
-The current package candidate is `0.21.0` with v2 decision interchange schemas and the v1 immutable
+The current package candidate is `0.23.0` with v2 decision interchange schemas and the v1 immutable
 graph-snapshot contract. Historical v1 decision resources remain readable, but hosts must
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
@@ -62,6 +62,15 @@ incident severities over a fixed 24-hour window. It supplies no approved limit o
 The 0.21.0 candidate adds manifest v12 with exactly three closed public serving-surface
 declarations (website, application API and operator Desk login shell). It supplies no endpoint
 allowlist, uptime value, probe, approval or activation.
+
+The 0.22.0 candidate adds `aeos_kernel.proposals.run_proposal_review`: host-owned proposal and
+review payloads bound to exact sources, at most four callbacks and one evidence-specific
+correction. Abstention, unsupported review, hard constraints and unknown outcomes stop the
+episode; hosts retain persistence, durable retry holds, authority and execution.
+
+The 0.23.0 candidate extends the Wema growth adapter with opt-in effect-free no action, explicit
+suppression and verified-result presence. Deterministic callers keep their behavior; the host owns
+contextual choice, durable recovery and every native effect.
 
 The 0.18.0 candidate adds manifest v9, which lets the four probe spending ceilings be an approved
 `"0"` (free checks only). It is a new schema version because "0" changes meaning; v8 still
