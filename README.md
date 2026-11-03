@@ -43,7 +43,7 @@ Wema evidence -> AEOS recommendation -> Wema Today -> founder decision
 The repository is intentionally independent. MultiAgentCommunication and Wema
 remain source systems and integration consumers, not copied application shells.
 
-The current package candidate is `0.23.0` with v2 decision interchange schemas and the v1 immutable
+The current package candidate is `0.24.0` with v2 decision interchange schemas and the v1 immutable
 graph-snapshot contract. Historical v1 decision resources remain readable, but hosts must
 explicitly map old records before using the stricter v2 authorizer; there are no
 authority-broadening compatibility defaults.
@@ -67,6 +67,10 @@ The 0.22.0 candidate adds `aeos_kernel.proposals.run_proposal_review`: host-owne
 review payloads bound to exact sources, at most four callbacks and one evidence-specific
 correction. Abstention, unsupported review, hard constraints and unknown outcomes stop the
 episode; hosts retain persistence, durable retry holds, authority and execution.
+
+The 0.24.0 candidate adds principle packs: expert rules as data that gate, prefer or brief the
+model, a coverage refusal (`missing_principle`), and a missing-fact refusal (`missing_fact`).
+Hosts without a pack see no change.
 
 The 0.23.0 candidate extends the Wema growth adapter with opt-in effect-free no action, explicit
 suppression and verified-result presence. Deterministic callers keep their behavior; the host owns

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.24.0 — candidate, 2026-11-03
+
+- Add principle packs (`principles.py`, extracted from WLG `standards.py` and `coverage.py`):
+  gate, prefer and judge rules with ranks, areas and doctrine sources, checked before any choice.
+- Add `missing_principle` and `missing_fact` refusals. The model may return either instead of a
+  choice, and must name the judge principles it applied. Hosts without a pack see no change.
+
 ## 0.23.0 — candidate, 2026-10-26
 
 - Extend the Wema growth adapter with opt-in effect-free no action, explicit suppression

@@ -155,7 +155,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["code", "reason", "missing_premise"],
       "properties": {
-        "code": {"enum": ["invalid_packet", "invalid_evidence", "stale_input", "cross_scope_evidence", "authority_missing", "authority_conflict", "no_eligible_candidate", "ambiguous_entailment", "model_required", "model_invalid", "model_disagreement", "model_budget_exceeded", "human_required", "human_attestation_invalid", "boundary_not_authorized", "effect_not_registered", "effect_precondition_failed", "effect_receipt_invalid", "external_confirmation_missing", "conflict"]},
+        "code": {"enum": ["invalid_packet", "invalid_evidence", "stale_input", "cross_scope_evidence", "authority_missing", "authority_conflict", "no_eligible_candidate", "ambiguous_entailment", "model_required", "model_invalid", "model_disagreement", "model_budget_exceeded", "human_required", "human_attestation_invalid", "boundary_not_authorized", "effect_not_registered", "effect_precondition_failed", "effect_receipt_invalid", "external_confirmation_missing", "conflict", "missing_principle", "missing_fact"]},
         "reason": {"$ref": "#/$defs/NonEmpty"},
         "missing_premise": {"type": "string"}
       }

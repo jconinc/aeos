@@ -8,6 +8,7 @@ from typing import Protocol
 
 from aeos_kernel.decision import Candidate, ModelDecision
 from aeos_kernel.evidence import DecisionPacket, DecisionSubject, EvidenceItem
+from aeos_kernel.principles import PrincipleBrief
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +23,8 @@ class ModelChoiceRequest:
     generation_parameters_digest: str
     context_classification: str
     cost_ceiling_minor_units: int
+    principles: tuple[PrincipleBrief, ...] = ()
+    conflict_order: tuple[str, ...] = ()
 
 
 class TrustVerifier(Protocol):

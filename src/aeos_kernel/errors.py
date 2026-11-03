@@ -27,6 +27,11 @@ class RefusalCode(StrEnum):
     EFFECT_RECEIPT_INVALID = "effect_receipt_invalid"
     EXTERNAL_CONFIRMATION_MISSING = "external_confirmation_missing"
     CONFLICT = "conflict"
+    MISSING_PRINCIPLE = "missing_principle"
+    MISSING_FACT = "missing_fact"
+
+
+MODEL_ESCALATIONS = frozenset({RefusalCode.MISSING_PRINCIPLE, RefusalCode.MISSING_FACT})
 
 
 @dataclass(frozen=True, slots=True)

@@ -63,7 +63,7 @@ from aeos_kernel.effects import (
     build_outcome_evidence,
 )
 from aeos_kernel.engine import DecisionEngine
-from aeos_kernel.errors import ContractError, Refusal, RefusalCode
+from aeos_kernel.errors import MODEL_ESCALATIONS, ContractError, Refusal, RefusalCode
 from aeos_kernel.evidence import (
     AuthorityPolicy,
     DecisionPacket,
@@ -388,14 +388,28 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.23.0"
+__version__ = "0.24.0"
+
+from aeos_kernel.principles import (
+    DECISION_FACTS_KIND,
+    PRINCIPLE_SET_KIND,
+    PrincipleBrief,
+    PrincipleKind,
+    PrincipleSet,
+    decision_facts_evidence,
+    load_principle_set,
+    principle_set_evidence,
+)
 
 __all__ = [
     "BLOCKING_CONDITION_SCHEMA",
     "BLOCKING_CONDITION_SCHEMA_V2",
+    "DECISION_FACTS_KIND",
     "EVIDENCE_RANK",
+    "MODEL_ESCALATIONS",
     "PLACEHOLDER_TARGET_IDS",
     "POLICY_COMMANDS",
+    "PRINCIPLE_SET_KIND",
     "READER_CAPABILITIES_V3",
     "READER_CAPABILITIES_V4",
     "READER_CAPABILITIES_V5",
@@ -552,6 +566,9 @@ __all__ = [
     "PolicyAuthorityStatus",
     "PredicateKind",
     "Preemption",
+    "PrincipleBrief",
+    "PrincipleKind",
+    "PrincipleSet",
     "PriorityClass",
     "PrivacyClass",
     "ProductFamily",
@@ -651,6 +668,7 @@ __all__ = [
     "commit_boundary_refusal",
     "content_digest",
     "decide_move",
+    "decision_facts_evidence",
     "decode_blocking_conditions",
     "decode_strict_json",
     "drain_order",
@@ -680,6 +698,7 @@ __all__ = [
     "load_canonical_manifest_v11",
     "load_canonical_manifest_v12",
     "load_modules",
+    "load_principle_set",
     "load_term_register",
     "manifest_digest",
     "manifest_from_mapping",
@@ -695,6 +714,7 @@ __all__ = [
     "policy_leaf_paths_v11",
     "policy_leaf_paths_v12",
     "preemptions",
+    "principle_set_evidence",
     "privacy_violations",
     "project_approval_load",
     "purpose_principal_classes_v10",

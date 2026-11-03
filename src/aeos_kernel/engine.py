@@ -9,6 +9,7 @@ from aeos_kernel.decision import Candidate, ModelDecision, Recommendation, candi
 from aeos_kernel.errors import Refusal, RefusalCode
 from aeos_kernel.evidence import DecisionPacket
 from aeos_kernel.ports import Clock, ModelChoiceRequest, ModelGateway, TrustVerifier
+from aeos_kernel.principles import PrincipleResult, apply_principles
 from aeos_kernel.verification import (
     eligible_candidates,
     highest_authority_candidates,
@@ -56,6 +57,10 @@ class DecisionEngine:
                 RefusalCode.NO_ELIGIBLE_CANDIDATE,
                 detail or "no candidate was provided",
             )
+        principled = apply_principles(packet, eligible)
+        if isinstance(principled, Refusal):
+            return self._refusal(decision_id, packet, set_digest, principled)
+        eligible = principled.pool
         entailed = tuple(
             candidate for candidate in eligible if validated_entailed(candidate, packet)
         )
@@ -68,6 +73,7 @@ class DecisionEngine:
                 top_entailed[0],
                 ordered,
                 selection_mode="auto_entailed",
+                principled=principled,
             )
         if len(top_entailed) > 1:
             return self._refused(
@@ -97,7 +103,9 @@ class DecisionEngine:
                 status=status,
             )
         model_pool = highest_authority_candidates(eligible)
-        return self._model_selected(decision_id, packet, set_digest, model_pool, ordered)
+        return self._model_selected(
+            decision_id, packet, set_digest, model_pool, ordered, principled
+        )
 
     def _model_selected(
         self,
@@ -106,6 +114,7 @@ class DecisionEngine:
         set_digest: str,
         eligible: tuple[Candidate, ...],
         all_candidates: tuple[Candidate, ...],
+        principled: PrincipleResult,
     ) -> Recommendation:
         if self.model_gateway is None:
             return self._refused(
@@ -132,11 +141,14 @@ class DecisionEngine:
             candidate_order=tuple(item.candidate_id for item in eligible),
             attempt=1,
             cost_ceiling_minor_units=packet.policy.max_model_cost_minor_units,
+            principled=principled,
         )
         first = self.model_gateway.choose(first_request)
         rejection = self._validate_model_decision(first, eligible, packet, request=first_request)
         if rejection is not None:
             return self._refusal(decision_id, packet, set_digest, rejection)
+        if first.escalation is not None:
+            return self._escalated(decision_id, packet, set_digest, (first,))
         calls = [first]
         if len(eligible) > 1:
             remaining_cost = (
@@ -149,6 +161,7 @@ class DecisionEngine:
                 candidate_order=tuple(item.candidate_id for item in reversed(eligible)),
                 attempt=2,
                 cost_ceiling_minor_units=remaining_cost,
+                principled=principled,
             )
             second = self.model_gateway.choose(second_request)
             rejection = self._validate_model_decision(
@@ -161,6 +174,8 @@ class DecisionEngine:
                 return self._refusal(
                     decision_id, packet, set_digest, rejection, model_calls=tuple(calls)
                 )
+            if second.escalation is not None:
+                return self._escalated(decision_id, packet, set_digest, (first, second))
             calls.append(second)
             if second.candidate_id != first.candidate_id:
                 return self._refused(
@@ -191,6 +206,29 @@ class DecisionEngine:
             selection_mode="model_eligible",
             model_calls=tuple(calls),
             model_rationale=first.rationale,
+            principled=principled,
+        )
+
+    @classmethod
+    def _escalated(
+        cls,
+        decision_id: str,
+        packet: DecisionPacket,
+        set_digest: str,
+        calls: tuple[ModelDecision, ...],
+    ) -> Recommendation:
+        named = calls[-1]
+        assert named.escalation is not None
+        return cls._refusal(
+            decision_id,
+            packet,
+            set_digest,
+            Refusal(
+                named.escalation,
+                "the model named a missing premise instead of choosing",
+                named.missing_premise,
+            ),
+            model_calls=calls,
         )
 
     @staticmethod
@@ -202,10 +240,12 @@ class DecisionEngine:
         candidate_order: tuple[str, ...],
         attempt: int,
         cost_ceiling_minor_units: int,
+        principled: PrincipleResult,
     ) -> ModelChoiceRequest:
+        contract = "aeos.model-choice@3" if principled.evidence_ids else "aeos.model-choice@2"
         prompt_digest = stable_fingerprint(
             {
-                "contract": "aeos.model-choice@2",
+                "contract": contract,
                 "packet_digest": packet.packet_digest,
                 "candidate_set_digest": set_digest,
                 "candidate_order": list(candidate_order),
@@ -224,6 +264,8 @@ class DecisionEngine:
             generation_parameters_digest=packet.policy.model_generation_parameters_digest,
             context_classification=packet.policy.model_context_classification,
             cost_ceiling_minor_units=cost_ceiling_minor_units,
+            principles=principled.judge,
+            conflict_order=principled.conflict_order,
         )
 
     def _validate_model_decision(
@@ -247,6 +289,18 @@ class DecisionEngine:
             return Refusal(RefusalCode.MODEL_INVALID, "model call identity is not authorized")
         if identity.cost_minor_units > request.cost_ceiling_minor_units:
             return Refusal(RefusalCode.MODEL_BUDGET_EXCEEDED, "model call exceeded its reservation")
+        if result.escalation is not None:
+            return None
+        named = set(result.principle_ids)
+        in_force = {brief.principle_id for brief in request.principles}
+        if not named <= in_force:
+            return Refusal(
+                RefusalCode.MODEL_INVALID, "model named a principle that is not in force"
+            )
+        if in_force and not named:
+            return Refusal(
+                RefusalCode.MODEL_INVALID, "model did not name the principles it applied"
+            )
         if result.candidate_id not in allowed:
             return Refusal(
                 RefusalCode.MODEL_INVALID, "model invented or selected an ineligible candidate"
@@ -276,10 +330,19 @@ class DecisionEngine:
         selection_mode: str,
         model_calls: tuple[ModelDecision, ...] = (),
         model_rationale: str = "",
+        principled: PrincipleResult | None = None,
     ) -> Recommendation:
         explanation = selected.explanation
         if model_rationale:
             explanation = f"{explanation} {model_rationale}".strip()
+        evidence_ids = selected.proof.cited_evidence_ids
+        if principled is not None and principled.evidence_ids:
+            evidence_ids = tuple(dict.fromkeys((*evidence_ids, *principled.evidence_ids)))
+            if principled.ruled_out:
+                ruled = "; ".join(
+                    f"{key} ({value})" for key, value in sorted(principled.ruled_out.items())
+                )
+                explanation = f"{explanation} Ruled out by principles: {ruled}."
         return Recommendation(
             decision_id=decision_id,
             decision_revision=1,
@@ -289,7 +352,7 @@ class DecisionEngine:
             selected_candidate_id=selected.candidate_id,
             selection_mode=selection_mode,
             explanation=explanation,
-            evidence_ids=selected.proof.cited_evidence_ids,
+            evidence_ids=evidence_ids,
             rejected_alternatives=tuple(
                 candidate.candidate_id
                 for candidate in all_candidates

@@ -15,6 +15,7 @@ from aeos_kernel import (
     EvidenceItem,
     ModelCallIdentity,
     ModelDecision,
+    RefusalCode,
     SourceRef,
     build_decision_packet,
     build_evidence_item,
@@ -54,18 +55,29 @@ class AcceptingVerifier:
 
 
 class ScriptedModel:
-    def __init__(self, candidate_ids: list[str], *, citations: tuple[str, ...] = ("e1",)) -> None:
+    def __init__(
+        self,
+        candidate_ids: list[str],
+        *,
+        citations: tuple[str, ...] = ("e1",),
+        principle_ids: tuple[str, ...] = (),
+        escalation: tuple[RefusalCode, str] | None = None,
+    ) -> None:
         self.candidate_ids = candidate_ids
         self.citations = citations
+        self.principle_ids = principle_ids
+        self.escalation = escalation
         self.requests: list[ModelChoiceRequest] = []
 
     def choose(self, request: ModelChoiceRequest) -> ModelDecision:
         self.requests.append(request)
         candidate_id = self.candidate_ids[len(self.requests) - 1]
+        escalation = self.escalation if candidate_id == "" else None
+        citations = () if escalation else self.citations
         return ModelDecision(
             candidate_id=candidate_id,
             rationale="This choice best matches the cited current evidence.",
-            citations=self.citations,
+            citations=citations,
             confidence=0.9,
             identity=ModelCallIdentity(
                 provider=request.provider,
@@ -78,7 +90,10 @@ class ScriptedModel:
                 input_tokens=10,
                 output_tokens=5,
             ),
-            retained_output={"candidate_id": candidate_id, "citations": list(self.citations)},
+            retained_output={"candidate_id": candidate_id, "citations": list(citations)},
+            principle_ids=() if escalation else self.principle_ids,
+            escalation=escalation[0] if escalation else None,
+            missing_premise=escalation[1] if escalation else "",
         )
 
 

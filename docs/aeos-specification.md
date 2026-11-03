@@ -203,6 +203,22 @@ A recommendation records the selected candidate or a typed refusal, its evidence
 ordinary-English explanation, rejected alternatives, uncertainties, boundary, expected result,
 model-call identities where used, and the complete decision input digest.
 
+### 5.5.1 Principle packs (0.24.0)
+
+A host may supply one `aeos.principle-set@1` evidence item together with one
+`aeos.decision-facts@1` item. The pack declares decision types, required areas, ranked rules,
+conflict order and doctrine sources. Gates remove failing options before ranked preferences
+narrow the pool; judge rules brief the bounded model choice. Principles can remove candidates
+or refuse a decision, but cannot add candidates or grant authority.
+
+An uncovered decision type or required area refuses with `missing_principle`. A missing context
+fact refuses the decision with `missing_fact`; a missing option fact rules out that option and
+is named in the result. A model must name judge principles in force and may instead name a
+missing principle or fact. Existing citation, identity, confidence, budget and reversed-order
+checks remain in force for choices. Recommendations cite the pack and facts and explain options
+ruled out by principles. Hosts without either evidence item retain their existing behavior and
+model-request digest; supplying only one item is an invalid packet.
+
 ### 5.6 Human attestation
 
 An attestation binds:

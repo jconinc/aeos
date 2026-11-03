@@ -222,7 +222,11 @@ def to_wlg_decision_record(
         typed_op_plan = selected.effect.parameters
     escalation = "no"
     if refusal is not None:
-        if refusal.code in {RefusalCode.AUTHORITY_CONFLICT, RefusalCode.AMBIGUOUS_ENTAILMENT}:
+        if refusal.code in {
+            RefusalCode.AUTHORITY_CONFLICT,
+            RefusalCode.AMBIGUOUS_ENTAILMENT,
+            RefusalCode.MISSING_PRINCIPLE,
+        }:
             escalation = "A"
         elif refusal.code in {RefusalCode.INVALID_PACKET, RefusalCode.AUTHORITY_MISSING} or (
             refusal.code is RefusalCode.STALE_INPUT

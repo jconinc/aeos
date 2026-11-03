@@ -7,7 +7,7 @@ from typing import Any
 
 from aeos_kernel._validation import digest, immutable_json_object, required, thaw_json
 from aeos_kernel.canonical import stable_fingerprint
-from aeos_kernel.errors import ContractError, Refusal
+from aeos_kernel.errors import MODEL_ESCALATIONS, ContractError, Refusal, RefusalCode
 from aeos_kernel.vocabulary import DecisionStatus
 
 
@@ -144,14 +144,28 @@ class ModelDecision:
     confidence: float
     identity: ModelCallIdentity
     retained_output: dict[str, Any]
+    principle_ids: tuple[str, ...] = ()
+    escalation: RefusalCode | None = None
+    missing_premise: str = ""
 
     def __post_init__(self) -> None:
-        required(self.candidate_id, "candidate_id")
+        if self.escalation is None:
+            required(self.candidate_id, "candidate_id")
+            if self.missing_premise:
+                raise ContractError("only an escalation names a missing premise")
+        else:
+            if self.escalation not in MODEL_ESCALATIONS:
+                raise ContractError("a model may escalate only a missing principle or fact")
+            if self.candidate_id:
+                raise ContractError("an escalation cannot select a candidate")
+            required(self.missing_premise, "missing_premise")
         required(self.rationale, "rationale")
-        if not self.citations:
+        if self.escalation is None and not self.citations:
             raise ContractError("model decision must cite evidence")
         if len(set(self.citations)) != len(self.citations):
             raise ContractError("model citations must be unique")
+        if len(set(self.principle_ids)) != len(self.principle_ids):
+            raise ContractError("model principle_ids must be unique")
         if not 0 <= self.confidence <= 1:
             raise ContractError("model confidence must be between zero and one")
         object.__setattr__(
