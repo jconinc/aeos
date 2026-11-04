@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from aeos_kernel.decision import Candidate, ModelDecision
+from aeos_kernel.decision import Candidate, ModelDecision, ModelReview, ModelReviewIssue
 from aeos_kernel.evidence import DecisionPacket, DecisionSubject, EvidenceItem
 from aeos_kernel.principles import PrincipleBrief
 
@@ -25,6 +25,27 @@ class ModelChoiceRequest:
     cost_ceiling_minor_units: int
     principles: tuple[PrincipleBrief, ...] = ()
     conflict_order: tuple[str, ...] = ()
+    correction_issues: tuple[ModelReviewIssue, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ModelReviewRequest:
+    packet: DecisionPacket
+    candidates: tuple[Candidate, ...]
+    candidate_order: tuple[str, ...]
+    principles: tuple[PrincipleBrief, ...]
+    deterministic_rule_results: tuple[tuple[str, str], ...]
+    proposed_candidate_id: str
+    proposed_citations: tuple[str, ...]
+    allowed_fact_refs: tuple[str, ...]
+    contract_version: str
+    attempt: int
+    provider: str
+    model_id: str
+    prompt_digest: str
+    generation_parameters_digest: str
+    context_classification: str
+    cost_ceiling_minor_units: int
 
 
 class TrustVerifier(Protocol):
@@ -39,6 +60,10 @@ class TrustVerifier(Protocol):
 
 class ModelGateway(Protocol):
     def choose(self, request: ModelChoiceRequest) -> ModelDecision: ...
+
+
+class ModelReviewGateway(Protocol):
+    def review(self, request: ModelReviewRequest) -> ModelReview: ...
 
 
 class Clock(Protocol):

@@ -44,6 +44,8 @@ from aeos_kernel.decision import (
     EntailmentProof,
     ModelCallIdentity,
     ModelDecision,
+    ModelReview,
+    ModelReviewIssue,
     Recommendation,
     candidate_set_digest,
 )
@@ -194,6 +196,7 @@ from aeos_kernel.policy_authority import (
     PolicyAuthorityStatus,
     authorize_policy_command,
 )
+from aeos_kernel.ports import ModelChoiceRequest, ModelReviewGateway, ModelReviewRequest
 from aeos_kernel.product_policy import (
     CanonicalProductManifest,
     ManifestContractError,
@@ -388,7 +391,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.24.0"
+__version__ = "0.25.0"
 
 from aeos_kernel.principles import (
     DECISION_FACTS_KIND,
@@ -539,7 +542,12 @@ __all__ = [
     "MirrorDivergence",
     "MirroredTask",
     "ModelCallIdentity",
+    "ModelChoiceRequest",
     "ModelDecision",
+    "ModelReview",
+    "ModelReviewGateway",
+    "ModelReviewIssue",
+    "ModelReviewRequest",
     "Module",
     "ModuleRegistry",
     "Move",

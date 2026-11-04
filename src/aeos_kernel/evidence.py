@@ -177,6 +177,7 @@ class AuthorityPolicy:
     model_id: str = ""
     model_context_classification: str = ""
     model_generation_parameters_digest: str = ""
+    require_model_review: bool = False
 
     def __post_init__(self) -> None:
         required(self.policy_id, "policy_id")
@@ -220,6 +221,8 @@ class AuthorityPolicy:
             )
         elif self.max_model_calls or self.max_model_cost_minor_units or any(model_identity):
             raise ContractError("model controls cannot be set when model choice is forbidden")
+        if self.require_model_review and not self.permits_model_choice:
+            raise ContractError("model review requires model choice")
         if self.level is AuthorityLevel.HUMAN_REQUIRED and not self.requires_human_attestation:
             raise ContractError("human_required authority requires human attestation")
 
@@ -230,6 +233,8 @@ class AuthorityPolicy:
             "intensity": int(self.intensity),
             "allowed_boundary_tags": list(self.allowed_boundary_tags),
         }
+        if not self.require_model_review:
+            value.pop("require_model_review")
         if not self.permits_model_choice:
             for name in (
                 "model_provider",

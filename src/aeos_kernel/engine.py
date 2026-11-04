@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 
 from aeos_kernel.canonical import stable_fingerprint
-from aeos_kernel.decision import Candidate, ModelDecision, Recommendation, candidate_set_digest
+from aeos_kernel.decision import (
+    Candidate,
+    ModelDecision,
+    ModelReview,
+    ModelReviewIssue,
+    Recommendation,
+    candidate_set_digest,
+)
 from aeos_kernel.errors import Refusal, RefusalCode
 from aeos_kernel.evidence import DecisionPacket
-from aeos_kernel.ports import Clock, ModelChoiceRequest, ModelGateway, TrustVerifier
+from aeos_kernel.ports import (
+    Clock,
+    ModelChoiceRequest,
+    ModelGateway,
+    ModelReviewGateway,
+    ModelReviewRequest,
+    TrustVerifier,
+)
 from aeos_kernel.principles import PrincipleResult, apply_principles
 from aeos_kernel.verification import (
     eligible_candidates,
@@ -25,6 +39,7 @@ class DecisionEngine:
     clock: Clock
     model_gateway: ModelGateway | None = None
     minimum_model_confidence: float = 0.75
+    review_gateway: ModelReviewGateway | None = None
 
     def decide(self, packet: DecisionPacket, candidates: tuple[Candidate, ...]) -> Recommendation:
         ordered = tuple(sorted(candidates, key=lambda item: item.candidate_id))
@@ -124,6 +139,10 @@ class DecisionEngine:
                 RefusalCode.MODEL_REQUIRED,
                 "policy permits a bounded model choice but no model gateway is configured",
             )
+        if packet.policy.require_model_review:
+            return self._reviewed_selected(
+                decision_id, packet, set_digest, eligible, all_candidates, principled
+            )
         required_calls = 2 if len(eligible) > 1 else 1
         if packet.policy.max_model_calls < required_calls:
             return self._refused(
@@ -209,6 +228,245 @@ class DecisionEngine:
             principled=principled,
         )
 
+    def _reviewed_selected(
+        self,
+        decision_id: str,
+        packet: DecisionPacket,
+        set_digest: str,
+        eligible: tuple[Candidate, ...],
+        all_candidates: tuple[Candidate, ...],
+        principled: PrincipleResult,
+    ) -> Recommendation:
+        if self.review_gateway is None or self.model_gateway is None:
+            return self._refused(
+                decision_id,
+                packet,
+                set_digest,
+                RefusalCode.MODEL_REQUIRED,
+                "reviewed choice requires chooser and review gateways",
+            )
+        calls: list[ModelDecision | ModelReview] = []
+        purposes: list[str] = []
+        digests: list[str] = []
+
+        def attach(result: Recommendation) -> Recommendation:
+            return replace(
+                result,
+                model_calls=tuple(c.identity for c in calls),
+                model_outputs=tuple(dict(c.retained_output) for c in calls),
+                model_protocol_version="aeos.reviewed-choice@1",
+                model_call_purposes=tuple(purposes),
+                model_request_digests=tuple(digests),
+            )
+
+        def refuse(refusal: Refusal) -> Recommendation:
+            return attach(self._refusal(decision_id, packet, set_digest, refusal))
+
+        issues: tuple[ModelReviewIssue, ...] = ()
+        for round_index in range(2):
+            # A phase is useful only if its pair and mandatory review can all fit.
+            if len(calls) + 3 > packet.policy.max_model_calls:
+                return refuse(
+                    Refusal(
+                        RefusalCode.MODEL_BUDGET_EXCEEDED,
+                        "remaining budget cannot cover a complete review phase",
+                    )
+                )
+            stale = verify_packet(packet, verifier=self.verifier, now=self.clock.now())
+            if stale is not None:
+                return refuse(stale)
+            pair: list[ModelDecision] = []
+            for offset in range(2):
+                stale = verify_packet(packet, verifier=self.verifier, now=self.clock.now())
+                if stale is not None:
+                    return refuse(stale)
+                remaining = packet.policy.max_model_cost_minor_units - sum(
+                    c.identity.cost_minor_units for c in calls
+                )
+                request = self._model_request(
+                    packet,
+                    eligible,
+                    set_digest=set_digest,
+                    candidate_order=tuple(
+                        c.candidate_id for c in (eligible if offset == 0 else reversed(eligible))
+                    ),
+                    attempt=round_index * 3 + offset + 1,
+                    cost_ceiling_minor_units=remaining,
+                    principled=principled,
+                    correction_issues=issues,
+                )
+                result = self.model_gateway.choose(request)
+                calls.append(result)
+                purposes.append("choose")
+                digests.append(request.prompt_digest)
+                rejection = self._validate_model_decision(result, eligible, packet, request=request)
+                if rejection is not None:
+                    return refuse(rejection)
+                if result.escalation is not None:
+                    return refuse(
+                        Refusal(
+                            result.escalation,
+                            "the model named a missing premise instead of choosing",
+                            result.missing_premise,
+                        )
+                    )
+                pair.append(result)
+            if pair[0].candidate_id != pair[1].candidate_id:
+                return refuse(
+                    Refusal(
+                        RefusalCode.MODEL_DISAGREEMENT,
+                        "model selection changed when candidate order was reversed",
+                    )
+                )
+            stale = verify_packet(packet, verifier=self.verifier, now=self.clock.now())
+            if stale is not None:
+                return refuse(stale)
+            attempt = round_index * 3 + 3
+            refs = tuple(item.evidence_id for item in packet.evidence)
+            order = tuple(item.candidate_id for item in all_candidates)
+            data = {
+                "contract": "aeos.model-review@1",
+                "purpose": "review",
+                "attempt": attempt,
+                "packet_digest": packet.packet_digest,
+                "candidate_set_digest": set_digest,
+                "candidate_order": list(order),
+                "proposed_candidate_id": pair[0].candidate_id,
+                "proposed_citations": list(pair[0].citations),
+                "principles": [asdict(p) for p in principled.all_principles],
+                "deterministic_rule_results": [list(row) for row in principled.rule_results],
+                "allowed_fact_refs": list(refs),
+                "context_classification": packet.policy.model_context_classification,
+            }
+            request_review = ModelReviewRequest(
+                packet=packet,
+                candidates=all_candidates,
+                candidate_order=order,
+                principles=principled.all_principles,
+                deterministic_rule_results=principled.rule_results,
+                proposed_candidate_id=pair[0].candidate_id,
+                proposed_citations=pair[0].citations,
+                allowed_fact_refs=refs,
+                contract_version="aeos.model-review@1",
+                attempt=attempt,
+                provider=packet.policy.model_provider,
+                model_id=packet.policy.model_id,
+                prompt_digest=stable_fingerprint(data),
+                generation_parameters_digest=packet.policy.model_generation_parameters_digest,
+                context_classification=packet.policy.model_context_classification,
+                cost_ceiling_minor_units=packet.policy.max_model_cost_minor_units
+                - sum(c.identity.cost_minor_units for c in calls),
+            )
+            review = self.review_gateway.review(request_review)
+            calls.append(review)
+            purposes.append("review")
+            digests.append(request_review.prompt_digest)
+            invalid = self._validate_review(review, request_review)
+            if invalid is not None:
+                return refuse(invalid)
+            if review.verdict in {"missing_fact", "missing_principle"}:
+                return refuse(
+                    Refusal(
+                        RefusalCode(review.verdict),
+                        "the reviewer named a missing premise",
+                        review.missing_premise or "",
+                    )
+                )
+            if review.verdict == "correct":
+                if round_index:
+                    return refuse(
+                        Refusal(
+                            RefusalCode.MODEL_INVALID, "final review requires further correction"
+                        )
+                    )
+                issues = review.issues
+                continue
+            stale = verify_packet(packet, verifier=self.verifier, now=self.clock.now())
+            if stale is not None:
+                return refuse(stale)
+            selected = next(c for c in eligible if c.candidate_id == pair[0].candidate_id)
+            return attach(
+                self._selected(
+                    decision_id,
+                    packet,
+                    set_digest,
+                    selected,
+                    all_candidates,
+                    selection_mode="model_eligible",
+                    model_rationale=pair[0].rationale,
+                    principled=principled,
+                )
+            )
+        raise AssertionError("review protocol exhausted unexpectedly")
+
+    @staticmethod
+    def _validate_review(result: ModelReview, request: ModelReviewRequest) -> Refusal | None:
+        identity = result.identity
+        if (
+            identity.attempt != request.attempt
+            or identity.provider != request.provider
+            or identity.model_id != request.model_id
+            or identity.prompt_digest != request.prompt_digest
+            or identity.generation_parameters_digest != request.generation_parameters_digest
+            or identity.context_classification != request.context_classification
+        ):
+            return Refusal(RefusalCode.MODEL_INVALID, "review call identity is not authorized")
+        if identity.cost_minor_units > request.cost_ceiling_minor_units:
+            return Refusal(RefusalCode.MODEL_BUDGET_EXCEEDED, "review exceeded its reservation")
+        expected = {
+            "verdict": result.verdict,
+            "issues": [{**asdict(i), "fact_refs": list(i.fact_refs)} for i in result.issues],
+            "missing_premise": result.missing_premise,
+        }
+        if dict(result.retained_output) != expected:
+            return Refusal(
+                RefusalCode.MODEL_INVALID, "review output does not match its typed result"
+            )
+        if result.verdict not in {"accept", "correct", "missing_fact", "missing_principle"}:
+            return Refusal(RefusalCode.MODEL_INVALID, "unknown review verdict")
+        if len(result.issues) > 16:
+            return Refusal(RefusalCode.MODEL_INVALID, "too many review issues")
+        if result.verdict == "accept" and (result.issues or result.missing_premise is not None):
+            return Refusal(RefusalCode.MODEL_INVALID, "accept cannot contain unresolved issues")
+        if result.verdict == "correct" and (
+            not result.issues or result.missing_premise is not None
+        ):
+            return Refusal(RefusalCode.MODEL_INVALID, "correction requires concrete issues")
+        if result.verdict in {"missing_fact", "missing_principle"} and (
+            result.issues
+            or not isinstance(result.missing_premise, str)
+            or not result.missing_premise.strip()
+            or len(result.missing_premise) > 300
+        ):
+            return Refusal(
+                RefusalCode.MODEL_INVALID, "missing premise must be specific and unaccompanied"
+            )
+        seen: set[tuple[str, str, str]] = set()
+        for issue in result.issues:
+            key = (issue.principle_id, issue.candidate_id, issue.code)
+            if (
+                issue.code
+                not in {
+                    "rule_conflict",
+                    "unsupported_fact",
+                    "wrong_remedy",
+                    "missed_alternative",
+                    "scope_mismatch",
+                    "authority_overreach",
+                }
+                or issue.principle_id not in {p.principle_id for p in request.principles}
+                or issue.candidate_id not in request.candidate_order
+                or not 1 <= len(issue.fact_refs) <= 16
+                or not set(issue.fact_refs) <= set(request.allowed_fact_refs)
+                or len(set(issue.fact_refs)) != len(issue.fact_refs)
+                or not issue.explanation.strip()
+                or len(issue.explanation) > 300
+                or key in seen
+            ):
+                return Refusal(RefusalCode.MODEL_INVALID, "review issue is invalid or ungrounded")
+            seen.add(key)
+        return None
+
     @classmethod
     def _escalated(
         cls,
@@ -241,18 +499,24 @@ class DecisionEngine:
         attempt: int,
         cost_ceiling_minor_units: int,
         principled: PrincipleResult,
+        correction_issues: tuple[ModelReviewIssue, ...] = (),
     ) -> ModelChoiceRequest:
         contract = "aeos.model-choice@3" if principled.evidence_ids else "aeos.model-choice@2"
-        prompt_digest = stable_fingerprint(
-            {
-                "contract": contract,
-                "packet_digest": packet.packet_digest,
-                "candidate_set_digest": set_digest,
-                "candidate_order": list(candidate_order),
-                "attempt": attempt,
-                "context_classification": packet.policy.model_context_classification,
-            }
-        )
+        prompt_data = {
+            "contract": contract,
+            "packet_digest": packet.packet_digest,
+            "candidate_set_digest": set_digest,
+            "candidate_order": list(candidate_order),
+            "attempt": attempt,
+            "context_classification": packet.policy.model_context_classification,
+        }
+        if packet.policy.require_model_review:
+            prompt_data["contract"] = "aeos.reviewed-choice@1"
+            prompt_data["purpose"] = "choose"
+            prompt_data["correction_issues"] = [
+                {**asdict(issue), "fact_refs": list(issue.fact_refs)} for issue in correction_issues
+            ]
+        prompt_digest = stable_fingerprint(prompt_data)
         return ModelChoiceRequest(
             packet=packet,
             candidates=eligible,
@@ -266,6 +530,7 @@ class DecisionEngine:
             cost_ceiling_minor_units=cost_ceiling_minor_units,
             principles=principled.judge,
             conflict_order=principled.conflict_order,
+            correction_issues=correction_issues,
         )
 
     def _validate_model_decision(

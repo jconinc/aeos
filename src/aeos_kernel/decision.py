@@ -176,6 +176,31 @@ class ModelDecision:
 
 
 @dataclass(frozen=True, slots=True)
+class ModelReviewIssue:
+    code: str
+    principle_id: str
+    fact_refs: tuple[str, ...]
+    candidate_id: str
+    explanation: str
+
+
+@dataclass(frozen=True, slots=True)
+class ModelReview:
+    verdict: str
+    issues: tuple[ModelReviewIssue, ...]
+    missing_premise: str | None
+    identity: ModelCallIdentity
+    retained_output: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "retained_output",
+            immutable_json_object(self.retained_output, "model review retained_output"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class Recommendation:
     decision_id: str
     decision_revision: int
@@ -190,6 +215,9 @@ class Recommendation:
     model_calls: tuple[ModelCallIdentity, ...] = ()
     model_outputs: tuple[dict[str, Any], ...] = ()
     refusal: Refusal | None = None
+    model_protocol_version: str = ""
+    model_call_purposes: tuple[str, ...] = ()
+    model_request_digests: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         required(self.decision_id, "decision_id")
@@ -205,6 +233,18 @@ class Recommendation:
             raise ContractError("refused recommendation cannot select a candidate")
         if len(self.model_calls) != len(self.model_outputs):
             raise ContractError("each model call requires one retained structured output")
+        if self.model_protocol_version:
+            if (
+                self.model_protocol_version != "aeos.reviewed-choice@1"
+                or len(self.model_calls) != len(self.model_call_purposes)
+                or len(self.model_calls) != len(self.model_request_digests)
+                or any(p not in {"choose", "review"} for p in self.model_call_purposes)
+            ):
+                raise ContractError("invalid reviewed model evidence")
+            for value in self.model_request_digests:
+                digest(value, "model_request_digest")
+        elif self.model_call_purposes or self.model_request_digests:
+            raise ContractError("model evidence requires a protocol version")
         object.__setattr__(
             self,
             "model_outputs",
@@ -222,7 +262,7 @@ class Recommendation:
                 "reason": self.refusal.reason,
                 "missing_premise": self.refusal.missing_premise,
             }
-        return {
+        value = {
             "decision_id": self.decision_id,
             "decision_revision": self.decision_revision,
             "status": self.status.value,
@@ -237,6 +277,15 @@ class Recommendation:
             "model_outputs": [thaw_json(output) for output in self.model_outputs],
             "refusal": refusal,
         }
+        if self.model_protocol_version:
+            value.update(
+                {
+                    "model_protocol_version": self.model_protocol_version,
+                    "model_call_purposes": list(self.model_call_purposes),
+                    "model_request_digests": list(self.model_request_digests),
+                }
+            )
+        return value
 
     @property
     def digest(self) -> str:

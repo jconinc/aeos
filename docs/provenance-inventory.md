@@ -535,3 +535,14 @@ orchestration. `tests/test_adapters.py` checks no-action zero-call entailment an
 route/wait consensus; Wema focused submission tests cover current facts and exact call replay.
 The host retains persistence, unknown-outcome recovery and daily effect limits. AM-01 contract
 adoption and joined/runtime evidence remain separate from these source changes.
+
+
+## Reviewed model choice — 0.25.0
+
+New generic contract for the named decision-advice consumer: implementation-completion
+specification §8.1–8.2 (accepted Step 04). The existing inverted choice compiler supplies
+candidate filtering, reverse-order consensus, identity and citation checks. The separate
+review port, bounded correction and ordered replay evidence are new; provider transport,
+whole-attempt fallback and persistent budget admission remain host responsibilities.
+Focused source evidence is in `tests/test_engine.py`; no runtime or integration result is
+claimed until the consuming host runs its joined checks.

@@ -96,6 +96,7 @@
         "required_capacity": {"type": "string"},
         "requires_human_attestation": {"type": "boolean"},
         "permits_model_choice": {"type": "boolean"},
+        "require_model_review": {"const": true},
         "max_model_calls": {"type": "integer", "minimum": 0},
         "max_model_cost_minor_units": {"type": "integer", "minimum": 0}
       }
@@ -245,6 +246,9 @@
         },
         "model_calls": {"type": "array", "items": {"$ref": "#/$defs/ModelCallIdentity"}},
         "model_outputs": {"type": "array", "items": {"type": "object"}},
+        "model_protocol_version": {"const": "aeos.reviewed-choice@1"},
+        "model_call_purposes": {"type": "array", "maxItems": 6, "items": {"enum": ["choose", "review"]}},
+        "model_request_digests": {"type": "array", "maxItems": 6, "items": {"$ref": "#/$defs/Digest"}},
         "refusal": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/Refusal"}]}
       }
     },

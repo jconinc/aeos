@@ -179,3 +179,182 @@ def test_model_pool_excludes_lower_authority_candidates() -> None:
     result = engine(model=scripted).decide(current_packet, candidates)
     assert result.selected_candidate_id == "legal-choice"
     assert [request.candidate_order for request in scripted.requests] == [("legal-choice",)]
+
+
+def test_reviewed_choice_correction_keeps_evidence_and_rechecks_currency() -> None:
+    from dataclasses import asdict
+
+    from aeos_kernel import (
+        ModelCallIdentity,
+        ModelReview,
+        ModelReviewIssue,
+        decision_facts_evidence,
+        principle_set_evidence,
+    )
+    from tests.factories import subject
+    from tests.test_principles import HONEST_PROOF, SMALLEST_TEST, rules
+
+    issue = ModelReviewIssue(
+        "wrong_remedy", "smallest-test", ("e1",), "candidate-1", "Use the smaller remedy."
+    )
+
+    class Reviews:
+        def __init__(self) -> None:
+            self.requests = []
+
+        def review(self, request):
+            self.requests.append(request)
+            issues = (issue,) if len(self.requests) == 1 else ()
+            verdict = "correct" if issues else "accept"
+            output = {
+                "verdict": verdict,
+                "issues": [{**asdict(item), "fact_refs": list(item.fact_refs)} for item in issues],
+                "missing_premise": None,
+            }
+            return ModelReview(
+                verdict,
+                issues,
+                None,
+                ModelCallIdentity(
+                    provider=request.provider,
+                    model_id=request.model_id,
+                    prompt_digest=request.prompt_digest,
+                    generation_parameters_digest=request.generation_parameters_digest,
+                    context_classification=request.context_classification,
+                    attempt=request.attempt,
+                    cost_minor_units=1,
+                ),
+                output,
+            )
+
+    owner = subject(model_allowed=True)
+    items = (
+        evidence(model_allowed=True),
+        principle_set_evidence(rules(HONEST_PROOF, SMALLEST_TEST), subject=owner, observed_at=NOW),
+        decision_facts_evidence(
+            decision_type="growth",
+            context={},
+            candidates={
+                "candidate-1": {"proof_verified": True},
+                "candidate-2": {"proof_verified": True},
+            },
+            subject=owner,
+            observed_at=NOW,
+        ),
+    )
+    reviewed = replace(
+        policy(model=True),
+        max_model_calls=6,
+        max_model_cost_minor_units=6,
+        require_model_review=True,
+    )
+    model = ScriptedModel(
+        ["candidate-1", "candidate-1", "candidate-2", "candidate-2"],
+        principle_ids=("smallest-test",),
+    )
+    reviews = Reviews()
+    result = DecisionEngine(
+        AcceptingVerifier(), FixedClock(), model, review_gateway=reviews
+    ).decide(
+        packet(items=items, authority_policy=reviewed),
+        (candidate("candidate-1", entailed=False), candidate("candidate-2", entailed=False)),
+    )
+    assert result.selected_candidate_id == "candidate-2"
+    assert result.model_call_purposes == (
+        "choose",
+        "choose",
+        "review",
+        "choose",
+        "choose",
+        "review",
+    )
+    assert [call.attempt for call in result.model_calls] == [1, 2, 3, 4, 5, 6]
+    assert result.model_request_digests == tuple(call.prompt_digest for call in result.model_calls)
+    assert model.requests[2].correction_issues == (issue,)
+    assert {p.principle_id for p in reviews.requests[0].principles} == {
+        "honest-proof",
+        "smallest-test",
+    }
+    assert reviews.requests[0].deterministic_rule_results == (
+        ("honest-proof:candidate-1", "passed"),
+        ("honest-proof:candidate-2", "passed"),
+    )
+    assert reviews.requests[0].allowed_fact_refs == (
+        "e1",
+        "aeos-principle-set",
+        "aeos-decision-facts",
+    )
+    assert result.as_dict()["model_protocol_version"] == "aeos.reviewed-choice@1"
+
+    review_request = reviews.requests[0]
+    forged = replace(issue, fact_refs=("invented",))
+    forged_output = {
+        "verdict": "correct",
+        "issues": [{**asdict(forged), "fact_refs": list(forged.fact_refs)}],
+        "missing_premise": None,
+    }
+    forged_review = ModelReview("correct", (forged,), None, result.model_calls[2], forged_output)
+    invalid = DecisionEngine._validate_review(forged_review, review_request)
+    assert invalid is not None and invalid.code is RefusalCode.MODEL_INVALID
+    extra = replace(forged_review, retained_output={**forged_output, "unexpected": True})
+    invalid = DecisionEngine._validate_review(extra, review_request)
+    assert invalid is not None and invalid.code is RefusalCode.MODEL_INVALID
+    # The generic port enforces bounds too, independently of a host JSON parser.
+    oversized = ModelReview(
+        "missing_fact",
+        (),
+        "x" * 301,
+        result.model_calls[2],
+        {
+            "verdict": "missing_fact",
+            "issues": [],
+            "missing_premise": "x" * 301,
+        },
+    )
+    invalid = DecisionEngine._validate_review(oversized, review_request)
+    assert invalid is not None and invalid.code is RefusalCode.MODEL_INVALID
+    original_issues: list[dict[str, str]] = []
+    original_output = {"verdict": "accept", "issues": original_issues, "missing_premise": None}
+    immutable_review = ModelReview("accept", (), None, result.model_calls[2], original_output)
+    original_issues.append({"code": "forged"})
+    assert immutable_review.retained_output["issues"] == []
+
+    verifier = AcceptingVerifier()
+
+    class StaleAfterReview(Reviews):
+        def review(self, request):
+            result = super().review(request)
+            verifier.source_heads_valid = False
+            return result
+
+    chooser = ScriptedModel(["candidate-1", "candidate-1"], principle_ids=("smallest-test",))
+    stopped = DecisionEngine(
+        verifier, FixedClock(), chooser, review_gateway=StaleAfterReview()
+    ).decide(
+        packet(items=items, authority_policy=reviewed),
+        (candidate("candidate-1", entailed=False), candidate("candidate-2", entailed=False)),
+    )
+    assert stopped.refusal is not None and stopped.refusal.code is RefusalCode.STALE_INPUT
+    assert len(chooser.requests) == 2
+    assert stopped.model_call_purposes == ("choose", "choose", "review")
+
+
+def test_reviewed_choice_refuses_without_review_or_phase_budget() -> None:
+    reviewed = replace(policy(model=True), require_model_review=True)
+    model = ScriptedModel(["candidate-1", "candidate-1"])
+    options = (candidate(entailed=False),)
+    result = engine(model=model).decide(packet(authority_policy=reviewed), options)
+    assert result.refusal is not None and result.refusal.code is RefusalCode.MODEL_REQUIRED
+    assert not model.requests
+
+    class UnusedReviewer:
+        def review(self, request):
+            raise AssertionError("budget refusal must happen before review")
+
+    result = DecisionEngine(
+        AcceptingVerifier(), FixedClock(), model, review_gateway=UnusedReviewer()
+    ).decide(packet(authority_policy=reviewed), options)
+    assert result.refusal is not None and result.refusal.code is RefusalCode.MODEL_BUDGET_EXCEEDED
+    assert not model.requests
+    assert "require_model_review" not in policy(model=True).as_dict()
+    assert "model_protocol_version" not in engine().decide(packet(), (candidate(),)).as_dict()

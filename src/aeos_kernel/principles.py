@@ -90,6 +90,8 @@ class PrincipleResult:
     judge: tuple[PrincipleBrief, ...]
     conflict_order: tuple[str, ...]
     evidence_ids: tuple[str, ...]
+    all_principles: tuple[PrincipleBrief, ...] = ()
+    rule_results: tuple[tuple[str, str], ...] = ()
 
 
 class _MissingFact(Exception):
@@ -249,6 +251,7 @@ def _apply(
     pool = list(eligible)
     ruled_out: dict[str, str] = {}
     unknown: list[str] = []
+    rule_results: list[tuple[str, str]] = []
     for kind in (PrincipleKind.GATE, PrincipleKind.PREFER):
         for principle in (item for item in in_force if item.kind is kind):
             requires = principle.requires
@@ -269,7 +272,13 @@ def _apply(
                         raise
                     failures[candidate.candidate_id] = f"{principle.principle_id} needs {gap.path}"
                     unknown.append(f"{candidate.candidate_id}: {gap.path}")
-            if kind is PrincipleKind.PREFER and len(failures) == len(pool):
+            ignored = kind is PrincipleKind.PREFER and len(failures) == len(pool)
+            for candidate in pool:
+                result = failures.get(candidate.candidate_id, "passed")
+                if ignored:
+                    result = "preference did not narrow the pool: " + result
+                rule_results.append((f"{principle.principle_id}:{candidate.candidate_id}", result))
+            if ignored:
                 continue
             ruled_out.update(failures)
             pool = [candidate for candidate in pool if candidate.candidate_id not in failures]
@@ -296,6 +305,9 @@ def _apply(
         judge,
         principle_set.conflict_order,
         (set_item.evidence_id, facts_item.evidence_id),
+        tuple(PrincipleBrief(p.principle_id, p.rank, p.area, p.statement, p.source)
+              for p in in_force),
+        tuple(rule_results),
     )
 
 

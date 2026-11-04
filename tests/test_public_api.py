@@ -43,10 +43,11 @@ def test_every_runtime_protocol_has_a_named_kernel_consumer() -> None:
             and getattr(value, "_is_protocol", False)
         )
     }
-    assert protocols == {"Clock", "ModelGateway", "TrustVerifier"}
+    assert protocols == {"Clock", "ModelGateway", "ModelReviewGateway", "TrustVerifier"}
 
     engine_hints = get_type_hints(DecisionEngine)
     assert engine_hints["clock"] is ports.Clock
     assert "ModelGateway" in str(engine_hints["model_gateway"])
+    assert "ModelReviewGateway" in str(engine_hints["review_gateway"])
     assert engine_hints["verifier"] is ports.TrustVerifier
     assert get_type_hints(verify_packet)["verifier"] is ports.TrustVerifier

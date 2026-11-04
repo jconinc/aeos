@@ -299,11 +299,13 @@ Rules:
 
 ## 8. Live ports and host contracts
 
-The kernel defines only three runtime protocols, each consumed by the current decision engine:
+The kernel defines four runtime protocols, each consumed by the current decision engine:
 
 - `TrustVerifier` verifies authority/source pins, current subject revision, and research receipts;
 - `ModelGateway.choose(request) -> ModelDecision` is used only for bounded multi-candidate
-  judgment; and
+  judgment;
+- `ModelReviewGateway.review(request) -> ModelReview` checks a proposed model choice against
+  the same supplied rules, facts and alternatives; and
 - `Clock.now()` makes currency and decision time deterministic in tests and host processes.
 
 Everything else crosses the product boundary as a strict immutable data contract or an adapter
@@ -1280,3 +1282,18 @@ route entails waiting with zero calls; one or more routes plus waiting remain un
 require the existing two reversed-order calls. Host-owned private retention and reconsideration
 must precede dispatch, and waiting cannot skip required protection or promised completion.
 AM-01 is drafted for independent host contract review/adoption before changed behavior activates.
+
+
+### Reviewed model choice (0.25.0)
+
+An authority policy may explicitly require `aeos.reviewed-choice@1`. The host supplies
+separate chooser and fresh-context reviewer ports under its existing admission ledger.
+The kernel validates two reverse-order choices followed by a review, and permits at most
+one issue-bound corrected pair followed by a final review. It checks currency before calls
+and return, preserves the closed candidate pool, fails closed on disagreement, invalid
+output, missing premises and insufficient budget, and performs no effects. A reviewer sees
+all applicable principle briefs, deterministic rule outcomes and supplied candidates;
+fact references are packet evidence IDs. Review identities use the policy-authorized model.
+Each retained call carries its purpose and request digest. Legacy policies and serialization
+remain unchanged. A host must admit each complete phase and retain failed/uncertain calls
+in its ledger; kernel call limits do not replace host admission or implement provider fallback.
