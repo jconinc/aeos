@@ -391,7 +391,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.25.0"
+__version__ = "0.26.0"
 
 from aeos_kernel.principles import (
     DECISION_FACTS_KIND,

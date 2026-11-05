@@ -99,6 +99,49 @@ def test_model_selects_only_after_reverse_order_consensus_and_retains_outputs() 
     assert len(result.model_outputs) == 2
 
 
+def test_typed_premise_refs_survive_a_model_stop_and_reject_mismatched_output() -> None:
+    import pytest
+
+    from aeos_kernel import ContractError
+
+    class StopModel(ScriptedModel):
+        def choose(self, request):
+            original = super().choose(request)
+            self.result = replace(
+                original,
+                premise_refs=("fact:source-current",),
+                retained_output={
+                    **original.retained_output, "premise_refs": ["fact:source-current"],
+                },
+            )
+            return self.result
+
+    model = StopModel([""], escalation=(RefusalCode.MISSING_FACT, "Source status is missing"))
+    result = engine(model=model).decide(
+        packet(authority_policy=policy(model=True)), (candidate(entailed=False),)
+    )
+    assert result.refusal is not None and result.refusal.code is RefusalCode.MISSING_FACT
+    assert result.as_dict()["model_outputs"][0]["premise_refs"] == ["fact:source-current"]
+    assert result.model_outputs[0]["premise_refs"] == ["fact:source-current"]
+
+    class Mismatched(StopModel):
+        def choose(self, request):
+            return replace(super().choose(request), retained_output={"premise_refs": []})
+
+    bad = Mismatched([""], escalation=(RefusalCode.MISSING_FACT, "Source status is missing"))
+    refused = engine(model=bad).decide(
+        packet(authority_policy=policy(model=True)), (candidate(entailed=False),)
+    )
+    assert refused.refusal is not None and refused.refusal.code is RefusalCode.MODEL_INVALID
+
+    with pytest.raises(ContractError):
+        replace(model.result, premise_refs=("fact:free text",))
+    with pytest.raises(ContractError):
+        replace(model.result, premise_refs=("fact:a", "fact:a"))
+    with pytest.raises(ContractError):
+        replace(model.result, premise_refs=["fact:a"])
+
+
 def test_model_order_disagreement_fails_closed() -> None:
     scripted = ScriptedModel(["candidate-1", "candidate-2"])
     candidates = (
@@ -298,6 +341,27 @@ def test_reviewed_choice_correction_keeps_evidence_and_rechecks_currency() -> No
     assert invalid is not None and invalid.code is RefusalCode.MODEL_INVALID
     extra = replace(forged_review, retained_output={**forged_output, "unexpected": True})
     invalid = DecisionEngine._validate_review(extra, review_request)
+    assert invalid is not None and invalid.code is RefusalCode.MODEL_INVALID
+    typed_output = {
+        "verdict": "missing_fact",
+        "issues": [],
+        "missing_premise": "Missing",
+        "premise_refs": ["fact:source-current"],
+    }
+    typed_review = ModelReview(
+        "missing_fact",
+        (),
+        "Missing",
+        result.model_calls[2],
+        typed_output,
+        premise_refs=("fact:source-current",),
+    )
+    assert DecisionEngine._validate_review(typed_review, review_request) is None
+    mismatch = replace(typed_review, premise_refs=("fact:another",))
+    invalid = DecisionEngine._validate_review(mismatch, review_request)
+    assert invalid is not None and invalid.code is RefusalCode.MODEL_INVALID
+    absent = replace(typed_review, premise_refs=None)
+    invalid = DecisionEngine._validate_review(absent, review_request)
     assert invalid is not None and invalid.code is RefusalCode.MODEL_INVALID
     # The generic port enforces bounds too, independently of a host JSON parser.
     oversized = ModelReview(

@@ -199,6 +199,12 @@
         "cost_minor_units": {"type": "integer", "minimum": 0}
       }
     },
+    "ModelOutput": {
+      "type": "object",
+      "properties": {
+        "premise_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^(fact|rule|area):[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$", "not": {"pattern": "[^A-Za-z0-9._:/-]"}}}
+      }
+    },
     "Refusal": {
       "type": "object",
       "additionalProperties": false,
@@ -245,7 +251,7 @@
           "type": "array", "items": {"type": "string", "minLength": 1}
         },
         "model_calls": {"type": "array", "items": {"$ref": "#/$defs/ModelCallIdentity"}},
-        "model_outputs": {"type": "array", "items": {"type": "object"}},
+        "model_outputs": {"type": "array", "items": {"$ref": "#/$defs/ModelOutput"}},
         "model_protocol_version": {"const": "aeos.reviewed-choice@1"},
         "model_call_purposes": {"type": "array", "maxItems": 6, "items": {"enum": ["choose", "review"]}},
         "model_request_digests": {"type": "array", "maxItems": 6, "items": {"$ref": "#/$defs/Digest"}},

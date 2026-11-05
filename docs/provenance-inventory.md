@@ -546,3 +546,15 @@ review port, bounded correction and ordered replay evidence are new; provider tr
 whole-attempt fallback and persistent budget admission remain host responsibilities.
 Focused source evidence is in `tests/test_engine.py`; no runtime or integration result is
 claimed until the consuming host runs its joined checks.
+
+
+## Typed missing-premise references — 0.26.0
+
+New neutral contract over AEOS `5173046`'s reviewed-choice implementation, authored for
+Wema Step03 completion-specification §6.5 and its native-source-binding amendment revision9.
+Named consumers: Wema's public-advice gateway, private journal, host replay and native Desk
+projections. `decision.py` validates optional typed references; `engine.py` binds them to the
+exact retained chooser/reviewer output. Catalogue membership and display wording remain
+host-owned. `tests/test_engine.py` covers typed chooser/reviewer stops and output mismatch;
+`tests/test_schemas.py` covers the optional fields in both bundle schema versions. Legacy
+outputs retain their former shape. Runtime installation and host acceptance are separate.

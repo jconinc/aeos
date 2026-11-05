@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -9,6 +10,19 @@ from aeos_kernel._validation import digest, immutable_json_object, required, tha
 from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.errors import MODEL_ESCALATIONS, ContractError, Refusal, RefusalCode
 from aeos_kernel.vocabulary import DecisionStatus
+
+_PREMISE_REF = re.compile(r"(?:fact|rule|area):[A-Za-z0-9][A-Za-z0-9._/-]{0,127}\Z")
+
+
+def _validate_premise_refs(refs: object, container_type: type) -> None:
+    if not isinstance(refs, container_type) or not isinstance(refs, (tuple, list)):
+        raise ContractError("premise_refs must contain typed premise identifiers")
+    if any(
+        not isinstance(ref, str) or _PREMISE_REF.fullmatch(ref) is None for ref in refs
+    ):
+        raise ContractError("premise_refs must contain typed premise identifiers")
+    if len(set(refs)) != len(refs):
+        raise ContractError("premise_refs must be unique")
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,8 +161,11 @@ class ModelDecision:
     principle_ids: tuple[str, ...] = ()
     escalation: RefusalCode | None = None
     missing_premise: str = ""
+    premise_refs: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
+        if self.premise_refs is not None:
+            _validate_premise_refs(self.premise_refs, tuple)
         if self.escalation is None:
             required(self.candidate_id, "candidate_id")
             if self.missing_premise:
@@ -191,8 +208,11 @@ class ModelReview:
     missing_premise: str | None
     identity: ModelCallIdentity
     retained_output: dict[str, Any]
+    premise_refs: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
+        if self.premise_refs is not None:
+            _validate_premise_refs(self.premise_refs, tuple)
         object.__setattr__(
             self,
             "retained_output",

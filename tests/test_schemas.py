@@ -44,6 +44,21 @@ def test_unknown_interchange_field_is_rejected() -> None:
         validator("DecisionPacket").validate(payload)
 
 
+def test_model_output_schema_accepts_optional_typed_refs_and_rejects_bad_refs() -> None:
+    import json
+
+    output_validator = validator("ModelOutput")
+    for output in (
+        {"candidate_id": "a"},
+        {"premise_refs": []},
+        {"premise_refs": ["fact:source-current", "rule:policy.1", "area:mail"]},
+    ):
+        output_validator.validate(json.loads(json.dumps(output)))
+    for refs in (["other:a"], ["fact:private text"], ["fact:a\n"], ["fact:a", "fact:a"], None):
+        with pytest.raises(ValidationError):
+            output_validator.validate({"premise_refs": refs})
+
+
 def test_attestation_receipt_and_outcome_match_published_schemas() -> None:
     decision_packet = packet()
     recommendation = DecisionEngine(verifier=AcceptingVerifier(), clock=FixedClock()).decide(

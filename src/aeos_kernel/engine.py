@@ -418,6 +418,8 @@ class DecisionEngine:
             "issues": [{**asdict(i), "fact_refs": list(i.fact_refs)} for i in result.issues],
             "missing_premise": result.missing_premise,
         }
+        if result.premise_refs is not None:
+            expected["premise_refs"] = list(result.premise_refs)
         if dict(result.retained_output) != expected:
             return Refusal(
                 RefusalCode.MODEL_INVALID, "review output does not match its typed result"
@@ -554,6 +556,13 @@ class DecisionEngine:
             return Refusal(RefusalCode.MODEL_INVALID, "model call identity is not authorized")
         if identity.cost_minor_units > request.cost_ceiling_minor_units:
             return Refusal(RefusalCode.MODEL_BUDGET_EXCEEDED, "model call exceeded its reservation")
+        if (result.premise_refs is None) != ("premise_refs" not in result.retained_output) or (
+            result.premise_refs is not None
+            and result.retained_output.get("premise_refs") != list(result.premise_refs)
+        ):
+            return Refusal(
+                RefusalCode.MODEL_INVALID, "model premise refs do not match its typed result"
+            )
         if result.escalation is not None:
             return None
         named = set(result.principle_ids)

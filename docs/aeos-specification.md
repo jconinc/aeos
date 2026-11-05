@@ -1297,3 +1297,15 @@ fact references are packet evidence IDs. Review identities use the policy-author
 Each retained call carries its purpose and request digest. Legacy policies and serialization
 remain unchanged. A host must admit each complete phase and retain failed/uncertain calls
 in its ledger; kernel call limits do not replace host admission or implement provider fallback.
+
+
+### Typed missing-premise references (0.26.0)
+
+`ModelDecision` and `ModelReview` accept optional `premise_refs: tuple[str, ...] | None`.
+`None` preserves the exact legacy output shape; an explicit tuple is retained as a JSON list,
+including an empty list. Each unique reference uses `fact:`, `rule:` or `area:` followed by
+1–128 ASCII letters, numbers, dots, underscores, slashes or hyphens, starting with a letter
+or number. The engine refuses a mismatch between typed references and retained model output.
+Both published bundle schemas admit this optional field. The consuming host owns the current
+premise catalogue, membership, reference-kind constraints, safe labels and effect authority;
+references do not establish a fact, rule or permission. No policy or call limit changes here.
