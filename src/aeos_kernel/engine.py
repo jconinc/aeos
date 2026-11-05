@@ -413,7 +413,7 @@ class DecisionEngine:
             return Refusal(RefusalCode.MODEL_INVALID, "review call identity is not authorized")
         if identity.cost_minor_units > request.cost_ceiling_minor_units:
             return Refusal(RefusalCode.MODEL_BUDGET_EXCEEDED, "review exceeded its reservation")
-        expected = {
+        expected: dict[str, object] = {
             "verdict": result.verdict,
             "issues": [{**asdict(i), "fact_refs": list(i.fact_refs)} for i in result.issues],
             "missing_premise": result.missing_premise,
