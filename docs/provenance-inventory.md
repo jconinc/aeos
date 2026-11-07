@@ -558,3 +558,17 @@ exact retained chooser/reviewer output. Catalogue membership and display wording
 host-owned. `tests/test_engine.py` covers typed chooser/reviewer stops and output mismatch;
 `tests/test_schemas.py` covers the optional fields in both bundle schema versions. Legacy
 outputs retain their former shape. Runtime installation and host acceptance are separate.
+
+## Host-expanded reviewed choices — 0.27.0
+
+New optional neutral boundary over AEOS `c3a2b5f`'s reviewed-choice implementation, required by
+the named Wema Marketing/Growth strategy consumer, accepted MGS revision-10 §3.3.3 and §4.2.2.
+Independent Sol-high design selected one host expansion/diff port rather than a second decision
+loop. `decision.py` retains immutable expansion evidence, `ports.py` transports the host result,
+and `engine.py` compares semantic selections before binding both full choices to the critic.
+The Wema adapter owns compact decoding, native sources, method/path validation and full digests.
+`tests/test_choice_expansion.py` covers the generic boundary with the existing non-Wema fixture,
+unchanged legacy bytes, ordered retention, disagreement, invalid expansion, correction accounting
+and both published optional-sidecar schemas. The adjacent engine, schema and public API checks
+also pass (31 cases total). No deployment or joined
+Wema runtime completion is implied by these source checks.

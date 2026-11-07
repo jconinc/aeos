@@ -6,7 +6,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from aeos_kernel.decision import Candidate, ModelDecision, ModelReview, ModelReviewIssue
+from aeos_kernel.decision import (
+    Candidate,
+    ExpandedModelChoice,
+    ModelChoiceFieldDiff,
+    ModelDecision,
+    ModelReview,
+    ModelReviewIssue,
+)
 from aeos_kernel.evidence import DecisionPacket, DecisionSubject, EvidenceItem
 from aeos_kernel.principles import PrincipleBrief
 
@@ -46,6 +53,20 @@ class ModelReviewRequest:
     generation_parameters_digest: str
     context_classification: str
     cost_ceiling_minor_units: int
+    proposed_expansion: ExpandedModelChoice | None = None
+    corroborating_expansion: ExpandedModelChoice | None = None
+    semantic_payload: dict[str, object] | None = None
+    expansion_diff: tuple[ModelChoiceFieldDiff, ...] = ()
+
+
+class ModelChoiceExpansionPort(Protocol):
+    def expand(
+        self, request: ModelChoiceRequest, decision: ModelDecision
+    ) -> ExpandedModelChoice | None: ...
+
+    def diff(
+        self, proposed: ExpandedModelChoice, corroborating: ExpandedModelChoice
+    ) -> tuple[ModelChoiceFieldDiff, ...]: ...
 
 
 class TrustVerifier(Protocol):

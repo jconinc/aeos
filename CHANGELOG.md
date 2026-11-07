@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.27.0 — candidate, 2026-11-06
+
+- Add an optional host expansion/diff port to reviewed model choice. Compare complete semantic
+  selections before review and bind both full choices to the critic, retaining raw answers and
+  ordered expansions without changing the existing call ceiling or legacy serialization.
+
 ## 0.24.0 — candidate, 2026-11-03
 
 - Add principle packs (`principles.py`, extracted from WLG `standards.py` and `coverage.py`):

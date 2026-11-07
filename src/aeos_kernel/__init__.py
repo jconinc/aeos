@@ -42,7 +42,9 @@ from aeos_kernel.decision import (
     Candidate,
     EffectTemplate,
     EntailmentProof,
+    ExpandedModelChoice,
     ModelCallIdentity,
+    ModelChoiceFieldDiff,
     ModelDecision,
     ModelReview,
     ModelReviewIssue,
@@ -196,7 +198,12 @@ from aeos_kernel.policy_authority import (
     PolicyAuthorityStatus,
     authorize_policy_command,
 )
-from aeos_kernel.ports import ModelChoiceRequest, ModelReviewGateway, ModelReviewRequest
+from aeos_kernel.ports import (
+    ModelChoiceExpansionPort,
+    ModelChoiceRequest,
+    ModelReviewGateway,
+    ModelReviewRequest,
+)
 from aeos_kernel.product_policy import (
     CanonicalProductManifest,
     ManifestContractError,
@@ -391,7 +398,7 @@ from aeos_kernel.vocabulary import (
     PrivacyClass,
 )
 
-__version__ = "0.26.0"
+__version__ = "0.27.0"
 
 from aeos_kernel.principles import (
     DECISION_FACTS_KIND,
@@ -508,6 +515,7 @@ __all__ = [
     "ExecutionLane",
     "ExecutionProfile",
     "ExitSet",
+    "ExpandedModelChoice",
     "FamilyProfile",
     "FamilyRegistry",
     "FcraPosture",
@@ -542,6 +550,8 @@ __all__ = [
     "MirrorDivergence",
     "MirroredTask",
     "ModelCallIdentity",
+    "ModelChoiceExpansionPort",
+    "ModelChoiceFieldDiff",
     "ModelChoiceRequest",
     "ModelDecision",
     "ModelReview",

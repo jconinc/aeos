@@ -1309,3 +1309,27 @@ or number. The engine refuses a mismatch between typed references and retained m
 Both published bundle schemas admit this optional field. The consuming host owns the current
 premise catalogue, membership, reference-kind constraints, safe labels and effect authority;
 references do not establish a fact, rule or permission. No policy or call limit changes here.
+
+### Host-expanded reviewed choices (0.27.0)
+
+An optional `ModelChoiceExpansionPort` extends the existing reviewed-choice loop without another
+model call. Its named production consumer is Wema's strategy adapter (MGS §3.3.3 and §4.2.2).
+After each validated chooser output, the host expands its compact answer against the exact retained
+packet, key map and native context. The immutable `ExpandedModelChoice` binds that call's attempt
+and prompt digest, the versioned expansion basis, complete canonical choice bytes, semantic payload
+and fingerprint, and host-owned full-choice digest. The kernel checks canonical bytes and semantic
+fingerprints; the host validates its domain-specific full-choice digest and admission requirements.
+
+Both reverse-order choices must use the same expansion contract, key map and input digest, and
+must have equal semantic payloads/fingerprints. Different semantics refuse before review. Different
+prose is retained separately: the critic's version-2 request and digest bind both complete expansions,
+their digests, common semantic payload and host-built field diff. The critic never merges them.
+An invalid expansion consumes and retains its raw call and returns `model_invalid`; it creates no
+repair call. The existing review may request its one corrected pair within the unchanged phase and
+cost ceiling. Expansion is supported only in the reviewed model path, never an unreviewed choice.
+
+Recommendations retain raw outputs unchanged plus an optional ordered `model_choice_expansions`
+sidecar under `aeos.reviewed-choice@2`. Replay must reconstruct expansions from retained raw outputs
+and exact host inputs and compare canonical bytes, never accept supplied expansions as authority.
+Without the optional port, request digests and recommendation bytes remain exactly version 1.
+No product schema, persistence, model permission, candidate or execution authority is added here.

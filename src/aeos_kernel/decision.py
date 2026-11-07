@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from typing import Any
 
 from aeos_kernel._validation import digest, immutable_json_object, required, thaw_json
-from aeos_kernel.canonical import stable_fingerprint
+from aeos_kernel.canonical import canonical_json, stable_fingerprint
 from aeos_kernel.errors import MODEL_ESCALATIONS, ContractError, Refusal, RefusalCode
 from aeos_kernel.vocabulary import DecisionStatus
 
@@ -17,9 +17,7 @@ _PREMISE_REF = re.compile(r"(?:fact|rule|area):[A-Za-z0-9][A-Za-z0-9._/-]{0,127}
 def _validate_premise_refs(refs: object, container_type: type) -> None:
     if not isinstance(refs, container_type) or not isinstance(refs, (tuple, list)):
         raise ContractError("premise_refs must contain typed premise identifiers")
-    if any(
-        not isinstance(ref, str) or _PREMISE_REF.fullmatch(ref) is None for ref in refs
-    ):
+    if any(not isinstance(ref, str) or _PREMISE_REF.fullmatch(ref) is None for ref in refs):
         raise ContractError("premise_refs must contain typed premise identifiers")
     if len(set(refs)) != len(refs):
         raise ContractError("premise_refs must be unique")
@@ -221,6 +219,66 @@ class ModelReview:
 
 
 @dataclass(frozen=True, slots=True)
+class ExpandedModelChoice:
+    """Host-validated expansion of one retained chooser answer, never model authority."""
+
+    attempt: int
+    contract_version: str
+    prompt_digest: str
+    key_map_digest: str
+    expansion_input_digest: str
+    expanded_choice: dict[str, Any]
+    canonical_expanded_json: str
+    semantic_payload: dict[str, Any]
+    semantic_fingerprint: str
+    full_digest: str
+
+    def __post_init__(self) -> None:
+        if self.attempt <= 0:
+            raise ContractError("expanded choice attempt must be positive")
+        required(self.contract_version, "expansion contract_version")
+        for name in (
+            "prompt_digest",
+            "key_map_digest",
+            "expansion_input_digest",
+            "semantic_fingerprint",
+            "full_digest",
+        ):
+            digest(getattr(self, name), name)
+        for name in ("expanded_choice", "semantic_payload"):
+            object.__setattr__(self, name, immutable_json_object(getattr(self, name), name))
+        if canonical_json(self.expanded_choice) != self.canonical_expanded_json:
+            raise ContractError("expanded choice bytes differ from its retained object")
+        if stable_fingerprint(self.semantic_payload) != self.semantic_fingerprint:
+            raise ContractError("expanded choice semantic fingerprint differs from its payload")
+
+    def as_dict(self) -> dict[str, Any]:
+        return {field.name: thaw_json(getattr(self, field.name)) for field in fields(self)}
+
+
+@dataclass(frozen=True, slots=True)
+class ModelChoiceFieldDiff:
+    path: str
+    proposed_present: bool
+    proposed_value: Any
+    corroborating_present: bool
+    corroborating_value: Any
+
+    def __post_init__(self) -> None:
+        required(self.path, "choice diff path")
+        for side in ("proposed", "corroborating"):
+            present = getattr(self, f"{side}_present")
+            value = getattr(self, f"{side}_value")
+            if not isinstance(present, bool) or (not present and value is not None):
+                raise ContractError("choice diff presence must agree with its value")
+            frozen = immutable_json_object({"value": value}, "choice diff value")["value"]
+            object.__setattr__(self, f"{side}_value", frozen)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {field.name: thaw_json(getattr(self, field.name)) for field in fields(self)}
+
+
+@dataclass(frozen=True, slots=True)
 class Recommendation:
     decision_id: str
     decision_revision: int
@@ -238,6 +296,7 @@ class Recommendation:
     model_protocol_version: str = ""
     model_call_purposes: tuple[str, ...] = ()
     model_request_digests: tuple[str, ...] = ()
+    model_choice_expansions: tuple[ExpandedModelChoice, ...] = ()
 
     def __post_init__(self) -> None:
         required(self.decision_id, "decision_id")
@@ -255,7 +314,8 @@ class Recommendation:
             raise ContractError("each model call requires one retained structured output")
         if self.model_protocol_version:
             if (
-                self.model_protocol_version != "aeos.reviewed-choice@1"
+                self.model_protocol_version
+                not in {"aeos.reviewed-choice@1", "aeos.reviewed-choice@2"}
                 or len(self.model_calls) != len(self.model_call_purposes)
                 or len(self.model_calls) != len(self.model_request_digests)
                 or any(p not in {"choose", "review"} for p in self.model_call_purposes)
@@ -265,6 +325,30 @@ class Recommendation:
                 digest(value, "model_request_digest")
         elif self.model_call_purposes or self.model_request_digests:
             raise ContractError("model evidence requires a protocol version")
+        if self.model_choice_expansions:
+            if self.model_protocol_version != "aeos.reviewed-choice@2":
+                raise ContractError("expanded choices require reviewed-choice version 2")
+            chooser_calls = {
+                (attempt, request_digest)
+                for attempt, (call, purpose, request_digest) in enumerate(
+                    zip(
+                        self.model_calls,
+                        self.model_call_purposes,
+                        self.model_request_digests,
+                        strict=True,
+                    ),
+                    1,
+                )
+                if purpose == "choose"
+                and call.attempt == attempt
+                and call.prompt_digest == request_digest
+            }
+            attempts = [item.attempt for item in self.model_choice_expansions]
+            if attempts != sorted(set(attempts)):
+                raise ContractError("expanded choices must follow unique chooser attempts")
+            for item in self.model_choice_expansions:
+                if (item.attempt, item.prompt_digest) not in chooser_calls:
+                    raise ContractError("expanded choice does not bind its retained chooser call")
         object.__setattr__(
             self,
             "model_outputs",
@@ -305,6 +389,10 @@ class Recommendation:
                     "model_request_digests": list(self.model_request_digests),
                 }
             )
+        if self.model_choice_expansions:
+            value["model_choice_expansions"] = [
+                item.as_dict() for item in self.model_choice_expansions
+            ]
         return value
 
     @property

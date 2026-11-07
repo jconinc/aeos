@@ -7,6 +7,8 @@ from dataclasses import asdict, dataclass, replace
 from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.decision import (
     Candidate,
+    ExpandedModelChoice,
+    ModelChoiceFieldDiff,
     ModelDecision,
     ModelReview,
     ModelReviewIssue,
@@ -17,6 +19,7 @@ from aeos_kernel.errors import Refusal, RefusalCode
 from aeos_kernel.evidence import DecisionPacket
 from aeos_kernel.ports import (
     Clock,
+    ModelChoiceExpansionPort,
     ModelChoiceRequest,
     ModelGateway,
     ModelReviewGateway,
@@ -40,6 +43,7 @@ class DecisionEngine:
     model_gateway: ModelGateway | None = None
     minimum_model_confidence: float = 0.75
     review_gateway: ModelReviewGateway | None = None
+    choice_expansion_port: ModelChoiceExpansionPort | None = None
 
     def decide(self, packet: DecisionPacket, candidates: tuple[Candidate, ...]) -> Recommendation:
         ordered = tuple(sorted(candidates, key=lambda item: item.candidate_id))
@@ -138,6 +142,14 @@ class DecisionEngine:
                 set_digest,
                 RefusalCode.MODEL_REQUIRED,
                 "policy permits a bounded model choice but no model gateway is configured",
+            )
+        if self.choice_expansion_port is not None and not packet.policy.require_model_review:
+            return self._refused(
+                decision_id,
+                packet,
+                set_digest,
+                RefusalCode.MODEL_REQUIRED,
+                "host-expanded model choices require the reviewed-choice protocol",
             )
         if packet.policy.require_model_review:
             return self._reviewed_selected(
@@ -248,15 +260,22 @@ class DecisionEngine:
         calls: list[ModelDecision | ModelReview] = []
         purposes: list[str] = []
         digests: list[str] = []
+        expansions: list[ExpandedModelChoice] = []
+        protocol = (
+            "aeos.reviewed-choice@2"
+            if self.choice_expansion_port is not None
+            else "aeos.reviewed-choice@1"
+        )
 
         def attach(result: Recommendation) -> Recommendation:
             return replace(
                 result,
                 model_calls=tuple(c.identity for c in calls),
                 model_outputs=tuple(dict(c.retained_output) for c in calls),
-                model_protocol_version="aeos.reviewed-choice@1",
+                model_protocol_version=protocol,
                 model_call_purposes=tuple(purposes),
                 model_request_digests=tuple(digests),
+                model_choice_expansions=tuple(expansions),
             )
 
         def refuse(refusal: Refusal) -> Recommendation:
@@ -276,6 +295,7 @@ class DecisionEngine:
             if stale is not None:
                 return refuse(stale)
             pair: list[ModelDecision] = []
+            expanded_pair: list[ExpandedModelChoice | None] = []
             for offset in range(2):
                 stale = verify_packet(packet, verifier=self.verifier, now=self.clock.now())
                 if stale is not None:
@@ -294,6 +314,7 @@ class DecisionEngine:
                     cost_ceiling_minor_units=remaining,
                     principled=principled,
                     correction_issues=issues,
+                    reviewed_protocol_version=protocol,
                 )
                 result = self.model_gateway.choose(request)
                 calls.append(result)
@@ -311,6 +332,19 @@ class DecisionEngine:
                         )
                     )
                 pair.append(result)
+                if self.choice_expansion_port is not None:
+                    try:
+                        expanded = self.choice_expansion_port.expand(request, result)
+                        if expanded is not None and (
+                            expanded.attempt != request.attempt
+                            or expanded.prompt_digest != request.prompt_digest
+                        ):
+                            raise ValueError("expansion does not bind this chooser call")
+                    except (ValueError, TypeError) as error:
+                        return refuse(Refusal(RefusalCode.MODEL_INVALID, str(error)))
+                    expanded_pair.append(expanded)
+                    if expanded is not None:
+                        expansions.append(expanded)
             if pair[0].candidate_id != pair[1].candidate_id:
                 return refuse(
                     Refusal(
@@ -318,6 +352,50 @@ class DecisionEngine:
                         "model selection changed when candidate order was reversed",
                     )
                 )
+            proposed_expansion: ExpandedModelChoice | None = None
+            corroborating_expansion: ExpandedModelChoice | None = None
+            expansion_diff: tuple[ModelChoiceFieldDiff, ...] = ()
+            if expanded_pair:
+                proposed_expansion, corroborating_expansion = expanded_pair
+                if (proposed_expansion is None) != (corroborating_expansion is None):
+                    return refuse(
+                        Refusal(
+                            RefusalCode.MODEL_INVALID,
+                            "chooser pair has inconsistent expansion presence",
+                        )
+                    )
+                if proposed_expansion is not None and corroborating_expansion is not None:
+                    if any(
+                        getattr(proposed_expansion, key) != getattr(corroborating_expansion, key)
+                        for key in ("contract_version", "key_map_digest", "expansion_input_digest")
+                    ):
+                        return refuse(
+                            Refusal(
+                                RefusalCode.MODEL_INVALID,
+                                "chooser expansion basis changed between calls",
+                            )
+                        )
+                    if (
+                        proposed_expansion.semantic_fingerprint
+                        != corroborating_expansion.semantic_fingerprint
+                        or proposed_expansion.semantic_payload
+                        != corroborating_expansion.semantic_payload
+                    ):
+                        return refuse(
+                            Refusal(
+                                RefusalCode.MODEL_DISAGREEMENT,
+                                "expanded model selection changed "
+                                "when candidate order was reversed",
+                            )
+                        )
+                    assert self.choice_expansion_port is not None
+                    try:
+                        expansion_diff = self.choice_expansion_port.diff(
+                            proposed_expansion, corroborating_expansion
+                        )
+                        stable_fingerprint([item.as_dict() for item in expansion_diff])
+                    except (ValueError, TypeError) as error:
+                        return refuse(Refusal(RefusalCode.MODEL_INVALID, str(error)))
             stale = verify_packet(packet, verifier=self.verifier, now=self.clock.now())
             if stale is not None:
                 return refuse(stale)
@@ -338,6 +416,17 @@ class DecisionEngine:
                 "allowed_fact_refs": list(refs),
                 "context_classification": packet.policy.model_context_classification,
             }
+            if proposed_expansion is not None:
+                assert corroborating_expansion is not None
+                data.update(
+                    {
+                        "contract": "aeos.model-review@2",
+                        "proposed_expansion": proposed_expansion.as_dict(),
+                        "corroborating_expansion": corroborating_expansion.as_dict(),
+                        "semantic_payload": proposed_expansion.semantic_payload,
+                        "expansion_diff": [item.as_dict() for item in expansion_diff],
+                    }
+                )
             request_review = ModelReviewRequest(
                 packet=packet,
                 candidates=all_candidates,
@@ -347,7 +436,7 @@ class DecisionEngine:
                 proposed_candidate_id=pair[0].candidate_id,
                 proposed_citations=pair[0].citations,
                 allowed_fact_refs=refs,
-                contract_version="aeos.model-review@1",
+                contract_version=str(data["contract"]),
                 attempt=attempt,
                 provider=packet.policy.model_provider,
                 model_id=packet.policy.model_id,
@@ -356,6 +445,12 @@ class DecisionEngine:
                 context_classification=packet.policy.model_context_classification,
                 cost_ceiling_minor_units=packet.policy.max_model_cost_minor_units
                 - sum(c.identity.cost_minor_units for c in calls),
+                proposed_expansion=proposed_expansion,
+                corroborating_expansion=corroborating_expansion,
+                semantic_payload=(
+                    proposed_expansion.semantic_payload if proposed_expansion is not None else None
+                ),
+                expansion_diff=expansion_diff,
             )
             review = self.review_gateway.review(request_review)
             calls.append(review)
@@ -454,6 +549,7 @@ class DecisionEngine:
                     "wrong_remedy",
                     "missed_alternative",
                     "scope_mismatch",
+                    "substantive_disagreement",
                     "authority_overreach",
                 }
                 or issue.principle_id not in {p.principle_id for p in request.principles}
@@ -502,6 +598,7 @@ class DecisionEngine:
         cost_ceiling_minor_units: int,
         principled: PrincipleResult,
         correction_issues: tuple[ModelReviewIssue, ...] = (),
+        reviewed_protocol_version: str = "aeos.reviewed-choice@1",
     ) -> ModelChoiceRequest:
         contract = "aeos.model-choice@3" if principled.evidence_ids else "aeos.model-choice@2"
         prompt_data = {
@@ -513,7 +610,7 @@ class DecisionEngine:
             "context_classification": packet.policy.model_context_classification,
         }
         if packet.policy.require_model_review:
-            prompt_data["contract"] = "aeos.reviewed-choice@1"
+            prompt_data["contract"] = reviewed_protocol_version
             prompt_data["purpose"] = "choose"
             prompt_data["correction_issues"] = [
                 {**asdict(issue), "fact_refs": list(issue.fact_refs)} for issue in correction_issues
