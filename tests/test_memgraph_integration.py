@@ -204,3 +204,65 @@ def test_real_memgraph_isolation_replay_query_and_concurrent_generation() -> Non
         assert cursor.fetchone() == (3, 3, 5)
     finally:
         connection.close()
+
+
+@pytest.mark.skipif(PORT == 0, reason="set AEOS_MEMGRAPH_TEST_PORT to an isolated Memgraph")
+def test_exact_snapshot_read_preserves_isolated_nodes_and_detects_drift() -> None:
+    """MGS §6.2.3: exact readback covers the entire immutable graph and source pins."""
+    from aeos_kernel import ContractError
+
+    project = f"integration-read-{uuid4().hex}"
+    connect = mgclient_factory(host=HOST, port=PORT, username=USERNAME,
+                               password=PASSWORD, sslmode=SSLMODE)
+    store = MemgraphProjectStore(project_id=project, vertical_id="integration",
+                                 tenant_id="tenant-one", connect=connect)
+    store.ensure_schema()
+    initial = _snapshot(project, generation=1, title="First")
+    complete = build_graph_snapshot(
+        project_id=project, vertical_id="integration", tenant_id="tenant-one", generation=1,
+        vocabulary=VOCABULARY, source_head_pins=initial.source_head_pins,
+        nodes=(*initial.nodes, GraphNode(entity_id="isolated", kind="question", revision="1",
+                                        content_digest="d" * 64, properties={"text": "alone"})),
+        edges=initial.edges,
+        built_at=initial.built_at,
+    )
+    store.publish(complete)
+    retained = store.read_snapshot(1, complete.snapshot_digest)
+    assert retained is not None and retained.as_dict() == complete.as_dict()
+    assert store.read_snapshot(2, complete.snapshot_digest) is None
+    assert store.read_snapshot(1, "0" * 64) is None
+    for other in (MemgraphProjectStore(project_id=project, vertical_id="different",
+                                       tenant_id="tenant-one", connect=connect),
+                  MemgraphProjectStore(project_id=project, vertical_id="integration",
+                                       tenant_id="different", connect=connect)):
+        assert other.read_snapshot(1, complete.snapshot_digest) is None
+    connection = connect()
+    try:
+        cursor = connection.cursor()
+        changes = (
+            ("MATCH (n:AEOSEntity {project_id: $project, entity_id: 'isolated'})",
+             "n.properties_json", '{}', '{"text":"alone"}'),
+            ("MATCH ()-[n:AEOS_RELATION {project_id: $project}]->()",
+             "n.evidence_json", '[]', '["fixture-1"]'),
+            ("MATCH ()-[n:AEOS_RELATION {project_id: $project}]->()",
+             "n.properties_json", '{"score":1}', '{}'),
+            ("MATCH (n:AEOSSnapshot {project_id: $project})",
+             "n.source_heads_json", '{}', '{"fixture":"generation-1"}'),
+        )
+        for match, field, changed, original in changes:
+            cursor.execute(f"{match} SET {field} = $value", {"project": project, "value": changed})
+            connection.commit()
+            with pytest.raises(ContractError):
+                store.read_snapshot(1, complete.snapshot_digest)
+            cursor.execute(f"{match} SET {field} = $value", {"project": project, "value": original})
+            connection.commit()
+            assert store.read_snapshot(1, complete.snapshot_digest) == retained
+        cursor.execute(
+            "MATCH (:AEOSSnapshot {project_id: $project})-[r:CONTAINS]->"
+            "(:AEOSEntity {entity_id: 'isolated'}) DELETE r", {"project": project},
+        )
+        connection.commit()
+        with pytest.raises(ContractError):
+            store.read_snapshot(1, complete.snapshot_digest)
+    finally:
+        connection.close()

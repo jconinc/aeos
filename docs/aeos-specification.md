@@ -716,6 +716,14 @@ the same transaction. Daily transaction-consistent dumps provide recovery beyond
 online rollback window. A reader sees only the current complete generation, never a half-written
 refresh, and storage growth does not multiply the complete graph without bound.
 
+`MemgraphProjectStore.read_snapshot(generation, digest)` additionally reads an exact retained
+generation for host validation. One transaction reads the scoped snapshot metadata, every node
+(including isolated nodes), and every relationship with its evidence and properties. The reader
+reconstructs the full `GraphSnapshot`, preserves `built_at`, and verifies its canonical digest,
+vocabulary and endpoints before returning it. An absent identity returns `None`; malformed or
+inconsistent stored content fails closed. This read neither changes the current pointer nor
+grants native authority. Hosts separately check currentness around the read.
+
 ### 19.4 Privacy and model boundary
 
 Only `public` or `internal` graph nodes are admissible. Raw review prose, email addresses, visitor

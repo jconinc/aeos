@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.28.0 — candidate, 2026-11-06
+
+- Add project-bound exact snapshot readback in one transaction, including isolated nodes,
+  relationship evidence, properties, source pins and the original build time. Validate the
+  complete reconstructed snapshot against its requested canonical digest before returning it.
+
 ## 0.27.0 — candidate, 2026-11-06
 
 - Add an optional host expansion/diff port to reviewed model choice. Compare complete semantic

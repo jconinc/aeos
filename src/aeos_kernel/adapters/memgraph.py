@@ -25,10 +25,13 @@ from aeos_kernel.adapters.memgraph_queries import (
     FLIP_CURRENT,
     NEIGHBORHOOD,
     PRUNE_OLD_SNAPSHOTS,
+    READ_SNAPSHOT,
+    READ_SNAPSHOT_EDGES,
+    READ_SNAPSHOT_NODES,
     SCHEMA_STATEMENTS,
     UPSERT_PROJECT,
 )
-from aeos_kernel.adapters.memgraph_serialization import snapshot_parameters
+from aeos_kernel.adapters.memgraph_serialization import snapshot_from_rows, snapshot_parameters
 from aeos_kernel.canonical import stable_fingerprint
 from aeos_kernel.errors import ContractError
 from aeos_kernel.graph import GraphSnapshot
@@ -134,6 +137,39 @@ class MemgraphProjectStore:
         connection = self._connect()
         try:
             return self._current_row(connection.cursor())
+        finally:
+            connection.close()
+
+    def read_snapshot(self, generation: int, digest: str) -> GraphSnapshot | None:
+        """Read and validate one exact scoped snapshot in a single transaction."""
+        if (type(generation) is not int or generation < 1 or not isinstance(digest, str)
+                or len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest)):
+            raise ContractError("invalid graph snapshot identity")
+        snapshot_key = stable_fingerprint({"project_key": self._project_key, "digest": digest})
+        params = {"project_key": self._project_key, "project_id": self._project_id,
+                  "vertical_id": self._vertical_id, "tenant_id": self._tenant_id,
+                  "generation": generation, "snapshot_digest": digest,
+                  "snapshot_key": snapshot_key}
+        connection = self._connect()
+        try:
+            connection.autocommit = False
+            cursor = connection.cursor()
+            cursor.execute(READ_SNAPSHOT, params)
+            metadata_rows = cursor.fetchall()
+            if not metadata_rows:
+                return None
+            if len(metadata_rows) != 1:
+                raise ContractError("multiple stored snapshots have the same identity")
+            metadata = metadata_rows[0]
+            cursor.execute(READ_SNAPSHOT_NODES, params)
+            nodes = cursor.fetchall()
+            cursor.execute(READ_SNAPSHOT_EDGES, params)
+            edges = cursor.fetchall()
+            return snapshot_from_rows(
+                project_id=self._project_id, vertical_id=self._vertical_id,
+                tenant_id=self._tenant_id, generation=generation, digest=digest,
+                snapshot_key=snapshot_key, metadata=metadata, node_rows=nodes, edge_rows=edges,
+            )
         finally:
             connection.close()
 

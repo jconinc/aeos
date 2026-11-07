@@ -93,3 +93,30 @@ RETURN r.edge_id, r.kind,
   neighbor.properties_json
 ORDER BY r.kind, neighbor.kind, neighbor.entity_id
 """
+
+READ_SNAPSHOT = """
+MATCH (p:AEOSProject {project_key: $project_key})-[:OWNS_SNAPSHOT]->(s:AEOSSnapshot)
+WHERE p.project_id = $project_id AND p.vertical_id = $vertical_id
+  AND p.tenant_id = $tenant_id AND s.project_id = $project_id
+  AND s.vertical_id = $vertical_id AND s.tenant_id = $tenant_id
+  AND s.generation = $generation AND s.snapshot_digest = $snapshot_digest
+  AND s.snapshot_key = $snapshot_key
+RETURN s.vocabulary_digest, s.source_heads_json, s.built_at
+"""
+
+READ_SNAPSHOT_NODES = """
+MATCH (n:AEOSEntity {snapshot_key: $snapshot_key})
+OPTIONAL MATCH (s:AEOSSnapshot {snapshot_key: $snapshot_key})-[membership:CONTAINS]->(n)
+RETURN n.entity_id, n.kind, n.revision, n.content_digest, n.properties_json,
+  n.privacy_classification, n.project_id, n.vertical_id, n.tenant_id,
+  membership.project_id, membership.vertical_id, membership.tenant_id
+ORDER BY n.entity_id
+"""
+
+READ_SNAPSHOT_EDGES = """
+MATCH (source:AEOSEntity)-[r:AEOS_RELATION {snapshot_key: $snapshot_key}]->(target:AEOSEntity)
+RETURN r.edge_id, r.kind, source.entity_id, target.entity_id, r.evidence_json,
+  r.properties_json, r.project_id, r.vertical_id, r.tenant_id,
+  source.snapshot_key, target.snapshot_key
+ORDER BY r.edge_id
+"""
